@@ -97,7 +97,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error("Login error:", error);
       const message = error.response?.data?.detail || "Login failed";
       toast.error(message);
-      throw error;
+      // Re-throw the error so the form can catch it and display the error
+      throw new Error(message);
     } finally {
       setIsLoading(false);
     }
