@@ -1,0 +1,6 @@
+Date,Description,Amount,Type
+2025-01-15,Grocery Store Purchase,-125.50,Debit
+2025-01-16,Coffee Shop,-4.25,Debit
+2025-01-17,Salary Deposit,3500.00,Credit
+2025-01-18,Gas Station,-65.00,Debit
+2025-01-19,Restaurant Dinner,-89.75,Debit
