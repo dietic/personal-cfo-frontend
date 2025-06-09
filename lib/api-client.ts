@@ -21,6 +21,12 @@ import {
   RecurringServiceUpdate,
   Statement,
   StatementProcess,
+  StatementStatusResponse,
+  ExtractionRequest,
+  ExtractionResponse,
+  CategorizationRequest,
+  CategorizationResponse,
+  RetryRequest,
   AnalyticsResponse,
   CategorySpending,
   SpendingTrend,
@@ -61,8 +67,11 @@ class APIClient {
       async (error) => {
         if (error.response?.status === 401) {
           this.removeToken();
-          // Redirect to login or dispatch logout action
-          if (typeof window !== "undefined") {
+          // Only redirect if we're not already on the login page to avoid reload loops
+          if (
+            typeof window !== "undefined" &&
+            !window.location.pathname.includes("/login")
+          ) {
             window.location.href = "/login";
           }
         }
@@ -302,12 +311,60 @@ class APIClient {
     const requestBody = {
       card_id: cardId || null,
       card_name: cardName || null,
-      statement_month: null
+      statement_month: null,
     };
-    
+
     const response = await this.client.post<StatementProcess>(
       `/api/v1/statements/${statementId}/process`,
       requestBody
+    );
+    return response.data;
+  }
+
+  // New multi-step statement processing endpoints
+  async getStatementStatus(statementId: string): Promise<StatementStatusResponse> {
+    const response = await this.client.get<StatementStatusResponse>(
+      `/api/v1/statements/${statementId}/status`
+    );
+    return response.data;
+  }
+
+  async extractTransactions(
+    statementId: string,
+    request: ExtractionRequest
+  ): Promise<ExtractionResponse> {
+    const response = await this.client.post<ExtractionResponse>(
+      `/api/v1/statements/${statementId}/extract`,
+      request
+    );
+    return response.data;
+  }
+
+  async categorizeTransactions(
+    statementId: string,
+    request: CategorizationRequest
+  ): Promise<CategorizationResponse> {
+    const response = await this.client.post<CategorizationResponse>(
+      `/api/v1/statements/${statementId}/categorize`,
+      request
+    );
+    return response.data;
+  }
+
+  async retryProcessingStep(
+    statementId: string,
+    request: RetryRequest
+  ): Promise<any> {
+    const response = await this.client.post(
+      `/api/v1/statements/${statementId}/retry`,
+      request
+    );
+    return response.data;
+  }
+
+  async getStatementInsights(statementId: string): Promise<any> {
+    const response = await this.client.get(
+      `/api/v1/statements/${statementId}/insights`
     );
     return response.data;
   }
