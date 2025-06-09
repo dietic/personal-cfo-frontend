@@ -5,8 +5,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Upload } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/lib/auth-context";
 
 export function DashboardHeader() {
+  const { user } = useAuth();
   return (
     <Card>
       <CardContent className="p-6">
@@ -20,7 +22,7 @@ export function DashboardHeader() {
               <AvatarFallback>JD</AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-bold">Welcome back, John</h1>
+              <h1 className="text-2xl font-bold">Welcome back</h1>
               <p className="text-muted-foreground">
                 Here's what's happening with your finances today
               </p>
