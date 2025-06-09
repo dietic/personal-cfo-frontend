@@ -142,8 +142,14 @@ export interface Statement {
   id: string;
   user_id: string;
   file_path: string;
+  statement_month?: string | null;
   status: string;
+  extraction_status: string;
+  categorization_status: string;
+  retry_count: string;
+  error_message?: string | null;
   is_processed: boolean;
+  ai_insights?: string | null;
   created_at: string;
 }
 
@@ -151,6 +157,53 @@ export interface StatementProcess {
   statement_id: string;
   transactions_found: number;
   transactions_created: number;
+  alerts_created?: number | null;
+  ai_insights?: Record<string, any> | null;
+}
+
+// New interfaces for the multi-step process
+export interface StatementStatusResponse {
+  statement_id: string;
+  status: string;
+  extraction_status: string;
+  categorization_status: string;
+  retry_count: Record<string, number>;
+  error_message?: string | null;
+  progress_percentage: number;
+  current_step: string;
+  estimated_completion?: string | null;
+}
+
+export interface ExtractionRequest {
+  card_id?: string | null;
+  card_name?: string | null;
+  statement_month?: string | null;
+}
+
+export interface ExtractionResponse {
+  statement_id: string;
+  transactions_found: number;
+  status: string;
+  message: string;
+}
+
+export interface CategorizationRequest {
+  use_ai?: boolean;
+  use_keywords?: boolean;
+}
+
+export interface CategorizationResponse {
+  statement_id: string;
+  transactions_categorized: number;
+  ai_categorized: number;
+  keyword_categorized: number;
+  uncategorized: number;
+  status: string;
+  message: string;
+}
+
+export interface RetryRequest {
+  step: string;
 }
 
 export interface CategorySpending {

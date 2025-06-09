@@ -17,6 +17,9 @@ import {
   RecurringServiceCreate,
   RecurringServiceUpdate,
   Statement,
+  ExtractionRequest,
+  CategorizationRequest,
+  RetryRequest,
   AnalyticsFilters,
   TrendsFilters,
   CategorizeTransactionParams,
@@ -403,6 +406,107 @@ export function useProcessStatement() {
         error.response?.data?.detail || "Failed to process statement";
       toast.error(message);
     },
+  });
+}
+
+// New hooks for multi-step statement processing
+export function useStatementStatus(statementId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["statement-status", statementId],
+    queryFn: () => apiClient.getStatementStatus(statementId),
+    enabled: enabled && !!statementId,
+    refetchInterval: (query) => {
+      // Poll every 2 seconds if statement is still processing
+      const data = query.state.data;
+      if (data?.status === "processing" || 
+          data?.extraction_status === "processing" || 
+          data?.categorization_status === "processing") {
+        return 2000;
+      }
+      return false;
+    },
+  });
+}
+
+export function useExtractTransactions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      statementId,
+      request,
+    }: {
+      statementId: string;
+      request: ExtractionRequest;
+    }) => apiClient.extractTransactions(statementId, request),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["statement-status", variables.statementId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      toast.success(`Extraction started! Found ${data.transactions_found} transactions.`);
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to extract transactions";
+      toast.error(message);
+    },
+  });
+}
+
+export function useCategorizeTransactions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      statementId,
+      request,
+    }: {
+      statementId: string;
+      request: CategorizationRequest;
+    }) => apiClient.categorizeTransactions(statementId, request),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["statement-status", variables.statementId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      toast.success(`Categorization complete! Categorized ${data.transactions_categorized} transactions.`);
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to categorize transactions";
+      toast.error(message);
+    },
+  });
+}
+
+export function useRetryProcessingStep() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      statementId,
+      request,
+    }: {
+      statementId: string;
+      request: RetryRequest;
+    }) => apiClient.retryProcessingStep(statementId, request),
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["statement-status", variables.statementId] });
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      toast.success("Processing step retried successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to retry processing step";
+      toast.error(message);
+    },
+  });
+}
+
+export function useStatementInsights(statementId: string, enabled = true) {
+  return useQuery({
+    queryKey: ["statement-insights", statementId],
+    queryFn: () => apiClient.getStatementInsights(statementId),
+    enabled: enabled && !!statementId,
   });
 }
 
