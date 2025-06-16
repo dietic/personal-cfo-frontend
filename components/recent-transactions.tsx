@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useTransactions, useCards } from "@/lib/hooks";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
 
 export function RecentTransactions() {
   const { data: transactions, isLoading, error } = useTransactions();
@@ -32,7 +32,7 @@ export function RecentTransactions() {
 
   const formatDate = (dateString: string) => {
     try {
-      return formatDistanceToNow(parseISO(dateString), { addSuffix: true });
+      return format(parseISO(dateString), "MMM dd, yyyy");
     } catch {
       return dateString;
     }
@@ -165,9 +165,20 @@ export function RecentTransactions() {
                   <Badge variant={getBadgeVariant(transaction.category)}>
                     {transaction.category || "Uncategorized"}
                   </Badge>
-                  <span className="font-medium">
-                    -${parseFloat(transaction.amount).toFixed(2)}
-                  </span>
+                  <div className="text-right">
+                    <span className="font-medium">
+                      -
+                      {transaction.currency === "USD"
+                        ? "$"
+                        : transaction.currency === "PEN"
+                        ? "S/"
+                        : transaction.currency + " "}
+                      {parseFloat(transaction.amount).toFixed(2)}
+                    </span>
+                    <div className="text-xs text-muted-foreground">
+                      {transaction.currency}
+                    </div>
+                  </div>
                 </div>
               </div>
             ))}

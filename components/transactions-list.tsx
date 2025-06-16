@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Table,
   TableBody,
@@ -20,7 +20,14 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { MoreHorizontal, Search, Tag, MessageSquare } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  MoreHorizontal,
+  Search,
+  Tag,
+  MessageSquare,
+  Trash2,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,15 +45,48 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useTransactions, useCards } from "@/lib/hooks";
+import { useTransactions, useCards, useUpdateTransaction } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Transaction } from "@/lib/types";
-import { formatDistanceToNow, parseISO } from "date-fns";
+import { format, parseISO } from "date-fns";
+import { CategorySelect } from "@/components/category-select";
+import { DeleteTransactionDialog } from "@/components/delete-transaction-dialog";
+import { BulkDeleteTransactionsDialog } from "@/components/bulk-delete-transactions-dialog";
+import type { TransactionFilters } from "@/lib/types";
 
-export function TransactionsList() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const { data: transactions, isLoading, error } = useTransactions();
+interface TransactionsListProps {
+  filters?: TransactionFilters;
+  searchQuery?: string;
+  currency?: string; // Add currency filter
+}
+
+export function TransactionsList({
+  filters,
+  searchQuery: externalSearchQuery,
+  currency,
+}: TransactionsListProps) {
+  const [searchQuery, setSearchQuery] = useState(externalSearchQuery || "");
+  const [selectedTransactions, setSelectedTransactions] = useState<string[]>(
+    []
+  );
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] =
+    useState<Transaction | null>(null);
+  const [editingCategory, setEditingCategory] = useState("");
+  const [editingDescription, setEditingDescription] = useState("");
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
+  const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
+
+  const { data: transactions, isLoading, error } = useTransactions(filters);
   const { data: cards } = useCards();
+  const updateTransactionMutation = useUpdateTransaction();
+
+  // Update search query when external search query changes
+  useEffect(() => {
+    if (externalSearchQuery !== undefined) {
+      setSearchQuery(externalSearchQuery);
+    }
+  }, [externalSearchQuery]);
 
   // Create a map of card IDs to card names for display
   const cardMap =
@@ -55,10 +95,11 @@ export function TransactionsList() {
       return acc;
     }, {} as Record<string, string>) || {};
 
-  // Filter transactions based on search query
+  // Filter transactions based on search query and currency
   const filteredTransactions =
-    transactions?.filter(
-      (transaction) =>
+    transactions?.filter((transaction) => {
+      // Search filter
+      const matchesSearch =
         transaction.merchant
           .toLowerCase()
           .includes(searchQuery.toLowerCase()) ||
@@ -67,16 +108,25 @@ export function TransactionsList() {
           .includes(searchQuery.toLowerCase()) ||
         transaction.description
           ?.toLowerCase()
-          .includes(searchQuery.toLowerCase())
-    ) || [];
+          .includes(searchQuery.toLowerCase());
 
-  const formatAmount = (amount: string) => {
-    return `$${parseFloat(amount).toFixed(2)}`;
+      // Currency filter
+      const matchesCurrency = !currency || transaction.currency === currency;
+
+      return matchesSearch && matchesCurrency;
+    }) || [];
+
+  const formatAmount = (amount: string, currency: string) => {
+    const formattedAmount = parseFloat(amount).toFixed(2);
+    // Display currency symbol or code based on currency
+    const currencySymbol =
+      currency === "USD" ? "$" : currency === "PEN" ? "S/" : currency + " ";
+    return `${currencySymbol}${formattedAmount}`;
   };
 
   const formatDate = (dateString: string) => {
     try {
-      return formatDistanceToNow(parseISO(dateString), { addSuffix: true });
+      return format(parseISO(dateString), "MMM dd, yyyy");
     } catch {
       return dateString;
     }
@@ -105,6 +155,84 @@ export function TransactionsList() {
       .join("")
       .toUpperCase()
       .slice(0, 2);
+  };
+
+  // Multi-select functionality
+  const handleSelectTransaction = (transactionId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedTransactions((prev) => [...prev, transactionId]);
+    } else {
+      setSelectedTransactions((prev) =>
+        prev.filter((id) => id !== transactionId)
+      );
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedTransactions(filteredTransactions.map((t) => t.id));
+    } else {
+      setSelectedTransactions([]);
+    }
+  };
+
+  const getSelectedTransactions = () => {
+    return filteredTransactions.filter((t) =>
+      selectedTransactions.includes(t.id)
+    );
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedTransactions.length > 0) {
+      setBulkDeleteOpen(true);
+    }
+  };
+
+  const handleBulkDeleteSuccess = () => {
+    setSelectedTransactions([]);
+  };
+
+  // Handler functions for editing
+  const handleEditCategory = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setEditingCategory(transaction.category || "");
+    setCategoryDialogOpen(true);
+  };
+
+  const handleEditDescription = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setEditingDescription(transaction.description || "");
+    setDescriptionDialogOpen(true);
+  };
+
+  const handleSaveCategory = async () => {
+    if (!editingTransaction) return;
+
+    try {
+      await updateTransactionMutation.mutateAsync({
+        transactionId: editingTransaction.id,
+        data: { category: editingCategory },
+      });
+      setCategoryDialogOpen(false);
+      setEditingTransaction(null);
+    } catch (error) {
+      console.error("Failed to update category:", error);
+    }
+  };
+
+  const handleSaveDescription = async () => {
+    if (!editingTransaction) return;
+
+    try {
+      await updateTransactionMutation.mutateAsync({
+        transactionId: editingTransaction.id,
+        data: { description: editingDescription },
+      });
+      setDescriptionDialogOpen(false);
+      setEditingTransaction(null);
+    } catch (error) {
+      console.error("Failed to update description:", error);
+    }
   };
 
   if (error) {
@@ -170,15 +298,28 @@ export function TransactionsList() {
               View and manage your transaction history
             </CardDescription>
           </div>
-          <div className="relative w-full md:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search transactions..."
-              className="pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+          <div className="flex items-center gap-2">
+            {selectedTransactions.length > 0 && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDelete}
+                className="flex items-center gap-2"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Selected ({selectedTransactions.length})
+              </Button>
+            )}
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search transactions..."
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -192,10 +333,22 @@ export function TransactionsList() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-[50px]">
+                    <Checkbox
+                      checked={
+                        filteredTransactions.length > 0 &&
+                        selectedTransactions.length ===
+                          filteredTransactions.length
+                      }
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all transactions"
+                    />
+                  </TableHead>
                   <TableHead>Merchant</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>Card</TableHead>
+                  <TableHead>Currency</TableHead>
                   <TableHead className="text-right">Amount</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
@@ -203,6 +356,18 @@ export function TransactionsList() {
               <TableBody>
                 {filteredTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedTransactions.includes(transaction.id)}
+                        onCheckedChange={(checked) =>
+                          handleSelectTransaction(
+                            transaction.id,
+                            checked as boolean
+                          )
+                        }
+                        aria-label={`Select transaction from ${transaction.merchant}`}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -240,8 +405,13 @@ export function TransactionsList() {
                     <TableCell>
                       {cardMap[transaction.card_id] || "Unknown Card"}
                     </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="text-xs">
+                        {transaction.currency}
+                      </Badge>
+                    </TableCell>
                     <TableCell className="text-right font-medium">
-                      -{formatAmount(transaction.amount)}
+                      -{formatAmount(transaction.amount, transaction.currency)}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -252,10 +422,16 @@ export function TransactionsList() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <Dialog>
+                          <Dialog
+                            open={categoryDialogOpen}
+                            onOpenChange={setCategoryDialogOpen}
+                          >
                             <DialogTrigger asChild>
                               <DropdownMenuItem
-                                onSelect={(e) => e.preventDefault()}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  handleEditCategory(transaction);
+                                }}
                                 className="flex items-center gap-2"
                               >
                                 <Tag className="h-4 w-4" />
@@ -266,29 +442,66 @@ export function TransactionsList() {
                               <DialogHeader>
                                 <DialogTitle>Edit Category</DialogTitle>
                                 <DialogDescription>
-                                  Change the category for this transaction.
+                                  Select a category for this transaction from
+                                  the dropdown below.
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="grid gap-4 py-4">
                                 <div className="grid gap-2">
                                   <Label htmlFor="category">Category</Label>
-                                  <Input
-                                    id="category"
-                                    defaultValue={transaction.category || ""}
-                                    placeholder="e.g. Groceries, Dining, Transportation"
+                                  <CategorySelect
+                                    value={editingCategory}
+                                    onValueChange={setEditingCategory}
+                                    placeholder="Search and select a category..."
                                   />
                                 </div>
+                                {editingTransaction && (
+                                  <div className="text-sm text-muted-foreground">
+                                    <p>
+                                      <strong>Transaction:</strong>{" "}
+                                      {editingTransaction.merchant}
+                                    </p>
+                                    <p>
+                                      <strong>Amount:</strong> $
+                                      {editingTransaction.amount}
+                                    </p>
+                                    <p>
+                                      <strong>Current Category:</strong>{" "}
+                                      {editingTransaction.category || "None"}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                               <DialogFooter>
-                                <Button type="submit">Save Changes</Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() => setCategoryDialogOpen(false)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="submit"
+                                  onClick={handleSaveCategory}
+                                  disabled={updateTransactionMutation.isPending}
+                                >
+                                  {updateTransactionMutation.isPending
+                                    ? "Saving..."
+                                    : "Save Changes"}
+                                </Button>
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>
 
-                          <Dialog>
+                          <Dialog
+                            open={descriptionDialogOpen}
+                            onOpenChange={setDescriptionDialogOpen}
+                          >
                             <DialogTrigger asChild>
                               <DropdownMenuItem
-                                onSelect={(e) => e.preventDefault()}
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                  handleEditDescription(transaction);
+                                }}
                                 className="flex items-center gap-2"
                               >
                                 <MessageSquare className="h-4 w-4" />
@@ -310,16 +523,60 @@ export function TransactionsList() {
                                   </Label>
                                   <Textarea
                                     id="description"
-                                    defaultValue={transaction.description || ""}
+                                    value={editingDescription}
+                                    onChange={(e) =>
+                                      setEditingDescription(e.target.value)
+                                    }
                                     placeholder="Add your description here..."
+                                    rows={3}
                                   />
                                 </div>
+                                {editingTransaction && (
+                                  <div className="text-sm text-muted-foreground">
+                                    <p>
+                                      <strong>Transaction:</strong>{" "}
+                                      {editingTransaction.merchant}
+                                    </p>
+                                    <p>
+                                      <strong>Amount:</strong> $
+                                      {editingTransaction.amount}
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                               <DialogFooter>
-                                <Button type="submit">Save Description</Button>
+                                <Button
+                                  variant="outline"
+                                  onClick={() =>
+                                    setDescriptionDialogOpen(false)
+                                  }
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  type="submit"
+                                  onClick={handleSaveDescription}
+                                  disabled={updateTransactionMutation.isPending}
+                                >
+                                  {updateTransactionMutation.isPending
+                                    ? "Saving..."
+                                    : "Save Description"}
+                                </Button>
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>
+
+                          <DeleteTransactionDialog transaction={transaction}>
+                            <DropdownMenuItem
+                              onSelect={(e) => {
+                                e.preventDefault();
+                              }}
+                              className="flex items-center gap-2 text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete Transaction
+                            </DropdownMenuItem>
+                          </DeleteTransactionDialog>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -330,6 +587,13 @@ export function TransactionsList() {
           </div>
         )}
       </CardContent>
+
+      <BulkDeleteTransactionsDialog
+        transactions={getSelectedTransactions()}
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        onSuccess={handleBulkDeleteSuccess}
+      />
     </Card>
   );
 }

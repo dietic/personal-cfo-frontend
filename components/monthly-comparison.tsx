@@ -21,9 +21,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSpendingTrends } from "@/lib/hooks";
 import { format, parseISO, getYear, getMonth } from "date-fns";
+import type { TrendsFilters } from "@/lib/types";
 
-export function MonthlyComparison() {
-  const { data: trendData, isLoading, error } = useSpendingTrends();
+interface MonthlyComparisonProps {
+  filters?: TrendsFilters;
+}
+
+export function MonthlyComparison({ filters }: MonthlyComparisonProps) {
+  const { data: trendData, isLoading, error } = useSpendingTrends(filters);
 
   const comparisonData = useMemo(() => {
     if (!trendData) return [];

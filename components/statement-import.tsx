@@ -50,14 +50,17 @@ import {
   useCards,
   useStatements,
   useUploadStatement,
+  useUploadStatementSimple,
   useProcessStatement,
   useStatementStatus,
   useExtractTransactions,
   useCategorizeTransactions,
-  useRetryProcessingStep,
-  useStatementInsights,
 } from "@/lib/hooks";
-import { Statement, ExtractionRequest, CategorizationRequest } from "@/lib/types";
+import {
+  Statement,
+  ExtractionRequest,
+  CategorizationRequest,
+} from "@/lib/types";
 import { toast } from "sonner";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import {
@@ -76,38 +79,37 @@ export function StatementImport() {
   const [selectedStatement, setSelectedStatement] = useState<Statement | null>(
     null
   );
-  const [processingStatement, setProcessingStatement] = useState<string | null>(null);
+  const [processingStatement, setProcessingStatement] = useState<string | null>(
+    null
+  );
 
   const { data: cards } = useCards();
   const { data: statements, refetch: refetchStatements } = useStatements();
   const uploadMutation = useUploadStatement();
+  const uploadSimpleMutation = useUploadStatementSimple();
   const processMutation = useProcessStatement();
   const extractMutation = useExtractTransactions();
   const categorizeMutation = useCategorizeTransactions();
-  const retryMutation = useRetryProcessingStep();
-  const { data: insights, refetch: refetchInsights } = useStatementInsights(
-    selectedStatement?.id || "", 
-    !!selectedStatement && selectedStatement.is_processed
-  );
 
   // Status polling for processing statements
   const { data: statusData } = useStatementStatus(
-    processingStatement || "", 
+    processingStatement || "",
     !!processingStatement
   );
 
   // Stop polling when processing is complete
   useEffect(() => {
     if (statusData && processingStatement) {
-      const isComplete = statusData.status === "completed" || 
-                        statusData.status === "failed" ||
-                        (statusData.extraction_status === "completed" && 
-                         statusData.categorization_status === "completed");
-      
+      const isComplete =
+        statusData.status === "completed" ||
+        statusData.status === "failed" ||
+        (statusData.extraction_status === "completed" &&
+          statusData.categorization_status === "completed");
+
       if (isComplete) {
         setProcessingStatement(null);
         refetchStatements();
-        
+
         if (statusData.status === "completed") {
           toast.success("Statement processing completed successfully!");
         } else if (statusData.status === "failed") {
@@ -135,55 +137,43 @@ export function StatementImport() {
         return;
       }
 
-      // Card selection is required for upload
-      if (!selectedCard) {
-        toast.error("Please select a card first");
-        return;
-      }
+      // Card selection is no longer required for simplified upload
 
       try {
         setIsUploading(true);
-        setUploadProgress(0);
+        setUploadProgress(20);
 
-        // Simulate upload progress
-        const progressInterval = setInterval(() => {
-          setUploadProgress((prev) => {
-            if (prev >= 90) {
-              clearInterval(progressInterval);
-              return prev;
-            }
-            return prev + 10;
-          });
-        }, 200);
+        console.log("Using simplified upload endpoint...");
 
-        console.log("Uploading file:", file.name, "for card:", selectedCard);
+        // Use the API client method which handles the base URL correctly
+        const result = await uploadSimpleMutation.mutateAsync(file);
+        console.log("✅ Simplified upload successful, result:", result);
 
-        const result = await uploadMutation.mutateAsync({
-          file,
-          cardId: selectedCard,
-        });
+        setUploadProgress(80);
 
-        console.log("Upload result:", result);
         setUploadProgress(100);
-        clearInterval(progressInterval);
 
         // Refresh statements list
         await refetchStatements();
 
-        toast.success("Statement uploaded successfully!");
+        toast.success(
+          `Statement processed successfully! ${result.filename} has been imported.`
+        );
       } catch (error: any) {
         console.error("Upload error:", error);
-        toast.error(
-          error.response?.data?.detail ||
-            error.message ||
-            "Failed to upload statement"
-        );
+
+        let errorMessage = "Failed to process statement";
+        if (error.message) {
+          errorMessage = error.message;
+        }
+
+        toast.error(errorMessage);
       } finally {
         setIsUploading(false);
         setTimeout(() => setUploadProgress(0), 2000);
       }
     },
-    [selectedCard, uploadMutation, refetchStatements]
+    [refetchStatements]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -204,7 +194,6 @@ export function StatementImport() {
       const result = await processMutation.mutateAsync({
         statementId: statement.id,
         cardId: selectedCard,
-        cardName: cards?.find((c) => c.id === selectedCard)?.card_name,
       });
 
       toast.success(
@@ -228,7 +217,7 @@ export function StatementImport() {
 
     try {
       setProcessingStatement(statement.id);
-      
+
       const extractionRequest: ExtractionRequest = {
         card_id: selectedCard,
         card_name: cards?.find((c) => c.id === selectedCard)?.card_name,
@@ -237,7 +226,7 @@ export function StatementImport() {
 
       await extractMutation.mutateAsync({
         statementId: statement.id,
-        request: extractionRequest,
+        data: extractionRequest,
       });
 
       // Status will be polled automatically
@@ -250,7 +239,7 @@ export function StatementImport() {
   const handleCategorizeTransactions = async (statement: Statement) => {
     try {
       setProcessingStatement(statement.id);
-      
+
       const categorizationRequest: CategorizationRequest = {
         use_ai: true,
         use_keywords: true,
@@ -258,7 +247,7 @@ export function StatementImport() {
 
       await categorizeMutation.mutateAsync({
         statementId: statement.id,
-        request: categorizationRequest,
+        data: categorizationRequest,
       });
 
       // Status will be polled automatically
@@ -269,19 +258,8 @@ export function StatementImport() {
   };
 
   const handleRetryStep = async (statement: Statement, step: string) => {
-    try {
-      setProcessingStatement(statement.id);
-      
-      await retryMutation.mutateAsync({
-        statementId: statement.id,
-        request: { step },
-      });
-
-      // Status will be polled automatically
-    } catch (error) {
-      console.error("Retry error:", error);
-      setProcessingStatement(null);
-    }
+    // Retry functionality temporarily disabled
+    toast.info("Retry functionality will be available in a future update");
   };
 
   const getStatusBadge = (statement: Statement) => {
@@ -291,46 +269,60 @@ export function StatementImport() {
 
     // Handle the new multi-step statuses
     if (statement.status === "processing") {
-      return <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        Processing
-      </Badge>;
+      return (
+        <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Processing
+        </Badge>
+      );
     }
 
     if (statement.status === "failed") {
       return <Badge variant="destructive">Failed</Badge>;
     }
 
-    if (statement.extraction_status === "completed" && statement.categorization_status === "pending") {
+    if (
+      statement.extraction_status === "completed" &&
+      statement.categorization_status === "pending"
+    ) {
       return <Badge className="bg-yellow-100 text-yellow-800">Extracted</Badge>;
     }
 
     if (statement.extraction_status === "processing") {
-      return <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        Extracting
-      </Badge>;
+      return (
+        <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Extracting
+        </Badge>
+      );
     }
 
     if (statement.categorization_status === "processing") {
-      return <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1">
-        <Loader2 className="h-3 w-3 animate-spin" />
-        Categorizing
-      </Badge>;
+      return (
+        <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1">
+          <Loader2 className="h-3 w-3 animate-spin" />
+          Categorizing
+        </Badge>
+      );
     }
 
     return <Badge variant="secondary">Uploaded</Badge>;
   };
 
   const getProgressInfo = (statement: Statement) => {
-    const currentStatus = processingStatement === statement.id ? statusData : null;
-    
+    const currentStatus =
+      processingStatement === statement.id ? statusData : null;
+
     if (!currentStatus) {
       if (statement.is_processed) return { percentage: 100, step: "Completed" };
-      if (statement.extraction_status === "completed" && statement.categorization_status === "pending") {
+      if (
+        statement.extraction_status === "completed" &&
+        statement.categorization_status === "pending"
+      ) {
         return { percentage: 50, step: "Ready for Categorization" };
       }
-      if (statement.extraction_status === "pending") return { percentage: 0, step: "Ready for Extraction" };
+      if (statement.extraction_status === "pending")
+        return { percentage: 0, step: "Ready for Extraction" };
       return { percentage: 25, step: "Uploaded" };
     }
 
@@ -345,10 +337,12 @@ export function StatementImport() {
       case "completed":
         return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
       case "processing":
-        return <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
-          <Loader2 className="h-3 w-3 animate-spin" />
-          Processing
-        </Badge>;
+        return (
+          <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Processing
+          </Badge>
+        );
       case "failed":
         return <Badge variant="destructive">Failed</Badge>;
       case "pending":
@@ -518,7 +512,7 @@ export function StatementImport() {
                 {statements.map((statement) => {
                   const progressInfo = getProgressInfo(statement);
                   const isProcessing = processingStatement === statement.id;
-                  
+
                   return (
                     <TableRow key={statement.id}>
                       <TableCell>
@@ -537,74 +531,96 @@ export function StatementImport() {
                             <span>{progressInfo.step}</span>
                             <span>{progressInfo.percentage}%</span>
                           </div>
-                          <Progress value={progressInfo.percentage} className="h-1" />
+                          <Progress
+                            value={progressInfo.percentage}
+                            className="h-1"
+                          />
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {/* Show different actions based on statement status */}
-                          {statement.extraction_status === "pending" && !isProcessing && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleExtractTransactions(statement)}
-                              disabled={!selectedCard || extractMutation.isPending}
-                              className="flex items-center gap-1"
-                            >
-                              <Brain className="h-3 w-3" />
-                              Extract
-                            </Button>
-                          )}
-                          
-                          {statement.extraction_status === "completed" && 
-                           statement.categorization_status === "pending" && 
-                           !isProcessing && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleCategorizeTransactions(statement)}
-                              disabled={categorizeMutation.isPending}
-                              className="flex items-center gap-1"
-                            >
-                              <Tag className="h-3 w-3" />
-                              Categorize
-                            </Button>
-                          )}
+                          {statement.extraction_status === "pending" &&
+                            !isProcessing && (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleExtractTransactions(statement)
+                                }
+                                disabled={
+                                  !selectedCard || extractMutation.isPending
+                                }
+                                className="flex items-center gap-1"
+                              >
+                                <Brain className="h-3 w-3" />
+                                Extract
+                              </Button>
+                            )}
 
-                          {(statement.extraction_status === "failed" || 
-                            statement.categorization_status === "failed") && 
-                           !isProcessing && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleRetryStep(
-                                statement, 
-                                statement.extraction_status === "failed" ? "extract" : "categorize"
-                              )}
-                              disabled={retryMutation.isPending}
-                              className="flex items-center gap-1"
-                            >
-                              <RefreshCw className="h-3 w-3" />
-                              Retry
-                            </Button>
-                          )}
+                          {statement.extraction_status === "completed" &&
+                            statement.categorization_status === "pending" &&
+                            !isProcessing && (
+                              <Button
+                                size="sm"
+                                onClick={() =>
+                                  handleCategorizeTransactions(statement)
+                                }
+                                disabled={categorizeMutation.isPending}
+                                className="flex items-center gap-1"
+                              >
+                                <Tag className="h-3 w-3" />
+                                Categorize
+                              </Button>
+                            )}
+
+                          {(statement.extraction_status === "failed" ||
+                            statement.categorization_status === "failed") &&
+                            !isProcessing && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleRetryStep(
+                                    statement,
+                                    statement.extraction_status === "failed"
+                                      ? "extract"
+                                      : "categorize"
+                                  )
+                                }
+                                disabled={false}
+                                className="flex items-center gap-1"
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                                Retry
+                              </Button>
+                            )}
 
                           {/* Legacy one-click process button */}
-                          {!statement.is_processed && 
-                           statement.status === "uploaded" && 
-                           !isProcessing && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleProcessStatement(statement)}
-                              disabled={!selectedCard || processMutation.isPending}
-                              className="flex items-center gap-1"
-                            >
-                              <TrendingUp className="h-3 w-3" />
-                              Process All
-                            </Button>
-                          )}
+                          {!statement.is_processed &&
+                            statement.status === "uploaded" &&
+                            !isProcessing && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  handleProcessStatement(statement)
+                                }
+                                disabled={
+                                  !selectedCard || processMutation.isPending
+                                }
+                                className="flex items-center gap-1"
+                              >
+                                <TrendingUp className="h-3 w-3" />
+                                Process All
+                              </Button>
+                            )}
 
                           {isProcessing && (
-                            <Button size="sm" disabled className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              disabled
+                              className="flex items-center gap-1"
+                            >
                               <Loader2 className="h-3 w-3 animate-spin" />
                               Processing...
                             </Button>
@@ -612,19 +628,19 @@ export function StatementImport() {
 
                           <Dialog>
                             <DialogTrigger asChild>
-                              <Button 
-                                variant="outline" 
+                              <Button
+                                variant="outline"
                                 size="sm"
                                 onClick={() => {
                                   setSelectedStatement(statement);
-                                  if (statement.is_processed) {
-                                    refetchInsights();
-                                  }
+                                  // Insights functionality temporarily disabled
                                 }}
                                 className="flex items-center gap-1"
                               >
                                 <Eye className="h-3 w-3" />
-                                {statement.is_processed ? "View Insights" : "View Details"}
+                                {statement.is_processed
+                                  ? "View Insights"
+                                  : "View Details"}
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -633,15 +649,21 @@ export function StatementImport() {
                                   Statement Details - {statement.filename}
                                 </DialogTitle>
                                 <DialogDescription>
-                                  Uploaded {formatDistanceToNow(parseISO(statement.created_at))} ago
+                                  Uploaded{" "}
+                                  {formatDistanceToNow(
+                                    parseISO(statement.created_at)
+                                  )}{" "}
+                                  ago
                                 </DialogDescription>
                               </DialogHeader>
-                              
+
                               <div className="space-y-4">
                                 {/* Statement Status */}
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
-                                    <Label className="text-sm font-medium">Status</Label>
+                                    <Label className="text-sm font-medium">
+                                      Status
+                                    </Label>
                                     <div className="flex items-center gap-2 mt-1">
                                       {getStatusBadge(statement)}
                                       <span className="text-sm text-muted-foreground">
@@ -650,30 +672,24 @@ export function StatementImport() {
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">Processing Progress</Label>
+                                    <Label className="text-sm font-medium">
+                                      Processing Progress
+                                    </Label>
                                     <div className="mt-1">
-                                      <Progress value={getProgressInfo(statement).percentage} className="h-2" />
+                                      <Progress
+                                        value={
+                                          getProgressInfo(statement).percentage
+                                        }
+                                        className="h-2"
+                                      />
                                       <span className="text-xs text-muted-foreground">
-                                        {getProgressInfo(statement).percentage}% complete - {getProgressInfo(statement).step}
+                                        {getProgressInfo(statement).percentage}%
+                                        complete -{" "}
+                                        {getProgressInfo(statement).step}
                                       </span>
                                     </div>
                                   </div>
                                 </div>
-
-                                {/* AI Insights */}
-                                {statement.is_processed && insights && (
-                                  <div className="space-y-3">
-                                    <Label className="text-sm font-medium flex items-center gap-2">
-                                      <Brain className="h-4 w-4" />
-                                      AI Insights
-                                    </Label>
-                                    <div className="bg-muted p-4 rounded-lg">
-                                      <pre className="whitespace-pre-wrap text-sm">
-                                        {insights.insights || "No insights available"}
-                                      </pre>
-                                    </div>
-                                  </div>
-                                )}
 
                                 {/* Error Messages */}
                                 {statement.error_message && (
@@ -692,18 +708,26 @@ export function StatementImport() {
                                 {/* Processing Details */}
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                   <div>
-                                    <Label className="text-sm font-medium">Extraction Status</Label>
+                                    <Label className="text-sm font-medium">
+                                      Extraction Status
+                                    </Label>
                                     <div className="flex items-center gap-2 mt-1">
-                                      {getSimpleStatusBadge(statement.extraction_status)}
+                                      {getSimpleStatusBadge(
+                                        statement.extraction_status
+                                      )}
                                       <span className="text-muted-foreground">
                                         {statement.extraction_status}
                                       </span>
                                     </div>
                                   </div>
                                   <div>
-                                    <Label className="text-sm font-medium">Categorization Status</Label>
+                                    <Label className="text-sm font-medium">
+                                      Categorization Status
+                                    </Label>
                                     <div className="flex items-center gap-2 mt-1">
-                                      {getSimpleStatusBadge(statement.categorization_status)}
+                                      {getSimpleStatusBadge(
+                                        statement.categorization_status
+                                      )}
                                       <span className="text-muted-foreground">
                                         {statement.categorization_status}
                                       </span>
@@ -714,9 +738,12 @@ export function StatementImport() {
                                 {/* Retry Information */}
                                 {parseInt(statement.retry_count) > 0 && (
                                   <div>
-                                    <Label className="text-sm font-medium">Retry Count</Label>
+                                    <Label className="text-sm font-medium">
+                                      Retry Count
+                                    </Label>
                                     <p className="text-sm text-muted-foreground mt-1">
-                                      This statement has been retried {statement.retry_count} time(s)
+                                      This statement has been retried{" "}
+                                      {statement.retry_count} time(s)
                                     </p>
                                   </div>
                                 )}

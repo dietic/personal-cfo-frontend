@@ -30,6 +30,7 @@ import {
   useCreateBudget,
   useUpdateBudget,
   useDeleteBudget,
+  useCategories,
 } from "@/lib/hooks";
 import { Budget, BudgetCreate, BudgetUpdate } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,28 +38,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 interface BudgetFormData {
   category: string;
   amount: string;
+  currency: string;
   period: "monthly" | "weekly" | "yearly";
 }
 
 const initialFormData: BudgetFormData = {
   category: "",
   amount: "",
+  currency: "USD",
   period: "monthly",
 };
-
-const categories = [
-  "Food & Dining",
-  "Shopping",
-  "Transportation",
-  "Entertainment",
-  "Bills & Utilities",
-  "Healthcare",
-  "Travel",
-  "Education",
-  "Groceries",
-  "Gas",
-  "Other",
-];
 
 export function BudgetCategories() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -74,6 +63,7 @@ export function BudgetCategories() {
   } = useBudgets();
   const { data: categorySpending, isLoading: spendingLoading } =
     useCategorySpending();
+  const { data: categories, isLoading: categoriesLoading } = useCategories();
   const createBudgetMutation = useCreateBudget();
   const updateBudgetMutation = useUpdateBudget();
   const deleteBudgetMutation = useDeleteBudget();
@@ -84,10 +74,17 @@ export function BudgetCategories() {
       return;
     }
 
+    // Generate the first day of the current month as the budget month
+    const currentDate = new Date();
+    const currentMonth = `${currentDate.getFullYear()}-${String(
+      currentDate.getMonth() + 1
+    ).padStart(2, "0")}-01`;
+
     const budgetData: BudgetCreate = {
       category: formData.category,
       limit_amount: parseFloat(formData.amount),
-      month: formData.period,
+      currency: formData.currency,
+      month: currentMonth,
     };
 
     try {
@@ -95,8 +92,13 @@ export function BudgetCategories() {
       toast.success("Budget created successfully");
       setIsCreateDialogOpen(false);
       setFormData(initialFormData);
-    } catch (error) {
-      toast.error("Failed to create budget");
+    } catch (error: any) {
+      console.error("Budget creation error:", error);
+      const errorMessage =
+        error?.response?.data?.detail ||
+        error?.message ||
+        "Failed to create budget";
+      toast.error(errorMessage);
     }
   };
 
@@ -106,10 +108,17 @@ export function BudgetCategories() {
       return;
     }
 
+    // Generate the first day of the current month as the budget month
+    const currentDate = new Date();
+    const currentMonth = `${currentDate.getFullYear()}-${String(
+      currentDate.getMonth() + 1
+    ).padStart(2, "0")}-01`;
+
     const budgetData: BudgetUpdate = {
       category: formData.category,
       limit_amount: parseFloat(formData.amount),
-      month: formData.period,
+      currency: formData.currency,
+      month: currentMonth,
     };
 
     try {
@@ -121,8 +130,13 @@ export function BudgetCategories() {
       setIsEditDialogOpen(false);
       setSelectedBudget(null);
       setFormData(initialFormData);
-    } catch (error) {
-      toast.error("Failed to update budget");
+    } catch (error: any) {
+      console.error("Budget update error:", error);
+      const errorMessage =
+        error?.response?.data?.detail ||
+        error?.message ||
+        "Failed to update budget";
+      toast.error(errorMessage);
     }
   };
 
@@ -144,6 +158,7 @@ export function BudgetCategories() {
     setFormData({
       category: budget.category,
       amount: budget.limit_amount.toString(),
+      currency: budget.currency || "USD", // Fallback to USD if currency not set
       period: "monthly", // Default to monthly since the API uses month field
     });
     setIsEditDialogOpen(true);
@@ -164,6 +179,21 @@ export function BudgetCategories() {
         ? (spent / parseFloat(budget.limit_amount)) * 100
         : 0;
     return { spent, percentage: Math.min(percentage, 100) };
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    const formattedAmount = amount.toFixed(2);
+    const currencySymbol =
+      currency === "USD"
+        ? "$"
+        : currency === "PEN"
+        ? "S/"
+        : currency === "EUR"
+        ? "€"
+        : currency === "GBP"
+        ? "£"
+        : currency + " ";
+    return `${currencySymbol}${formattedAmount}`;
   };
 
   const getBudgetStatus = (percentage: number) => {
@@ -258,8 +288,11 @@ export function BudgetCategories() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">
-                          ${spent.toFixed(2)} / $
-                          {parseFloat(budget.limit_amount).toFixed(2)}
+                          {formatCurrency(spent, budget.currency)} /{" "}
+                          {formatCurrency(
+                            parseFloat(budget.limit_amount),
+                            budget.currency
+                          )}
                         </span>
                         <div className="flex items-center gap-1">
                           <Button
@@ -293,7 +326,10 @@ export function BudgetCategories() {
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
                       <span>{percentage.toFixed(1)}% used</span>
                       <span>
-                        ${(parseFloat(budget.limit_amount) - spent).toFixed(2)}{" "}
+                        {formatCurrency(
+                          parseFloat(budget.limit_amount) - spent,
+                          budget.currency
+                        )}{" "}
                         remaining
                       </span>
                     </div>
@@ -327,11 +363,21 @@ export function BudgetCategories() {
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {categoriesLoading ? (
+                    <SelectItem value="" disabled>
+                      Loading categories...
                     </SelectItem>
-                  ))}
+                  ) : categories && categories.length > 0 ? (
+                    categories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      No categories available
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -347,6 +393,25 @@ export function BudgetCategories() {
                   setFormData({ ...formData, amount: e.target.value })
                 }
               />
+            </div>
+            <div>
+              <Label htmlFor="currency">Currency</Label>
+              <Select
+                value={formData.currency}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, currency: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="PEN">PEN - Peruvian Sol</SelectItem>
+                  <SelectItem value="EUR">EUR - Euro</SelectItem>
+                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="period">Period</Label>
@@ -406,11 +471,21 @@ export function BudgetCategories() {
                   <SelectValue placeholder="Select a category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
+                  {categoriesLoading ? (
+                    <SelectItem value="" disabled>
+                      Loading categories...
                     </SelectItem>
-                  ))}
+                  ) : categories && categories.length > 0 ? (
+                    categories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.name}
+                      </SelectItem>
+                    ))
+                  ) : (
+                    <SelectItem value="" disabled>
+                      No categories available
+                    </SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -426,6 +501,25 @@ export function BudgetCategories() {
                   setFormData({ ...formData, amount: e.target.value })
                 }
               />
+            </div>
+            <div>
+              <Label htmlFor="edit-currency">Currency</Label>
+              <Select
+                value={formData.currency}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, currency: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD - US Dollar</SelectItem>
+                  <SelectItem value="PEN">PEN - Peruvian Sol</SelectItem>
+                  <SelectItem value="EUR">EUR - Euro</SelectItem>
+                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="edit-period">Period</Label>

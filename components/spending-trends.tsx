@@ -22,18 +22,27 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useSpendingTrends, useCategorySpending } from "@/lib/hooks";
 import { format, parseISO, getMonth, getYear } from "date-fns";
+import type { TrendsFilters, AnalyticsFilters } from "@/lib/types";
 
-export function SpendingTrends() {
+interface SpendingTrendsProps {
+  trendsFilters?: TrendsFilters;
+  analyticsFilters?: AnalyticsFilters;
+}
+
+export function SpendingTrends({
+  trendsFilters,
+  analyticsFilters,
+}: SpendingTrendsProps) {
   const {
     data: trendData,
     isLoading: trendsLoading,
     error: trendsError,
-  } = useSpendingTrends();
+  } = useSpendingTrends(trendsFilters);
   const {
     data: categoryData,
     isLoading: categoryLoading,
     error: categoryError,
-  } = useCategorySpending();
+  } = useCategorySpending(analyticsFilters);
 
   const monthlyData = useMemo(() => {
     if (!trendData) return [];

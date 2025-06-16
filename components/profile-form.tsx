@@ -50,6 +50,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { formatDistanceToNow, parseISO } from "date-fns";
+import { CategoriesManagement } from "@/components/categories-management";
 
 export function ProfileForm() {
   const { user, logout } = useAuth();
@@ -131,8 +132,9 @@ export function ProfileForm() {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="data">Data & Privacy</TabsTrigger>
@@ -265,6 +267,11 @@ export function ProfileForm() {
               </div>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Categories Tab */}
+        <TabsContent value="categories" className="space-y-6">
+          <CategoriesManagement />
         </TabsContent>
 
         {/* Security Tab */}

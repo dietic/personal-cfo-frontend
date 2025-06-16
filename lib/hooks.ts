@@ -6,6 +6,9 @@ import {
   Card,
   CardCreate,
   CardUpdate,
+  Category,
+  CategoryCreate,
+  CategoryUpdate,
   Transaction,
   TransactionCreate,
   TransactionUpdate,
@@ -19,11 +22,14 @@ import {
   Statement,
   ExtractionRequest,
   CategorizationRequest,
-  RetryRequest,
   AnalyticsFilters,
   TrendsFilters,
   CategorizeTransactionParams,
   DetectAnomaliesParams,
+  CategoryKeywordCreate,
+  CategoryKeywordUpdate,
+  CategoryKeywordsBulkCreate,
+  CategoryKeywordResponse,
 } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -31,6 +37,12 @@ import { toast } from "sonner";
 export const queryKeys = {
   cards: ["cards"] as const,
   card: (id: string) => ["cards", id] as const,
+  categories: ["categories"] as const,
+  category: (id: string) => ["categories", id] as const,
+  currencies: ["currencies"] as const,
+  keywords: ["keywords"] as const,
+  keywordsByCategory: (categoryId: string) =>
+    ["keywords", "category", categoryId] as const,
   transactions: (filters?: TransactionFilters) =>
     ["transactions", filters] as const,
   transaction: (id: string) => ["transactions", id] as const,
@@ -192,6 +204,25 @@ export function useDeleteTransaction() {
     onError: (error: any) => {
       const message =
         error.response?.data?.detail || "Failed to delete transaction";
+      toast.error(message);
+    },
+  });
+}
+
+export function useDeleteTransactionsBulk() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (transactionIds: string[]) =>
+      apiClient.deleteTransactionsBulk(transactionIds),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      toast.success(`${data.deleted_count} transactions deleted successfully`);
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to delete transactions";
       toast.error(message);
     },
   });
@@ -364,6 +395,27 @@ export function useStatements() {
   });
 }
 
+export function useDeleteStatement() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (statementId: string) => apiClient.deleteStatement(statementId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      toast.success(
+        `Statement deleted. ${data.transactions_deleted} transactions also removed.`
+      );
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to delete statement";
+      toast.error(message);
+    },
+  });
+}
+
 export function useUploadStatement() {
   const queryClient = useQueryClient();
 
@@ -382,6 +434,23 @@ export function useUploadStatement() {
   });
 }
 
+export function useUploadStatementSimple() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (file: File) => apiClient.uploadStatementSimple(file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      toast.success("Statement processed successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to process statement";
+      toast.error(message);
+    },
+  });
+}
+
 export function useProcessStatement() {
   const queryClient = useQueryClient();
 
@@ -389,12 +458,10 @@ export function useProcessStatement() {
     mutationFn: ({
       statementId,
       cardId,
-      cardName,
     }: {
       statementId: string;
-      cardId?: string;
-      cardName?: string;
-    }) => apiClient.processStatement(statementId, cardId, cardName),
+      cardId: string;
+    }) => apiClient.processStatement(statementId, cardId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -409,22 +476,15 @@ export function useProcessStatement() {
   });
 }
 
-// New hooks for multi-step statement processing
-export function useStatementStatus(statementId: string, enabled = true) {
+export function useStatementStatus(
+  statementId: string,
+  enabled: boolean = true
+) {
   return useQuery({
-    queryKey: ["statement-status", statementId],
+    queryKey: ["statements", statementId, "status"],
     queryFn: () => apiClient.getStatementStatus(statementId),
     enabled: enabled && !!statementId,
-    refetchInterval: (query) => {
-      // Poll every 2 seconds if statement is still processing
-      const data = query.state.data;
-      if (data?.status === "processing" || 
-          data?.extraction_status === "processing" || 
-          data?.categorization_status === "processing") {
-        return 2000;
-      }
-      return false;
-    },
+    refetchInterval: 2000, // Poll every 2 seconds when enabled
   });
 }
 
@@ -434,15 +494,13 @@ export function useExtractTransactions() {
   return useMutation({
     mutationFn: ({
       statementId,
-      request,
+      data,
     }: {
       statementId: string;
-      request: ExtractionRequest;
-    }) => apiClient.extractTransactions(statementId, request),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["statement-status", variables.statementId] });
+      data: ExtractionRequest;
+    }) => apiClient.extractTransactions(statementId, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
-      toast.success(`Extraction started! Found ${data.transactions_found} transactions.`);
     },
     onError: (error: any) => {
       const message =
@@ -458,17 +516,15 @@ export function useCategorizeTransactions() {
   return useMutation({
     mutationFn: ({
       statementId,
-      request,
+      data,
     }: {
       statementId: string;
-      request: CategorizationRequest;
-    }) => apiClient.categorizeTransactions(statementId, request),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["statement-status", variables.statementId] });
+      data: CategorizationRequest;
+    }) => apiClient.categorizeTransactions(statementId, data),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      toast.success(`Categorization complete! Categorized ${data.transactions_categorized} transactions.`);
     },
     onError: (error: any) => {
       const message =
@@ -478,35 +534,19 @@ export function useCategorizeTransactions() {
   });
 }
 
-export function useRetryProcessingStep() {
+export function useRetryStatement() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({
-      statementId,
-      request,
-    }: {
-      statementId: string;
-      request: RetryRequest;
-    }) => apiClient.retryProcessingStep(statementId, request),
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["statement-status", variables.statementId] });
+    mutationFn: (statementId: string) => apiClient.retryStatement(statementId),
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
-      toast.success("Processing step retried successfully");
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to retry processing step";
+        error.response?.data?.detail || "Failed to retry statement";
       toast.error(message);
     },
-  });
-}
-
-export function useStatementInsights(statementId: string, enabled = true) {
-  return useQuery({
-    queryKey: ["statement-insights", statementId],
-    queryFn: () => apiClient.getStatementInsights(statementId),
-    enabled: enabled && !!statementId,
   });
 }
 
@@ -580,6 +620,204 @@ export function useDetectTransactionAnomalies() {
     onError: (error: any) => {
       const message =
         error.response?.data?.detail || "Failed to detect anomalies";
+      toast.error(message);
+    },
+  });
+}
+
+// Categories Hooks
+export function useCategories(includeInactive: boolean = false) {
+  return useQuery({
+    queryKey: [...queryKeys.categories, { includeInactive }],
+    queryFn: () => apiClient.getCategories(includeInactive),
+  });
+}
+
+export function useCategory(categoryId: string) {
+  return useQuery({
+    queryKey: queryKeys.category(categoryId),
+    queryFn: () => apiClient.getCategory(categoryId),
+    enabled: !!categoryId,
+  });
+}
+
+// Currencies Hooks
+export function useCurrencies() {
+  return useQuery({
+    queryKey: queryKeys.currencies,
+    queryFn: () => apiClient.getCurrencies(),
+  });
+}
+
+export function useCreateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CategoryCreate) => apiClient.createCategory(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+      toast.success("Category created successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to create category";
+      toast.error(message);
+    },
+  });
+}
+
+export function useUpdateCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      categoryId,
+      data,
+    }: {
+      categoryId: string;
+      data: CategoryUpdate;
+    }) => apiClient.updateCategory(categoryId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+      toast.success("Category updated successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to update category";
+      toast.error(message);
+    },
+  });
+}
+
+export function useDeleteCategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (categoryId: string) => apiClient.deleteCategory(categoryId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+      toast.success("Category deleted successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to delete category";
+      toast.error(message);
+    },
+  });
+}
+
+// Categories validation hook (working fallback)
+export function useCategoriesValidation() {
+  return useQuery({
+    queryKey: ["categories", "validation"],
+    queryFn: () => apiClient.validateCategoriesMinimum(),
+    staleTime: 30000, // 30 seconds
+  });
+}
+
+// Keywords Hooks
+export function useKeywordsByCategory(categoryId: string) {
+  return useQuery({
+    queryKey: queryKeys.keywordsByCategory(categoryId),
+    queryFn: () => apiClient.getKeywordsByCategory(categoryId),
+    enabled: !!categoryId,
+  });
+}
+
+export function useCreateKeyword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CategoryKeywordCreate) => apiClient.createKeyword(data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.keywordsByCategory(variables.category_id),
+      });
+      toast.success("Keyword created successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to create keyword";
+      toast.error(message);
+    },
+  });
+}
+
+export function useCreateKeywordsBulk() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CategoryKeywordsBulkCreate) =>
+      apiClient.createKeywordsBulk(data),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.keywordsByCategory(variables.category_id),
+      });
+      toast.success("Keywords created successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to create keywords";
+      toast.error(message);
+    },
+  });
+}
+
+export function useUpdateKeyword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      keywordId,
+      data,
+    }: {
+      keywordId: string;
+      data: CategoryKeywordUpdate;
+    }) => apiClient.updateKeyword(keywordId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
+      toast.success("Keyword updated successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to update keyword";
+      toast.error(message);
+    },
+  });
+}
+
+export function useDeleteKeyword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (keywordId: string) => apiClient.deleteKeyword(keywordId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
+      toast.success("Keyword deleted successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to delete keyword";
+      toast.error(message);
+    },
+  });
+}
+
+export function useSeedDefaultKeywords() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => apiClient.seedDefaultKeywords(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
+      queryClient.invalidateQueries({ queryKey: queryKeys.categories });
+      toast.success("Default keywords seeded successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to seed default keywords";
       toast.error(message);
     },
   });

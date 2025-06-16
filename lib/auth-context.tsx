@@ -57,9 +57,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (token) {
             const payload = decodeJWT(token);
             const email = payload?.sub || "user@example.com";
+            const name = payload?.name || payload?.username || payload?.full_name;
             setUser({
               id: "current-user",
               email: email,
+              name: name,
               is_active: true,
               created_at: new Date().toISOString(),
             });
@@ -83,10 +85,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       const tokenResponse = await apiClient.login(data);
 
+      // Extract user information from JWT token
+      const token = apiClient.getToken();
+      let name;
+      if (token) {
+        const payload = decodeJWT(token);
+        name = payload?.name || payload?.username || payload?.full_name;
+      }
+
       // Create user object from login data since backend doesn't have /me endpoint
       setUser({
         id: "current-user",
         email: data.email,
+        name: name,
         is_active: true,
         created_at: new Date().toISOString(),
       });

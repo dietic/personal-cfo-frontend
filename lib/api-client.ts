@@ -8,6 +8,9 @@ import {
   Card,
   CardCreate,
   CardUpdate,
+  Category,
+  CategoryCreate,
+  CategoryUpdate,
   Transaction,
   TransactionCreate,
   TransactionUpdate,
@@ -26,7 +29,6 @@ import {
   ExtractionResponse,
   CategorizationRequest,
   CategorizationResponse,
-  RetryRequest,
   AnalyticsResponse,
   CategorySpending,
   SpendingTrend,
@@ -36,9 +38,14 @@ import {
   TrendsFilters,
   CategorizeTransactionParams,
   DetectAnomaliesParams,
+  CategoryKeyword,
+  CategoryKeywordCreate,
+  CategoryKeywordUpdate,
+  CategoryKeywordsBulkCreate,
+  CategoryKeywordResponse,
 } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
 const TOKEN_KEY = "access_token";
 
 class APIClient {
@@ -67,12 +74,16 @@ class APIClient {
       async (error) => {
         if (error.response?.status === 401) {
           this.removeToken();
-          // Only redirect if we're not already on the login page to avoid reload loops
-          if (
-            typeof window !== "undefined" &&
-            !window.location.pathname.includes("/login")
-          ) {
-            window.location.href = "/login";
+          // Skip redirect in development for testing purposes
+          const isDevelopment = process.env.NODE_ENV === "development";
+          const currentPath =
+            typeof window !== "undefined" ? window.location.pathname : "";
+
+          if (!isDevelopment || !currentPath.startsWith("/transactions")) {
+            // Redirect to login or dispatch logout action
+            if (typeof window !== "undefined") {
+              window.location.href = "/login";
+            }
           }
         }
         return Promise.reject(error);
@@ -160,6 +171,63 @@ class APIClient {
     await this.client.delete(`/api/v1/cards/${cardId}`);
   }
 
+  // Categories endpoints
+  async getCategories(includeInactive: boolean = false): Promise<Category[]> {
+    const response = await this.client.get<Category[]>("/api/v1/categories/", {
+      params: { include_inactive: includeInactive },
+    });
+    return response.data;
+  }
+
+  async getCategory(categoryId: string): Promise<Category> {
+    const response = await this.client.get<Category>(
+      `/api/v1/categories/${categoryId}`
+    );
+    return response.data;
+  }
+
+  async createCategory(data: CategoryCreate): Promise<Category> {
+    const response = await this.client.post<Category>(
+      "/api/v1/categories/",
+      data
+    );
+    return response.data;
+  }
+
+  async updateCategory(
+    categoryId: string,
+    data: CategoryUpdate
+  ): Promise<Category> {
+    const response = await this.client.put<Category>(
+      `/api/v1/categories/${categoryId}`,
+      data
+    );
+    return response.data;
+  }
+
+  async deleteCategory(categoryId: string): Promise<void> {
+    await this.client.delete(`/api/v1/categories/${categoryId}`);
+  }
+
+  // Categories validation endpoint (working fallback)
+  async validateCategoriesMinimum(): Promise<{
+    has_minimum: boolean;
+    current_count: number;
+    minimum_required: number;
+    message: string;
+  }> {
+    const response = await this.client.get(
+      "/api/v1/categories/validate-minimum"
+    );
+    return response.data;
+  }
+
+  // Currencies endpoints
+  async getCurrencies(): Promise<string[]> {
+    const response = await this.client.get<string[]>("/api/v1/currencies");
+    return response.data;
+  }
+
   // Transactions endpoints
   async getTransactions(filters?: TransactionFilters): Promise<Transaction[]> {
     const response = await this.client.get<Transaction[]>(
@@ -199,6 +267,18 @@ class APIClient {
 
   async deleteTransaction(transactionId: string): Promise<void> {
     await this.client.delete(`/api/v1/transactions/${transactionId}`);
+  }
+
+  async deleteTransactionsBulk(
+    transactionIds: string[]
+  ): Promise<{ message: string; deleted_count: number }> {
+    const response = await this.client.delete<{
+      message: string;
+      deleted_count: number;
+    }>("/api/v1/transactions/bulk", {
+      data: { transaction_ids: transactionIds },
+    });
+    return response.data;
   }
 
   // Budgets endpoints
@@ -298,31 +378,58 @@ class APIClient {
     return response.data;
   }
 
+  // New simplified statement upload (extract + categorize in one step)
+  async uploadStatementSimple(file: File): Promise<Statement> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await this.client.post<Statement>(
+      "/api/v1/statements/upload-simple",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  }
+
   async getStatements(): Promise<Statement[]> {
     const response = await this.client.get<Statement[]>("/api/v1/statements/");
     return response.data;
   }
 
+  async deleteStatement(statementId: string): Promise<{
+    message: string;
+    transactions_deleted: number;
+    statement_id: string;
+  }> {
+    const response = await this.client.delete<{
+      message: string;
+      transactions_deleted: number;
+      statement_id: string;
+    }>(`/api/v1/statements/${statementId}`);
+    return response.data;
+  }
+
   async processStatement(
     statementId: string,
-    cardId?: string,
-    cardName?: string
+    cardId: string
   ): Promise<StatementProcess> {
-    const requestBody = {
-      card_id: cardId || null,
-      card_name: cardName || null,
-      statement_month: null,
-    };
-
     const response = await this.client.post<StatementProcess>(
       `/api/v1/statements/${statementId}/process`,
-      requestBody
+      null,
+      {
+        params: { card_id: cardId },
+      }
     );
     return response.data;
   }
 
-  // New multi-step statement processing endpoints
-  async getStatementStatus(statementId: string): Promise<StatementStatusResponse> {
+  async getStatementStatus(
+    statementId: string
+  ): Promise<StatementStatusResponse> {
     const response = await this.client.get<StatementStatusResponse>(
       `/api/v1/statements/${statementId}/status`
     );
@@ -331,40 +438,29 @@ class APIClient {
 
   async extractTransactions(
     statementId: string,
-    request: ExtractionRequest
+    data: ExtractionRequest
   ): Promise<ExtractionResponse> {
     const response = await this.client.post<ExtractionResponse>(
       `/api/v1/statements/${statementId}/extract`,
-      request
+      data
     );
     return response.data;
   }
 
   async categorizeTransactions(
     statementId: string,
-    request: CategorizationRequest
+    data: CategorizationRequest
   ): Promise<CategorizationResponse> {
     const response = await this.client.post<CategorizationResponse>(
       `/api/v1/statements/${statementId}/categorize`,
-      request
+      data
     );
     return response.data;
   }
 
-  async retryProcessingStep(
-    statementId: string,
-    request: RetryRequest
-  ): Promise<any> {
+  async retryStatement(statementId: string): Promise<any> {
     const response = await this.client.post(
-      `/api/v1/statements/${statementId}/retry`,
-      request
-    );
-    return response.data;
-  }
-
-  async getStatementInsights(statementId: string): Promise<any> {
-    const response = await this.client.get(
-      `/api/v1/statements/${statementId}/insights`
+      `/api/v1/statements/${statementId}/retry`
     );
     return response.data;
   }
@@ -437,6 +533,58 @@ class APIClient {
       {
         params,
       }
+    );
+    return response.data;
+  }
+
+  // Keywords endpoints
+  async getKeywordsByCategory(
+    categoryId: string
+  ): Promise<CategoryKeywordResponse[]> {
+    const response = await this.client.get<CategoryKeywordResponse[]>(
+      `/api/v1/keywords/by-category/${categoryId}`
+    );
+    return response.data;
+  }
+
+  async createKeyword(
+    data: CategoryKeywordCreate
+  ): Promise<CategoryKeywordResponse> {
+    const response = await this.client.post<CategoryKeywordResponse>(
+      "/api/v1/keywords/",
+      data
+    );
+    return response.data;
+  }
+
+  async createKeywordsBulk(
+    data: CategoryKeywordsBulkCreate
+  ): Promise<CategoryKeywordResponse[]> {
+    const response = await this.client.post<CategoryKeywordResponse[]>(
+      "/api/v1/keywords/bulk",
+      data
+    );
+    return response.data;
+  }
+
+  async updateKeyword(
+    keywordId: string,
+    data: CategoryKeywordUpdate
+  ): Promise<CategoryKeywordResponse> {
+    const response = await this.client.put<CategoryKeywordResponse>(
+      `/api/v1/keywords/${keywordId}`,
+      data
+    );
+    return response.data;
+  }
+
+  async deleteKeyword(keywordId: string): Promise<void> {
+    await this.client.delete(`/api/v1/keywords/${keywordId}`);
+  }
+
+  async seedDefaultKeywords(): Promise<CategoryKeywordResponse[]> {
+    const response = await this.client.post<CategoryKeywordResponse[]>(
+      "/api/v1/keywords/seed-defaults"
     );
     return response.data;
   }

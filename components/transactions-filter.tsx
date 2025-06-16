@@ -1,50 +1,121 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { CalendarIcon, X } from "lucide-react"
-import { format } from "date-fns"
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { CalendarIcon, X } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { useCards, useCategories, useCurrencies } from "@/lib/hooks";
+import type { TransactionFilters } from "@/lib/types";
 
-export function TransactionsFilter() {
-  const [date, setDate] = useState<Date | undefined>(undefined)
-  const [category, setCategory] = useState<string | undefined>(undefined)
-  const [card, setCard] = useState<string | undefined>(undefined)
-  const [tag, setTag] = useState<string | undefined>(undefined)
+interface TransactionsFilterProps {
+  onFiltersChange: (filters: TransactionFilters, currency?: string) => void;
+}
 
-  // Mock data
-  const categories = ["Food", "Shopping", "Transportation", "Entertainment", "Groceries"]
-  const cards = ["Chase Sapphire", "Amex Gold", "Bank of America", "Discover It"]
-  const tags = ["essentials", "subscription", "regret", "investment", "fun"]
+export function TransactionsFilter({
+  onFiltersChange,
+}: TransactionsFilterProps) {
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [category, setCategory] = useState<string | undefined>(undefined);
+  const [card, setCard] = useState<string | undefined>(undefined);
+  const [currency, setCurrency] = useState<string | undefined>(undefined);
+
+  // Fetch real data
+  const { data: cards } = useCards();
+  const { data: categories } = useCategories();
+  const { data: currencies } = useCurrencies();
+
+  // Build filters object and notify parent
+  useEffect(() => {
+    const filters: TransactionFilters = {};
+
+    if (startDate) {
+      filters.start_date = format(startDate, "yyyy-MM-dd");
+    }
+    if (endDate) {
+      filters.end_date = format(endDate, "yyyy-MM-dd");
+    }
+    if (category) {
+      filters.category = category;
+    }
+    if (card) {
+      filters.card_id = card;
+    }
+
+    // Pass currency separately since backend doesn't support it yet
+    onFiltersChange(filters, currency);
+  }, [startDate, endDate, category, card, currency, onFiltersChange]);
 
   const clearFilters = () => {
-    setDate(undefined)
-    setCategory(undefined)
-    setCard(undefined)
-    setTag(undefined)
-  }
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setCategory(undefined);
+    setCard(undefined);
+    setCurrency(undefined);
+  };
 
-  const hasFilters = date || category || card || tag
+  const hasFilters = startDate || endDate || category || card || currency;
 
   return (
     <Card>
       <CardContent className="p-4">
         <div className="flex flex-col md:flex-row items-start md:items-center gap-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 flex-1">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 flex-1">
+            {/* Start Date Picker */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start text-left font-normal">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : "Pick a date"}
+                  {startDate ? format(startDate, "MMM d") : "Start date"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
-                <Calendar mode="single" selected={date} onSelect={setDate} initialFocus />
+                <Calendar
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+
+            {/* End Date Picker */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, "MMM d") : "End date"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0">
+                <Calendar
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  initialFocus
+                />
               </PopoverContent>
             </Popover>
 
@@ -53,11 +124,11 @@ export function TransactionsFilter() {
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
               <SelectContent>
-                {categories.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
+                {categories?.map((cat) => (
+                  <SelectItem key={cat.id} value={cat.name}>
+                    {cat.name}
                   </SelectItem>
-                ))}
+                )) || []}
               </SelectContent>
             </Select>
 
@@ -66,22 +137,22 @@ export function TransactionsFilter() {
                 <SelectValue placeholder="Card" />
               </SelectTrigger>
               <SelectContent>
-                {cards.map((c) => (
-                  <SelectItem key={c} value={c}>
-                    {c}
+                {cards?.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.card_name}
                   </SelectItem>
-                ))}
+                )) || []}
               </SelectContent>
             </Select>
 
-            <Select value={tag} onValueChange={setTag}>
+            <Select value={currency} onValueChange={setCurrency}>
               <SelectTrigger>
-                <SelectValue placeholder="Tag" />
+                <SelectValue placeholder="Currency" />
               </SelectTrigger>
               <SelectContent>
-                {tags.map((t) => (
-                  <SelectItem key={t} value={t}>
-                    {t}
+                {(currencies || []).map((c) => (
+                  <SelectItem key={c} value={c}>
+                    {c}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -89,7 +160,12 @@ export function TransactionsFilter() {
           </div>
 
           {hasFilters && (
-            <Button variant="ghost" size="sm" onClick={clearFilters} className="shrink-0">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={clearFilters}
+              className="shrink-0"
+            >
               <X className="mr-2 h-4 w-4" />
               Clear Filters
             </Button>
@@ -100,28 +176,51 @@ export function TransactionsFilter() {
           <>
             <Separator className="my-4" />
             <div className="flex flex-wrap gap-2">
-              {date && (
+              {startDate && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Date: {format(date, "PP")}
-                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setDate(undefined)} />
+                  Start: {format(startDate, "PP")}
+                  <X
+                    className="h-3 w-3 ml-1 cursor-pointer"
+                    onClick={() => setStartDate(undefined)}
+                  />
+                </Badge>
+              )}
+              {endDate && (
+                <Badge variant="secondary" className="flex items-center gap-1">
+                  End: {format(endDate, "PP")}
+                  <X
+                    className="h-3 w-3 ml-1 cursor-pointer"
+                    onClick={() => setEndDate(undefined)}
+                  />
                 </Badge>
               )}
               {category && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Category: {category}
-                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setCategory(undefined)} />
+                  Category:{" "}
+                  {categories?.find((c) => c.name === category)?.name ||
+                    category}
+                  <X
+                    className="h-3 w-3 ml-1 cursor-pointer"
+                    onClick={() => setCategory(undefined)}
+                  />
                 </Badge>
               )}
               {card && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Card: {card}
-                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setCard(undefined)} />
+                  Card: {cards?.find((c) => c.id === card)?.card_name || card}
+                  <X
+                    className="h-3 w-3 ml-1 cursor-pointer"
+                    onClick={() => setCard(undefined)}
+                  />
                 </Badge>
               )}
-              {tag && (
+              {currency && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Tag: {tag}
-                  <X className="h-3 w-3 ml-1 cursor-pointer" onClick={() => setTag(undefined)} />
+                  Currency: {currency}
+                  <X
+                    className="h-3 w-3 ml-1 cursor-pointer"
+                    onClick={() => setCurrency(undefined)}
+                  />
                 </Badge>
               )}
             </div>
@@ -129,5 +228,5 @@ export function TransactionsFilter() {
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -3,6 +3,7 @@
 export interface User {
   email: string;
   id: string;
+  name?: string;
   is_active: boolean;
   created_at: string;
 }
@@ -20,6 +21,30 @@ export interface UserLogin {
 export interface Token {
   access_token: string;
   token_type: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  color?: string | null;
+  keywords?: string[] | null;
+  is_active: boolean;
+  user_id: string;
+  created_at: string;
+}
+
+export interface CategoryCreate {
+  name: string;
+  color?: string | null;
+  keywords?: string[] | null;
+  is_active?: boolean;
+}
+
+export interface CategoryUpdate {
+  name?: string | null;
+  color?: string | null;
+  keywords?: string[] | null;
+  is_active?: boolean | null;
 }
 
 export interface Card {
@@ -52,6 +77,7 @@ export interface CardUpdate {
 export interface Transaction {
   merchant: string;
   amount: string;
+  currency: string;
   category?: string | null;
   transaction_date: string;
   tags?: string[] | null;
@@ -65,6 +91,7 @@ export interface Transaction {
 export interface TransactionCreate {
   merchant: string;
   amount: number | string;
+  currency?: string;
   category?: string | null;
   transaction_date: string;
   tags?: string[] | null;
@@ -84,6 +111,7 @@ export interface TransactionUpdate {
 export interface Budget {
   category: string;
   limit_amount: string;
+  currency: string;
   month: string;
   id: string;
   user_id: string;
@@ -93,12 +121,14 @@ export interface Budget {
 export interface BudgetCreate {
   category: string;
   limit_amount: number | string;
+  currency: string;
   month: string;
 }
 
 export interface BudgetUpdate {
   category?: string | null;
   limit_amount?: number | string | null;
+  currency?: string | null;
   month?: string | null;
 }
 
@@ -177,7 +207,7 @@ export interface StatementStatusResponse {
 export interface ExtractionRequest {
   card_id?: string | null;
   card_name?: string | null;
-  statement_month?: string | null;
+  statement_month?: string | null; // Format: YYYY-MM-DD, YYYY-MM, or month name
 }
 
 export interface ExtractionResponse {
@@ -280,4 +310,40 @@ export interface APIError {
     msg: string;
     type: string;
   }>;
+}
+
+// Keyword types
+export interface CategoryKeyword {
+  id: string;
+  user_id: string;
+  category_id: string;
+  keyword: string;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryKeywordCreate {
+  category_id: string;
+  keyword: string;
+  description?: string | null;
+}
+
+export interface CategoryKeywordUpdate {
+  keyword?: string | null;
+  description?: string | null;
+}
+
+export interface CategoryKeywordsBulkCreate {
+  category_id: string;
+  keywords: string[];
+}
+
+export interface CategoryKeywordResponse {
+  id: string;
+  category_id: string;
+  keyword: string;
+  description?: string | null;
+  created_at: string;
+  updated_at: string;
 }

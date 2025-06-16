@@ -1,21 +1,51 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, TrendingUp, Calendar, DollarSign } from "lucide-react";
+import {
+  AlertCircle,
+  TrendingUp,
+  Calendar,
+  DollarSign,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useBudgetAlerts, useCards } from "@/lib/hooks";
+import { useBudgetAlerts, useCards, useRecurringServices } from "@/lib/hooks";
 import { format, addDays, parseISO } from "date-fns";
+import { useState } from "react";
 
 export function Alerts() {
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   const {
     data: budgetAlerts,
     isLoading: alertsLoading,
     error: alertsError,
+    refetch: refetchAlerts,
   } = useBudgetAlerts();
-  const { data: cards, isLoading: cardsLoading } = useCards();
+  const {
+    data: cards,
+    isLoading: cardsLoading,
+    refetch: refetchCards,
+  } = useCards();
+  const {
+    data: recurringServices,
+    isLoading: servicesLoading,
+    refetch: refetchServices,
+  } = useRecurringServices();
 
-  const isLoading = alertsLoading || cardsLoading;
+  const isLoading = alertsLoading || cardsLoading || servicesLoading;
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetchAlerts(), refetchCards(), refetchServices()]);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   // Process budget alerts
   const processedAlerts =
@@ -64,16 +94,65 @@ export function Alerts() {
       })
       .filter(Boolean) || [];
 
+  // Process recurring services payment alerts
+  const recurringServiceAlerts =
+    recurringServices
+      ?.map((service) => {
+        const dueDate = parseISO(service.due_date);
+        const today = new Date();
+        const daysUntilDue = Math.ceil(
+          (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        );
+
+        // Check if we should show alert based on reminder_days setting (default to 3 if not set)
+        const reminderDays = service.reminder_days || 3;
+        if (daysUntilDue <= reminderDays && daysUntilDue >= 0) {
+          return {
+            id: `recurring-${service.id}`,
+            type: daysUntilDue <= 3 ? "warning" : "info",
+            title: "Recurring Service Payment Due",
+            description: `${service.name} payment due ${
+              daysUntilDue === 0
+                ? "today"
+                : daysUntilDue === 1
+                ? "tomorrow"
+                : `in ${daysUntilDue} days`
+            } ($${service.amount})`,
+            icon: Calendar,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean) || [];
+
   // Combine all alerts
-  const allAlerts = [...processedAlerts, ...paymentAlerts];
+  const allAlerts = [
+    ...processedAlerts,
+    ...paymentAlerts,
+    ...recurringServiceAlerts,
+  ];
 
   if (alertsError) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            Alerts
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Alerts
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -89,9 +168,14 @@ export function Alerts() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertCircle className="h-5 w-5" />
-            Alerts
+          <CardTitle className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Alerts
+            </div>
+            <Button variant="outline" size="icon" disabled>
+              <Loader2 className="h-4 w-4 animate-spin" />
+            </Button>
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -109,9 +193,23 @@ export function Alerts() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <AlertCircle className="h-5 w-5" />
-          Alerts
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            Alerts
+          </div>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">

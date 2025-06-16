@@ -33,10 +33,10 @@ import {
   Settings,
   LogOut,
   User,
-  Plus,
   Sparkles,
   CalendarClock,
   Loader2,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -48,6 +48,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { isAuthenticated, isLoading, user, logout } = useAuth();
 
+  // Development bypass for testing
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const bypassAuth = isDevelopment && pathname.startsWith("/transactions");
+
   // Public routes that don't require authentication
   const publicRoutes = [
     "/login",
@@ -58,12 +62,12 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
   ];
   const isPublicRoute = publicRoutes.includes(pathname);
 
-  // Redirect to login if not authenticated and not on a public route
+  // Redirect to login if not authenticated and not on a public route (unless bypassing for development)
   useEffect(() => {
-    if (!isLoading && !isAuthenticated && !isPublicRoute) {
+    if (!isLoading && !isAuthenticated && !isPublicRoute && !bypassAuth) {
       router.push("/login");
     }
-  }, [isLoading, isAuthenticated, isPublicRoute, router]);
+  }, [isLoading, isAuthenticated, isPublicRoute, bypassAuth, router]);
 
   // Show loading spinner while checking authentication
   if (isLoading) {
@@ -82,8 +86,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     return <>{children}</>;
   }
 
-  // For protected routes, redirect to login if not authenticated
-  if (!isAuthenticated) {
+  // For protected routes, redirect to login if not authenticated (unless bypassing for development)
+  if (!isAuthenticated && !bypassAuth) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
@@ -98,6 +102,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { title: "Dashboard", icon: LayoutDashboard, href: "/" },
     { title: "Cards", icon: CreditCard, href: "/cards" },
     { title: "Transactions", icon: Receipt, href: "/transactions" },
+    { title: "Statements", icon: FileText, href: "/statements" },
     { title: "Services", icon: CalendarClock, href: "/services" },
     { title: "Analytics", icon: BarChart3, href: "/analytics" },
     { title: "Budget", icon: PiggyBank, href: "/budget" },
@@ -210,10 +215,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <header className="flex h-14 items-center gap-4 border-b bg-background px-6">
             <SidebarTrigger />
             <div className="ml-auto flex items-center gap-4">
-              <Button variant="outline" size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                <span>Add Transaction</span>
-              </Button>
               <UserNav />
             </div>
           </header>
