@@ -65,27 +65,30 @@ export interface Card {
   user_id: string;
   card_name: string;
   payment_due_date?: string | null;
-  network_provider?: string | null;
-  bank_provider_id?: string | null;  // Reference to BankProvider
-  bank_provider?: BankProviderSimple | null;  // Full bank details from API
-  card_type?: string | null;
+  network_provider_id?: string | null;  // Reference to NetworkProvider
+  bank_provider_id?: string | null;     // Reference to BankProvider
+  card_type_id?: string | null;         // Reference to CardType
+  // Full related entity details from API
+  network_provider?: NetworkProviderSimple | null;
+  bank_provider?: BankProviderSimple | null;
+  card_type?: CardTypeSimple | null;
   created_at: string;
 }
 
 export interface CardCreate {
   card_name: string;
   payment_due_date?: string | null;
-  network_provider?: string | null;
-  bank_provider_id?: string | null;  // Changed from bank_provider to bank_provider_id
-  card_type?: string | null;
+  network_provider_id?: string | null;
+  bank_provider_id?: string | null;
+  card_type_id?: string | null;
 }
 
 export interface CardUpdate {
   card_name?: string | null;
   payment_due_date?: string | null;
-  network_provider?: string | null;
-  bank_provider_id?: string | null;  // Changed from bank_provider to bank_provider_id
-  card_type?: string | null;
+  network_provider_id?: string | null;
+  bank_provider_id?: string | null;
+  card_type_id?: string | null;
 }
 
 export interface Transaction {
@@ -390,4 +393,90 @@ export interface BankProviderSimple {
   color_primary?: string | null;  // Added for card theming
   color_secondary?: string | null;  // Added for card theming
   display_name?: string; // Computed property
+}
+
+// Network Provider interfaces (like Visa, Mastercard)
+export interface NetworkProvider {
+  id: string;
+  name: string;
+  short_name?: string | null;
+  country: string;
+  is_active: boolean;
+  color_primary?: string | null;
+  color_secondary?: string | null;
+  logo_url?: string | null;
+}
+
+export interface NetworkProviderSimple {
+  id: string;
+  name: string;
+  short_name?: string | null;
+  country: string;
+  color_primary?: string | null;
+  color_secondary?: string | null;
+}
+
+export interface NetworkProviderCreate {
+  name: string;
+  short_name?: string | null;
+  country?: string;
+  is_active?: boolean;
+  color_primary?: string | null;
+  color_secondary?: string | null;
+  logo_url?: string | null;
+}
+
+export interface NetworkProviderUpdate {
+  name?: string | null;
+  short_name?: string | null;
+  country?: string | null;
+  is_active?: boolean | null;
+  color_primary?: string | null;
+  color_secondary?: string | null;
+  logo_url?: string | null;
+}
+
+// Card Type interfaces (Credit Card, Debit Card, etc.)
+export interface CardType {
+  id: string;
+  name: string;
+  short_name?: string | null;
+  country: string;
+  is_active: boolean;
+  description?: string | null;
+  typical_interest_rate?: string | null;
+  color_primary?: string | null;
+  color_secondary?: string | null;
+}
+
+export interface CardTypeSimple {
+  id: string;
+  name: string;
+  short_name?: string | null;
+  country: string;
+  description?: string | null;
+  color_primary?: string | null;
+  color_secondary?: string | null;
+}
+
+export interface CardTypeCreate {
+  name: string;
+  short_name?: string | null;
+  country?: string;
+  is_active?: boolean;
+  description?: string | null;
+  typical_interest_rate?: string | null;
+  color_primary?: string | null;
+  color_secondary?: string | null;
+}
+
+export interface CardTypeUpdate {
+  name?: string | null;
+  short_name?: string | null;
+  country?: string | null;
+  is_active?: boolean | null;
+  description?: string | null;
+  typical_interest_rate?: string | null;
+  color_primary?: string | null;
+  color_secondary?: string | null;
 }

@@ -46,6 +46,12 @@ import {
   CategoryKeywordUpdate,
   CategoryKeywordsBulkCreate,
   CategoryKeywordResponse,
+  NetworkProvider,
+  NetworkProviderCreate,
+  NetworkProviderUpdate,
+  CardType,
+  CardTypeCreate,
+  CardTypeUpdate,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -630,6 +636,57 @@ class APIClient {
     const response = await this.client.get("/health");
     return response.data;
   }
+
+  // Network Providers
+  async getNetworkProviders(countryCode?: string, activeOnly: boolean = true): Promise<NetworkProvider[]> {
+    const params = new URLSearchParams();
+    if (countryCode) params.append('country_code', countryCode);
+    if (activeOnly !== undefined) params.append('active_only', activeOnly.toString());
+    
+    const response = await this.client.get<NetworkProvider[]>(`/api/v1/network-providers/?${params}`);
+    return response.data;
+  }
+
+  async createNetworkProvider(data: NetworkProviderCreate): Promise<NetworkProvider> {
+    const response = await this.client.post<NetworkProvider>("/api/v1/network-providers/", data);
+    return response.data;
+  }
+
+  async getNetworkProvider(networkProviderId: string): Promise<NetworkProvider> {
+    const response = await this.client.get<NetworkProvider>(`/api/v1/network-providers/${networkProviderId}`);
+    return response.data;
+  }
+
+  async updateNetworkProvider(networkProviderId: string, data: NetworkProviderUpdate): Promise<NetworkProvider> {
+    const response = await this.client.put<NetworkProvider>(`/api/v1/network-providers/${networkProviderId}`, data);
+    return response.data;
+  }
+
+  // Card Types
+  async getCardTypes(countryCode?: string, activeOnly: boolean = true): Promise<CardType[]> {
+    const params = new URLSearchParams();
+    if (countryCode) params.append('country_code', countryCode);
+    if (activeOnly !== undefined) params.append('active_only', activeOnly.toString());
+    
+    const response = await this.client.get<CardType[]>(`/api/v1/card-types/?${params}`);
+    return response.data;
+  }
+
+  async createCardType(data: CardTypeCreate): Promise<CardType> {
+    const response = await this.client.post<CardType>("/api/v1/card-types/", data);
+    return response.data;
+  }
+
+  async getCardType(cardTypeId: string): Promise<CardType> {
+    const response = await this.client.get<CardType>(`/api/v1/card-types/${cardTypeId}`);
+    return response.data;
+  }
+
+  async updateCardType(cardTypeId: string, data: CardTypeUpdate): Promise<CardType> {
+    const response = await this.client.put<CardType>(`/api/v1/card-types/${cardTypeId}`, data);
+    return response.data;
+  }
+
 }
 
 // Export singleton instance

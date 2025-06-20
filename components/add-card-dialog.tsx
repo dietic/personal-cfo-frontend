@@ -21,7 +21,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, CreditCard, Building2 } from "lucide-react";
-import { useCreateCard, useBankProviders } from "@/lib/hooks";
+import { useCreateCard, useBankProviders, useNetworkProviders, useCardTypes } from "@/lib/hooks";
 import { CardCreate } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,14 +34,16 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     card_name: "",
-    card_type: "",
-    network_provider: "",
-    bank_provider_id: "",  // Changed to bank_provider_id
+    card_type_id: "",
+    network_provider_id: "",
+    bank_provider_id: "",
     payment_due_date: "",
   });
 
-  // Fetch bank providers - defaulting to Peru since that's our focus
+  // Fetch all the required data - defaulting to Peru since that's our focus
   const { data: bankProviders, isLoading: bankProvidersLoading } = useBankProviders("PE", false);
+  const { data: networkProviders, isLoading: networkProvidersLoading } = useNetworkProviders("PE", true);
+  const { data: cardTypes, isLoading: cardTypesLoading } = useCardTypes("PE", true);
 
   const createCardMutation = useCreateCard();
 
@@ -50,9 +52,9 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
 
     const cardData: CardCreate = {
       card_name: formData.card_name,
-      card_type: formData.card_type || null,
-      network_provider: formData.network_provider || null,
-      bank_provider_id: formData.bank_provider_id || null,  // Updated field name
+      card_type_id: formData.card_type_id || null,
+      network_provider_id: formData.network_provider_id || null,
+      bank_provider_id: formData.bank_provider_id || null,
       payment_due_date: formData.payment_due_date || null,
     };
 
@@ -61,9 +63,9 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
       toast({ title: "Card added successfully" });
       setFormData({
         card_name: "",
-        card_type: "",
-        network_provider: "",
-        bank_provider_id: "",  // Updated field name
+        card_type_id: "",
+        network_provider_id: "",
+        bank_provider_id: "",
         payment_due_date: "",
       });
       setOpen(false);
@@ -113,44 +115,75 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="card_type">Card Type</Label>
+              <Label htmlFor="card_type_id">Card Type</Label>
               <Select
-                value={formData.card_type}
+                value={formData.card_type_id}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, card_type: value })
+                  setFormData({ ...formData, card_type_id: value })
                 }
+                disabled={cardTypesLoading}
               >
-                <SelectTrigger id="card_type">
-                  <SelectValue placeholder="Select card type" />
+                <SelectTrigger id="card_type_id">
+                  <SelectValue 
+                    placeholder={
+                      cardTypesLoading 
+                        ? "Loading card types..." 
+                        : "Select card type"
+                    } 
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Credit Card">Credit Card</SelectItem>
-                  <SelectItem value="Debit Card">Debit Card</SelectItem>
-                  <SelectItem value="Charge Card">Charge Card</SelectItem>
-                  <SelectItem value="Prepaid Card">Prepaid Card</SelectItem>
+                  {cardTypes?.map((cardType) => (
+                    <SelectItem key={cardType.id} value={cardType.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {cardType.short_name || cardType.name}
+                        </span>
+                        {cardType.description && (
+                          <span className="text-xs text-muted-foreground">
+                            - {cardType.description}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="network_provider">Network Provider</Label>
+              <Label htmlFor="network_provider_id">Network Provider</Label>
               <Select
-                value={formData.network_provider}
+                value={formData.network_provider_id}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, network_provider: value })
+                  setFormData({ ...formData, network_provider_id: value })
                 }
+                disabled={networkProvidersLoading}
               >
-                <SelectTrigger id="network_provider">
-                  <SelectValue placeholder="Select network" />
+                <SelectTrigger id="network_provider_id">
+                  <SelectValue 
+                    placeholder={
+                      networkProvidersLoading 
+                        ? "Loading networks..." 
+                        : "Select network"
+                    } 
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Visa">Visa</SelectItem>
-                  <SelectItem value="Mastercard">Mastercard</SelectItem>
-                  <SelectItem value="American Express">
-                    American Express
-                  </SelectItem>
-                  <SelectItem value="Discover">Discover</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  {networkProviders?.map((network) => (
+                    <SelectItem key={network.id} value={network.id}>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {network.short_name || network.name}
+                        </span>
+                        {network.short_name && network.short_name !== network.name && (
+                          <span className="text-xs text-muted-foreground">
+                            ({network.name})
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

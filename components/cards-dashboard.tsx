@@ -50,12 +50,13 @@ function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
     }
     
     // Fallback to network-based colors with proper light/dark theme support
-    switch (backendCard.network_provider?.toLowerCase()) {
+    const networkName = backendCard.network_provider?.name?.toLowerCase();
+    switch (networkName) {
       case "visa":
         return "from-blue-600 to-blue-900 dark:from-blue-500 dark:to-blue-800";
       case "mastercard":
         return "from-orange-500 to-red-600 dark:from-orange-400 dark:to-red-500";
-      case "amex":
+      case "american express":
         return "from-emerald-500 to-teal-700 dark:from-emerald-400 dark:to-teal-600";
       case "discover":
         return "from-amber-500 to-orange-600 dark:from-amber-400 dark:to-orange-500";
@@ -67,7 +68,7 @@ function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
   return {
     id: backendCard.id,
     name: backendCard.card_name,
-    type: backendCard.card_type || "Credit Card",
+    type: backendCard.card_type?.name || "Credit Card", // Extract the name from the object
     lastFour: "****", // Backend doesn't provide this
     balance: 0, // Backend doesn't provide balance directly
     limit: 5000, // Default limit, could be added to backend
@@ -75,7 +76,7 @@ function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
     utilization: 0, // Would need to calculate from transactions
     alerts: [], // Would need to implement alerts logic
     network:
-      (backendCard.network_provider?.toLowerCase() as
+      (backendCard.network_provider?.name?.toLowerCase() as
         | "visa"
         | "mastercard"
         | "amex"

@@ -34,6 +34,12 @@ import {
   CategoryKeywordUpdate,
   CategoryKeywordsBulkCreate,
   CategoryKeywordResponse,
+  NetworkProvider,
+  NetworkProviderCreate,
+  NetworkProviderUpdate,
+  CardType,
+  CardTypeCreate,
+  CardTypeUpdate,
 } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -905,6 +911,88 @@ export function useSeedDefaultKeywords() {
     onError: (error: any) => {
       const message =
         error.response?.data?.detail || "Failed to seed default keywords";
+      toast.error(message);
+    },
+  });
+}
+
+// Network Providers hooks
+export function useNetworkProviders(countryCode?: string, activeOnly: boolean = true) {
+  return useQuery({
+    queryKey: ["network-providers", countryCode, activeOnly],
+    queryFn: () => apiClient.getNetworkProviders(countryCode, activeOnly),
+  });
+}
+
+export function useCreateNetworkProvider() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: NetworkProviderCreate) => apiClient.createNetworkProvider(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["network-providers"] });
+      toast.success("Network provider created successfully");
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.detail || "Failed to create network provider";
+      toast.error(message);
+    },
+  });
+}
+
+export function useUpdateNetworkProvider() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ networkProviderId, data }: { networkProviderId: string; data: NetworkProviderUpdate }) =>
+      apiClient.updateNetworkProvider(networkProviderId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["network-providers"] });
+      toast.success("Network provider updated successfully");
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.detail || "Failed to update network provider";
+      toast.error(message);
+    },
+  });
+}
+
+// Card Types hooks
+export function useCardTypes(countryCode?: string, activeOnly: boolean = true) {
+  return useQuery({
+    queryKey: ["card-types", countryCode, activeOnly],
+    queryFn: () => apiClient.getCardTypes(countryCode, activeOnly),
+  });
+}
+
+export function useCreateCardType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: CardTypeCreate) => apiClient.createCardType(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["card-types"] });
+      toast.success("Card type created successfully");
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.detail || "Failed to create card type";
+      toast.error(message);
+    },
+  });
+}
+
+export function useUpdateCardType() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ cardTypeId, data }: { cardTypeId: string; data: CardTypeUpdate }) =>
+      apiClient.updateCardType(cardTypeId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["card-types"] });
+      toast.success("Card type updated successfully");
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.detail || "Failed to update card type";
       toast.error(message);
     },
   });

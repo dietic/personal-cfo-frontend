@@ -66,12 +66,13 @@ function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
     }
     
     // Fallback to network-based colors if no bank provider
-    switch (backendCard.network_provider?.toLowerCase()) {
+    const networkName = backendCard.network_provider?.name?.toLowerCase();
+    switch (networkName) {
       case "visa":
         return "linear-gradient(135deg, #1a365d 0%, #2d5a87 100%)"; // Visa blue gradient
       case "mastercard":
         return "linear-gradient(135deg, #eb5424 0%, #f2994a 100%)"; // Mastercard orange gradient
-      case "amex":
+      case "american express":
         return "linear-gradient(135deg, #006fcf 0%, #003d82 100%)"; // Amex blue gradient
       case "discover":
         return "linear-gradient(135deg, #ff6900 0%, #fcb900 100%)"; // Discover orange gradient
@@ -83,12 +84,12 @@ function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
   return {
     id: backendCard.id,
     name: backendCard.card_name,
-    type: backendCard.card_type || "Credit Card",
+    type: backendCard.card_type?.name || "Credit Card", // Extract the name from the object
     lastFour: "****", // Simple identifier, not critical for expense tracking
     dueDate: backendCard.payment_due_date || undefined,
     alerts: [], // For future alerts implementation
     network:
-      (backendCard.network_provider?.toLowerCase() as
+      (backendCard.network_provider?.name?.toLowerCase() as
         | "visa"
         | "mastercard"
         | "amex"
