@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -25,24 +25,48 @@ import type { TransactionFilters } from "@/lib/types";
 
 interface TransactionsFilterProps {
   onFiltersChange: (filters: TransactionFilters, currency?: string) => void;
+  initialFilters?: TransactionFilters; // Add support for initial filters
 }
 
 export function TransactionsFilter({
   onFiltersChange,
+  initialFilters = {}, // Default to empty object
 }: TransactionsFilterProps) {
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [category, setCategory] = useState<string | undefined>(undefined);
   const [card, setCard] = useState<string | undefined>(undefined);
   const [currency, setCurrency] = useState<string | undefined>(undefined);
+  
+  // Use ref to track if we've initialized to prevent repeated initialization
+  const initializedRef = useRef(false);
 
   // Fetch real data
   const { data: cards } = useCards();
   const { data: categories } = useCategories();
   const { data: currencies } = useCurrencies();
 
-  // Build filters object and notify parent
+  // Initialize filters with initial values - only run once
   useEffect(() => {
+    if (!initializedRef.current) {
+      if (initialFilters.card_id) {
+        setCard(initialFilters.card_id);
+      }
+      if (initialFilters.category) {
+        setCategory(initialFilters.category);
+      }
+      if (initialFilters.start_date) {
+        setStartDate(parseISO(initialFilters.start_date));
+      }
+      if (initialFilters.end_date) {
+        setEndDate(parseISO(initialFilters.end_date));
+      }
+      initializedRef.current = true;
+    }
+  }, []); // Empty dependency array - only run once
+
+  // Stable callback to notify parent of filter changes
+  const notifyFiltersChange = useCallback(() => {
     const filters: TransactionFilters = {};
 
     if (startDate) {
@@ -61,6 +85,14 @@ export function TransactionsFilter({
     // Pass currency separately since backend doesn't support it yet
     onFiltersChange(filters, currency);
   }, [startDate, endDate, category, card, currency, onFiltersChange]);
+
+  // Notify parent when filters change
+  useEffect(() => {
+    // Only notify after initial setup is complete
+    if (initializedRef.current) {
+      notifyFiltersChange();
+    }
+  }, [startDate, endDate, category, card, currency, notifyFiltersChange]);
 
   const clearFilters = () => {
     setStartDate(undefined);

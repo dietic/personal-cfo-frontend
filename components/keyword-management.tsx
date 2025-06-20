@@ -49,6 +49,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Plus,
   Edit3,
   Trash2,
@@ -273,19 +279,28 @@ export function KeywordManagement() {
               </Select>
             </div>
             <div className="flex gap-2">
-              <Button
-                onClick={handleSeedDefaultKeywords}
-                disabled={seedDefaultKeywordsMutation.isPending}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                {seedDefaultKeywordsMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Seed Defaults
-              </Button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      onClick={handleSeedDefaultKeywords}
+                      disabled={seedDefaultKeywordsMutation.isPending}
+                      variant="outline"
+                      className="flex items-center gap-2"
+                    >
+                      {seedDefaultKeywordsMutation.isPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-4 w-4" />
+                      )}
+                      Seed Defaults
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Add default Spanish keywords to all categories to help with automatic transaction categorization</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
           </div>
 

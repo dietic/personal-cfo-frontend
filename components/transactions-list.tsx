@@ -22,6 +22,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   MoreHorizontal,
   Search,
   Tag,
@@ -76,6 +91,10 @@ export function TransactionsList({
   const [editingDescription, setEditingDescription] = useState("");
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const { data: transactions, isLoading, error } = useTransactions(filters);
   const { data: cards } = useCards();
@@ -115,6 +134,31 @@ export function TransactionsList({
 
       return matchesSearch && matchesCurrency;
     }) || [];
+
+  // Pagination logic
+  const totalItems = filteredTransactions.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, searchQuery, currency]);
+
+  // Reset to first page when items per page changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [itemsPerPage]);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (value: string) => {
+    setItemsPerPage(parseInt(value));
+  };
 
   const formatAmount = (amount: string, currency: string) => {
     const formattedAmount = parseFloat(amount).toFixed(2);
@@ -170,9 +214,18 @@ export function TransactionsList({
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedTransactions(filteredTransactions.map((t) => t.id));
+      // Select all transactions on the current page
+      const currentPageIds = paginatedTransactions.map((t) => t.id);
+      setSelectedTransactions(prev => [
+        ...prev.filter(id => !currentPageIds.includes(id)), // Keep selections from other pages
+        ...currentPageIds // Add all from current page
+      ]);
     } else {
-      setSelectedTransactions([]);
+      // Deselect all transactions on the current page
+      const currentPageIds = paginatedTransactions.map((t) => t.id);
+      setSelectedTransactions(prev => 
+        prev.filter(id => !currentPageIds.includes(id))
+      );
     }
   };
 
@@ -295,7 +348,10 @@ export function TransactionsList({
           <div>
             <CardTitle>All Transactions</CardTitle>
             <CardDescription>
-              View and manage your transaction history
+              {totalItems === 0 
+                ? "No transactions found" 
+                : `Showing ${totalItems} transaction${totalItems === 1 ? '' : 's'}`
+              }
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -310,6 +366,19 @@ export function TransactionsList({
                 Delete Selected ({selectedTransactions.length})
               </Button>
             )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Items per page:</span>
+              <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+                <SelectTrigger className="w-20">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="relative w-full md:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -329,32 +398,34 @@ export function TransactionsList({
             <p className="text-muted-foreground">No transactions found</p>
           </div>
         ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[50px]">
-                    <Checkbox
-                      checked={
-                        filteredTransactions.length > 0 &&
-                        selectedTransactions.length ===
-                          filteredTransactions.length
-                      }
-                      onCheckedChange={handleSelectAll}
-                      aria-label="Select all transactions"
-                    />
-                  </TableHead>
-                  <TableHead>Merchant</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Card</TableHead>
-                  <TableHead>Currency</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="w-[80px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTransactions.map((transaction) => (
+          <>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">
+                      <Checkbox
+                        checked={
+                          paginatedTransactions.length > 0 &&
+                          paginatedTransactions.every(transaction =>
+                            selectedTransactions.includes(transaction.id)
+                          )
+                        }
+                        onCheckedChange={handleSelectAll}
+                        aria-label="Select all transactions on this page"
+                      />
+                    </TableHead>
+                    <TableHead>Merchant</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Card</TableHead>
+                    <TableHead>Currency</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="w-[80px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginatedTransactions.map((transaction) => (
                   <TableRow key={transaction.id}>
                     <TableCell>
                       <Checkbox
@@ -398,7 +469,7 @@ export function TransactionsList({
                         </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">
-                          Uncategorized
+                          Sin categoría
                         </span>
                       )}
                     </TableCell>
@@ -584,7 +655,62 @@ export function TransactionsList({
                 ))}
               </TableBody>
             </Table>
-          </div>
+            </div>
+            
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-2 py-4">
+                <div className="text-sm text-muted-foreground">
+                  Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} transactions
+                </div>
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    
+                    {/* Page numbers */}
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNumber;
+                      if (totalPages <= 5) {
+                        pageNumber = i + 1;
+                      } else {
+                        if (currentPage <= 3) {
+                          pageNumber = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNumber = totalPages - 4 + i;
+                        } else {
+                          pageNumber = currentPage - 2 + i;
+                        }
+                      }
+                      
+                      return (
+                        <PaginationItem key={pageNumber}>
+                          <PaginationLink
+                            onClick={() => handlePageChange(pageNumber)}
+                            isActive={currentPage === pageNumber}
+                            className="cursor-pointer"
+                          >
+                            {pageNumber}
+                          </PaginationLink>
+                        </PaginationItem>
+                      );
+                    })}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
 

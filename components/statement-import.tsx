@@ -56,6 +56,7 @@ import {
   useExtractTransactions,
   useCategorizeTransactions,
 } from "@/lib/hooks";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Statement,
   ExtractionRequest,
@@ -83,6 +84,7 @@ export function StatementImport() {
     null
   );
 
+  const queryClient = useQueryClient();
   const { data: cards } = useCards();
   const { data: statements, refetch: refetchStatements } = useStatements();
   const uploadMutation = useUploadStatement();
@@ -109,6 +111,10 @@ export function StatementImport() {
       if (isComplete) {
         setProcessingStatement(null);
         refetchStatements();
+        
+        // Invalidate transactions cache to refresh the transactions list
+        queryClient.invalidateQueries({ queryKey: ["transactions"] });
+        queryClient.invalidateQueries({ queryKey: ["analytics"] });
 
         if (statusData.status === "completed") {
           toast.success("Statement processing completed successfully!");
@@ -117,7 +123,7 @@ export function StatementImport() {
         }
       }
     }
-  }, [statusData, processingStatement, refetchStatements]);
+  }, [statusData, processingStatement, refetchStatements, queryClient]);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -137,16 +143,23 @@ export function StatementImport() {
         return;
       }
 
-      // Card selection is no longer required for simplified upload
+      // Card selection is required for bank type detection
+      if (!selectedCard) {
+        toast.error("Please select a card first");
+        return;
+      }
 
       try {
         setIsUploading(true);
         setUploadProgress(20);
 
-        console.log("Using simplified upload endpoint...");
+        console.log("Using simplified upload endpoint with card:", selectedCard);
 
-        // Use the API client method which handles the base URL correctly
-        const result = await uploadSimpleMutation.mutateAsync(file);
+        // Use the API client method with card selection
+        const result = await uploadSimpleMutation.mutateAsync({ 
+          file, 
+          cardId: selectedCard 
+        });
         console.log("✅ Simplified upload successful, result:", result);
 
         setUploadProgress(80);
@@ -173,7 +186,7 @@ export function StatementImport() {
         setTimeout(() => setUploadProgress(0), 2000);
       }
     },
-    [refetchStatements]
+    [selectedCard, uploadSimpleMutation, refetchStatements]
   );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
@@ -237,6 +250,11 @@ export function StatementImport() {
   };
 
   const handleCategorizeTransactions = async (statement: Statement) => {
+    if (!selectedCard) {
+      toast.error("Please select a card first");
+      return;
+    }
+
     try {
       setProcessingStatement(statement.id);
 
@@ -517,8 +535,8 @@ export function StatementImport() {
                     <TableRow key={statement.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          <span className="font-medium">
+                          <FileText className="h-4 w-4 flex-shrink-0" />
+                          <span className="font-medium truncate min-w-0 max-w-[180px]" title={statement.filename}>
                             {statement.filename}
                           </span>
                         </div>
@@ -645,7 +663,7 @@ export function StatementImport() {
                             </DialogTrigger>
                             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                               <DialogHeader>
-                                <DialogTitle>
+                                <DialogTitle className="truncate" title={`Statement Details - ${statement.filename}`}>
                                   Statement Details - {statement.filename}
                                 </DialogTitle>
                                 <DialogDescription>

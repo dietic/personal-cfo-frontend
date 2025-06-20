@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { LoginForm } from "@/components/login-form";
 import { Logo } from "@/components/logo";
+import { ThemeToggleButton } from "@/components/theme-toggle-button";
 
 export const metadata: Metadata = {
   title: "Sign In - PersonalCFO",
@@ -9,7 +10,12 @@ export const metadata: Metadata = {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative">
+      {/* Theme toggle button */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggleButton />
+      </div>
+      
       {/* Left side - Login Form */}
       <div className="flex-1 flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8">
         <div className="mx-auto w-full max-w-sm">

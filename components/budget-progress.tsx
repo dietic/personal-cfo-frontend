@@ -12,12 +12,32 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useBudgets, useCategorySpending } from "@/lib/hooks";
 import { format } from "date-fns";
 
+// Currency formatting function
+const formatCurrency = (amount: number, currency: string) => {
+  const formattedAmount = amount.toFixed(2);
+  const currencySymbol =
+    currency === "USD"
+      ? "$"
+      : currency === "PEN"
+      ? "S/"
+      : currency === "EUR"
+      ? "€"
+      : currency === "GBP"
+      ? "£"
+      : currency + " ";
+  return `${currencySymbol}${formattedAmount}`;
+};
+
 export function BudgetProgress() {
   const {
     data: budgets,
     isLoading: budgetsLoading,
     error: budgetsError,
   } = useBudgets();
+
+  // We need to get spending data for each budget's currency separately
+  // For now, we'll get all category spending and filter client-side
+  // In a future optimization, we could make separate API calls per currency
   const { data: categorySpending, isLoading: spendingLoading } =
     useCategorySpending({
       start_date: format(
@@ -25,21 +45,22 @@ export function BudgetProgress() {
         "yyyy-MM-dd"
       ),
       end_date: format(new Date(), "yyyy-MM-dd"),
+      // Note: Not filtering by currency here to get all spending data
     });
 
   const isLoading = budgetsLoading || spendingLoading;
 
-  // Create a map of category spending for current month
-  const spendingMap =
-    categorySpending?.reduce((acc, item) => {
-      acc[item.category.toLowerCase()] = parseFloat(item.amount);
-      return acc;
-    }, {} as Record<string, number>) || {};
-
-  // Process budget data with current spending
+  // Process budget data with current spending, filtered by currency
   const processedBudgets =
     budgets?.map((budget) => {
-      const spent = spendingMap[budget.category.toLowerCase()] || 0;
+      // Find spending for this budget's category AND currency
+      const matchingSpending = categorySpending?.find(
+        (spending) =>
+          spending.category.toLowerCase() === budget.category.toLowerCase() &&
+          spending.currency === budget.currency
+      );
+      
+      const spent = matchingSpending ? parseFloat(matchingSpending.amount) : 0;
       const limitAmount = parseFloat(budget.limit_amount);
       const percentage =
         limitAmount > 0 ? Math.round((spent / limitAmount) * 100) : 0;
@@ -49,6 +70,7 @@ export function BudgetProgress() {
         spent,
         budget: limitAmount,
         percentage,
+        currency: budget.currency,
         id: budget.id,
       };
     }) || [];
@@ -111,8 +133,7 @@ export function BudgetProgress() {
               <div className="flex justify-between text-sm">
                 <span className="capitalize">{category.name}</span>
                 <span className="font-medium">
-                  ${category.spent.toLocaleString()} / $
-                  {category.budget.toLocaleString()}
+                  {formatCurrency(category.spent, category.currency)} / {formatCurrency(category.budget, category.currency)}
                 </span>
               </div>
               <Progress

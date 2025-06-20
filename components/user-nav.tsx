@@ -12,10 +12,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
 
 export function UserNav() {
   const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleProfileClick = () => {
+    console.log("Profile clicked, navigating to /profile");
+    router.push("/profile");
+  };
+
+  const handleSettingsClick = () => {
+    console.log("Settings clicked, navigating to /settings");
+    router.push("/settings");
+  };
 
   if (!user) return null;
 
@@ -44,11 +56,23 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem asChild>
-            <Link href="/profile">Profile</Link>
+          <DropdownMenuItem 
+            className="cursor-pointer" 
+            onSelect={(e) => {
+              e.preventDefault();
+              handleProfileClick();
+            }}
+          >
+            Profile
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/settings">Settings</Link>
+          <DropdownMenuItem 
+            className="cursor-pointer"
+            onSelect={(e) => {
+              e.preventDefault();
+              handleSettingsClick();
+            }}
+          >
+            Settings
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

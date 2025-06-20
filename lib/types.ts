@@ -3,9 +3,22 @@
 export interface User {
   email: string;
   id: string;
-  name?: string;
+  first_name?: string;
+  last_name?: string;
+  phone_number?: string;
+  profile_picture_url?: string;
+  preferred_currency: string;
+  timezone: string;
   is_active: boolean;
   created_at: string;
+  updated_at?: string;
+}
+
+export interface UserProfileUpdate {
+  first_name?: string;
+  last_name?: string;
+  preferred_currency?: string;
+  timezone?: string;
 }
 
 export interface UserCreate {
@@ -48,13 +61,14 @@ export interface CategoryUpdate {
 }
 
 export interface Card {
+  id: string;
+  user_id: string;
   card_name: string;
   payment_due_date?: string | null;
   network_provider?: string | null;
-  bank_provider?: string | null;
+  bank_provider_id?: string | null;  // Reference to BankProvider
+  bank_provider?: BankProviderSimple | null;  // Full bank details from API
   card_type?: string | null;
-  id: string;
-  user_id: string;
   created_at: string;
 }
 
@@ -62,7 +76,7 @@ export interface CardCreate {
   card_name: string;
   payment_due_date?: string | null;
   network_provider?: string | null;
-  bank_provider?: string | null;
+  bank_provider_id?: string | null;  // Changed from bank_provider to bank_provider_id
   card_type?: string | null;
 }
 
@@ -70,7 +84,7 @@ export interface CardUpdate {
   card_name?: string | null;
   payment_due_date?: string | null;
   network_provider?: string | null;
-  bank_provider?: string | null;
+  bank_provider_id?: string | null;  // Changed from bank_provider to bank_provider_id
   card_type?: string | null;
 }
 
@@ -240,6 +254,7 @@ export interface CategorySpending {
   category: string;
   amount: string;
   transaction_count: number;
+  currency: string;
 }
 
 export interface SpendingTrend {
@@ -283,6 +298,7 @@ export interface TransactionFilters {
 export interface AnalyticsFilters {
   start_date?: string;
   end_date?: string;
+  currency?: string;
 }
 
 export interface TrendsFilters {
@@ -346,4 +362,32 @@ export interface CategoryKeywordResponse {
   description?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// Bank Provider Types - for the master list of banks
+export interface BankProvider {
+  id: string;
+  name: string;
+  short_name?: string | null;
+  country: string;
+  country_name: string;
+  logo_url?: string | null;
+  website?: string | null;
+  color_primary?: string | null;
+  color_secondary?: string | null;
+  is_active: boolean;
+  is_popular: boolean;
+  created_at: string;
+}
+
+// Simplified version for dropdowns and displays
+export interface BankProviderSimple {
+  id: string;
+  name: string;
+  short_name?: string | null;
+  country: string;
+  is_popular: boolean;  // Added for sorting popular banks first
+  color_primary?: string | null;  // Added for card theming
+  color_secondary?: string | null;  // Added for card theming
+  display_name?: string; // Computed property
 }

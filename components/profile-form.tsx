@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -50,32 +50,47 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { toast } from "sonner";
 import { formatDistanceToNow, parseISO } from "date-fns";
-import { CategoriesManagement } from "@/components/categories-management";
+import { useUserProfile, useUpdateUserProfile } from "@/lib/hooks";
 
 export function ProfileForm() {
-  const { user, logout } = useAuth();
+  const { logout } = useAuth();
+  const { data: user, isLoading } = useUserProfile();
+  const updateProfileMutation = useUpdateUserProfile();
   const [isEditing, setIsEditing] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
-    email: user?.email || "",
-    firstName: user?.email?.split("@")[0] || "",
-    lastName: "",
-    bio: "",
+    email: "",
+    first_name: "",
+    last_name: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   });
 
+  // Update form data when user data is loaded
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        email: user.email || "",
+        first_name: user.first_name || "",
+        last_name: user.last_name || "",
+      }));
+    }
+  }, [user]);
+
   const handleSaveProfile = async () => {
     try {
-      // Since backend doesn't have user update endpoint yet, just show success
-      toast.success("Profile updated successfully!");
+      await updateProfileMutation.mutateAsync({
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+      });
       setIsEditing(false);
     } catch (error) {
-      toast.error("Failed to update profile");
+      // Error handling is done in the mutation
     }
   };
 
@@ -129,12 +144,25 @@ export function ProfileForm() {
     ? formatDistanceToNow(parseISO(user.created_at), { addSuffix: true })
     : "Unknown";
 
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center">
+              <p className="text-muted-foreground">Loading profile...</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6">
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="preferences">Preferences</TabsTrigger>
           <TabsTrigger value="data">Data & Privacy</TabsTrigger>
@@ -198,23 +226,23 @@ export function ProfileForm() {
               {/* Form Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="first_name">First Name</Label>
                   <Input
-                    id="firstName"
-                    value={formData.firstName}
+                    id="first_name"
+                    value={formData.first_name}
                     onChange={(e) =>
-                      setFormData({ ...formData, firstName: e.target.value })
+                      setFormData({ ...formData, first_name: e.target.value })
                     }
                     disabled={!isEditing}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="last_name">Last Name</Label>
                   <Input
-                    id="lastName"
-                    value={formData.lastName}
+                    id="last_name"
+                    value={formData.last_name}
                     onChange={(e) =>
-                      setFormData({ ...formData, lastName: e.target.value })
+                      setFormData({ ...formData, last_name: e.target.value })
                     }
                     disabled={!isEditing}
                   />
@@ -227,34 +255,28 @@ export function ProfileForm() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  disabled={!isEditing}
+                  disabled={true}
+                  className="bg-muted"
                 />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="bio">Bio</Label>
-                <Textarea
-                  id="bio"
-                  placeholder="Tell us a bit about yourself..."
-                  value={formData.bio}
-                  onChange={(e) =>
-                    setFormData({ ...formData, bio: e.target.value })
-                  }
-                  disabled={!isEditing}
-                />
+                <p className="text-xs text-muted-foreground">
+                  Email cannot be changed for security reasons
+                </p>
               </div>
 
               {/* Action Buttons */}
               <div className="flex items-center gap-2">
                 {isEditing ? (
                   <>
-                    <Button onClick={handleSaveProfile}>Save Changes</Button>
+                    <Button 
+                      onClick={handleSaveProfile}
+                      disabled={updateProfileMutation.isPending}
+                    >
+                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                    </Button>
                     <Button
                       variant="outline"
                       onClick={() => setIsEditing(false)}
+                      disabled={updateProfileMutation.isPending}
                     >
                       Cancel
                     </Button>
@@ -267,11 +289,6 @@ export function ProfileForm() {
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-
-        {/* Categories Tab */}
-        <TabsContent value="categories" className="space-y-6">
-          <CategoriesManagement />
         </TabsContent>
 
         {/* Security Tab */}

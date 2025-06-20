@@ -40,6 +40,7 @@ import {
   useUpdateRecurringService,
   useDeleteRecurringService,
 } from "@/lib/hooks";
+import { CategorySelect } from "@/components/category-select";
 import {
   RecurringService,
   RecurringServiceCreate,
@@ -136,12 +137,12 @@ function RecurringServiceForm({ service, onClose }: RecurringServiceFormProps) {
 
       <div>
         <Label htmlFor="category">Category</Label>
-        <Input
-          id="category"
+        <CategorySelect
           value={formData.category || ""}
-          onChange={(e) =>
-            setFormData({ ...formData, category: e.target.value })
+          onValueChange={(value) =>
+            setFormData({ ...formData, category: value })
           }
+          placeholder="Select category..."
         />
       </div>
 

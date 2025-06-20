@@ -14,9 +14,56 @@ import { useCards } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card as BackendCard } from "@/lib/types";
 import { AddCardDialog } from "@/components/add-card-dialog";
+import { useBrandedCards } from "@/lib/settings-context";
 
-// Transform backend card to frontend card format
-function transformCard(backendCard: BackendCard) {
+// Transform backend card to frontend card format with conditional bank provider colors
+function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
+  // Generate theme-aware Tailwind classes for bank colors - like a smart palette that adapts to lighting
+  const getCardGradient = () => {
+    const bankProvider = backendCard.bank_provider;
+    
+    // If branded cards are disabled, always use the generic gradient - like a "uniform mode"
+    if (!useBrandedColors) {
+      return "from-slate-600 to-slate-800 dark:from-slate-500 dark:to-slate-700"; // Generic gradient that adapts to theme
+    }
+    
+    // If branded cards are enabled, use authentic bank colors with theme support
+    if (bankProvider?.color_primary && bankProvider?.color_secondary) {
+      // Map bank colors to Tailwind classes that support light/dark themes
+      const bankColorMap: Record<string, string> = {
+        // BCP: Deep blue to orange
+        "bcp": "from-blue-900 to-orange-600 dark:from-blue-800 dark:to-orange-500",
+        // Interbank: Green gradient
+        "interbank": "from-green-700 to-green-500 dark:from-green-600 dark:to-green-400", 
+        // BBVA: Blue gradient
+        "bbva continental": "from-blue-800 to-blue-600 dark:from-blue-700 dark:to-blue-500",
+        // Scotiabank: Red gradient
+        "scotiabank": "from-red-700 to-red-500 dark:from-red-600 dark:to-red-400",
+        // Diners: Navy to light blue
+        "diners": "from-blue-900 to-blue-500 dark:from-blue-800 dark:to-blue-400",
+      };
+      
+      const bankKey = bankProvider.short_name?.toLowerCase() || '';
+      if (bankColorMap[bankKey]) {
+        return bankColorMap[bankKey];
+      }
+    }
+    
+    // Fallback to network-based colors with proper light/dark theme support
+    switch (backendCard.network_provider?.toLowerCase()) {
+      case "visa":
+        return "from-blue-600 to-blue-900 dark:from-blue-500 dark:to-blue-800";
+      case "mastercard":
+        return "from-orange-500 to-red-600 dark:from-orange-400 dark:to-red-500";
+      case "amex":
+        return "from-emerald-500 to-teal-700 dark:from-emerald-400 dark:to-teal-600";
+      case "discover":
+        return "from-amber-500 to-orange-600 dark:from-amber-400 dark:to-orange-500";
+      default:
+        return "from-slate-600 to-slate-800 dark:from-slate-500 dark:to-slate-700";
+    }
+  };
+
   return {
     id: backendCard.id,
     name: backendCard.card_name,
@@ -33,14 +80,17 @@ function transformCard(backendCard: BackendCard) {
         | "mastercard"
         | "amex"
         | "discover") || "visa",
-    color: "from-blue-600 to-indigo-800 dark:from-blue-500 dark:to-indigo-700", // Default color
+    color: getCardGradient(),
+    bankProvider: useBrandedColors ? backendCard.bank_provider : null, // Only show bank info if branded mode is on
   };
 }
 
 export function CardsDashboard() {
   const { data: backendCards, isLoading, error } = useCards();
+  const useBrandedColors = useBrandedCards(); // Get the user preference
 
-  const cards = backendCards?.map(transformCard) || [];
+  // Transform cards with the user's color preference
+  const cards = backendCards?.map(card => transformCard(card, useBrandedColors)) || [];
 
   if (error) {
     return (

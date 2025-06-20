@@ -10,11 +10,9 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
-  PieChart,
-  Pie,
-  Cell,
+  LineChart,
+  Line,
   ResponsiveContainer,
-  Legend,
   Tooltip,
   BarChart,
   Bar,
@@ -23,39 +21,27 @@ import {
   CartesianGrid,
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useAnalyticsDashboard, useSpendingTrends } from "@/lib/hooks";
-import { format, parseISO } from "date-fns";
+import { Button } from "@/components/ui/button";
+import { useAnalyticsDashboard, useSpendingTrends, useTransactions } from "@/lib/hooks";
+import { Transaction } from "@/lib/types";
+import { format, parseISO, startOfYear, addDays, isWithinInterval } from "date-fns";
 
 export function SpendingOverview() {
   const [activeTab, setActiveTab] = useState("monthly");
+  const [selectedCurrency, setSelectedCurrency] = useState<"PEN" | "USD">("PEN"); // Currency toggle for weekly view
+  
   const { data: analytics, isLoading, error } = useAnalyticsDashboard();
   const {
     data: trendsData,
     isLoading: trendsLoading,
     error: trendsError,
   } = useSpendingTrends({ months: 12 });
+  
+  // Fetch all transactions for weekly processing
+  const { data: allTransactions } = useTransactions({});
 
-  // Process analytics data to create spending by category (for pie chart)
-  const processSpendingData = () => {
-    if (!analytics?.category_spending) return [];
-
-    const colors = [
-      "#8884d8",
-      "#82ca9d",
-      "#ffc658",
-      "#ff8042",
-      "#0088fe",
-      "#00C49F",
-      "#ffbb28",
-      "#ff7c7c",
-    ];
-
-    return analytics.category_spending.map((item, index) => ({
-      name: item.category,
-      value: parseFloat(item.amount),
-      color: colors[index % colors.length],
-    }));
-  };
+  // We can remove the old pie chart data processing since we only use Monthly and Weekly now
+  const data = []; // Keeping for compatibility, but not used anymore
 
   // Process trends data to create monthly spending data (for bar chart)
   const processMonthlyData = useMemo(() => {
@@ -76,11 +62,113 @@ export function SpendingOverview() {
       .sort((a, b) => a.fullMonth.localeCompare(b.fullMonth)); // Sort chronologically
   }, [trendsData]);
 
-  const data = processSpendingData();
+  // Process weekly data - last 4 weeks based on current date, but week numbering starts from Jan 1st
+  const processWeeklyData = useMemo(() => {
+    if (!allTransactions) {
+      console.log("No allTransactions data available");
+      return [];
+    }
+
+    console.log("All transactions:", allTransactions.length);
+    console.log("Selected currency:", selectedCurrency);
+    
+    // Debug: Show currency distribution
+    const currencyDistribution = allTransactions.reduce((acc: Record<string, number>, t: Transaction) => {
+      acc[t.currency] = (acc[t.currency] || 0) + 1;
+      return acc;
+    }, {});
+    console.log("Currency distribution:", currencyDistribution);
+    
+    // Debug: Check first few transactions
+    console.log("Sample transactions:", allTransactions.slice(0, 5).map(t => ({
+      id: t.id,
+      date: t.transaction_date,
+      amount: t.amount,
+      currency: t.currency,
+      merchant: t.merchant
+    })));
+
+    const currentYear = new Date().getFullYear();
+    const yearStart = startOfYear(new Date(currentYear, 0, 1)); // January 1st of current year
+    const today = new Date();
+    
+    // Calculate which week we're currently in (starting from Jan 1st)
+    const daysSinceYearStart = Math.floor((today.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
+    const currentWeekNumber = Math.floor(daysSinceYearStart / 7) + 1; // +1 because weeks start at 1, not 0
+    
+    console.log("Current week number:", currentWeekNumber);
+    console.log("Year start:", yearStart);
+    console.log("Today:", today);
+    
+    // Debug: Show what weeks we're calculating
+    console.log("Will calculate weeks:", Array.from({length: 4}, (_, i) => currentWeekNumber - (3 - i)).filter(w => w >= 1));
+    
+    // Generate the last 4 weeks (including current week)
+    const weeks = [];
+    for (let i = 3; i >= 0; i--) { // Start from 3 weeks ago to current week
+      const weekNumber = currentWeekNumber - i;
+      
+      // Skip if week number is less than 1 (shouldn't happen in normal cases)
+      if (weekNumber < 1) continue;
+      
+      // Calculate week start and end dates
+      const weekStart = addDays(yearStart, (weekNumber - 1) * 7);
+      const weekEnd = addDays(weekStart, 6);
+      
+      console.log(`Week ${weekNumber}: ${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d")}`);
+      
+      // Filter transactions for this week and selected currency
+      const weekTransactions = allTransactions.filter((transaction: Transaction) => {
+        const transactionDate = parseISO(transaction.transaction_date);
+        const isInWeek = isWithinInterval(transactionDate, {
+          start: weekStart,
+          end: weekEnd
+        });
+        const isCorrectCurrency = transaction.currency === selectedCurrency;
+        
+        // Accept both positive and negative amounts (expenses can be stored either way)
+        const hasAmount = parseFloat(transaction.amount) !== 0;
+        
+        return isInWeek && isCorrectCurrency && hasAmount;
+      });
+      
+      console.log(`Week ${weekNumber} (${format(weekStart, "MMM d")}-${format(weekEnd, "MMM d")}) transactions:`, {
+        count: weekTransactions.length,
+        currency: selectedCurrency,
+        transactions: weekTransactions.map(t => ({
+          id: t.id,
+          date: t.transaction_date,
+          amount: t.amount,
+          currency: t.currency,
+          merchant: t.merchant,
+          parsedAmount: parseFloat(t.amount),
+          absoluteAmount: Math.abs(parseFloat(t.amount))
+        }))
+      });
+      
+      // Sum up spending for this week (take absolute value to ensure positive display)
+      const weekSpending = weekTransactions.reduce((sum: number, transaction: Transaction) => {
+        const amount = Math.abs(parseFloat(transaction.amount));
+        console.log(`Adding transaction ${transaction.id}: ${transaction.merchant} = ${amount}`);
+        return sum + amount;
+      }, 0);
+      
+      console.log(`Week ${weekNumber} total spending: ${weekSpending}`);
+      
+      weeks.push({
+        week: `W${weekNumber} (${format(weekStart, "MMM d")}-${format(weekEnd, "d")})`, // e.g., "W6 (Feb 5-11)"
+        amount: weekSpending,
+        weekNumber: weekNumber
+      });
+    }
+    
+    return weeks;
+  }, [allTransactions, selectedCurrency]);
+
   console.log("error", error);
   console.log("trendsError", trendsError);
 
-  // For monthly view, we only need trends data
+  // Loading and error handling for monthly view
   if (activeTab === "monthly") {
     if (trendsError) {
       return (
@@ -112,7 +200,6 @@ export function SpendingOverview() {
               <div className="flex space-x-1">
                 <Skeleton className="h-10 w-20" />
                 <Skeleton className="h-10 w-20" />
-                <Skeleton className="h-10 w-20" />
               </div>
               <Skeleton className="h-[300px] w-full" />
             </div>
@@ -122,44 +209,51 @@ export function SpendingOverview() {
     }
   }
 
-  // For other views, we need analytics data
-  if (activeTab !== "monthly" && error) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Spending Overview</CardTitle>
-          <CardDescription>Your spending breakdown</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-8">
-            <p className="text-muted-foreground">
-              Failed to load spending data
-            </p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (activeTab !== "monthly" && isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Spending Overview</CardTitle>
-          <CardDescription>Your spending breakdown</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex space-x-1">
-              <Skeleton className="h-10 w-20" />
-              <Skeleton className="h-10 w-20" />
-              <Skeleton className="h-10 w-20" />
+  // Loading and error handling for weekly view  
+  if (activeTab === "weekly") {
+    if (error) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Spending Overview</CardTitle>
+            <CardDescription>Your weekly spending trends</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                Failed to load weekly spending data
+              </p>
             </div>
-            <Skeleton className="h-[300px] w-full" />
-          </div>
-        </CardContent>
-      </Card>
-    );
+          </CardContent>
+        </Card>
+      );
+    }
+
+    if (isLoading) {
+      return (
+        <Card>
+          <CardHeader>
+            <CardTitle>Spending Overview</CardTitle>
+            <CardDescription>Your weekly spending trends</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex justify-between">
+                <div className="flex space-x-1">
+                  <Skeleton className="h-10 w-20" />
+                  <Skeleton className="h-10 w-20" />
+                </div>
+                <div className="flex space-x-1">
+                  <Skeleton className="h-10 w-16" />
+                  <Skeleton className="h-10 w-16" />
+                </div>
+              </div>
+              <Skeleton className="h-[300px] w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      );
+    }
   }
 
   const renderChart = () => {
@@ -173,10 +267,10 @@ export function SpendingOverview() {
       );
     }
 
-    if (activeTab !== "monthly" && data.length === 0) {
+    if (activeTab === "weekly" && processWeeklyData.length === 0) {
       return (
         <div className="h-[300px] flex items-center justify-center">
-          <p className="text-muted-foreground">No spending data available</p>
+          <p className="text-muted-foreground">No weekly spending data available</p>
         </div>
       );
     }
@@ -222,30 +316,55 @@ export function SpendingOverview() {
       );
     }
 
-    return (
-      <div className="h-[300px]">
-        <ResponsiveContainer width="100%" height="100%">
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              labelLine={false}
-              outerRadius={80}
-              fill="#8884d8"
-              dataKey="value"
-              label={({ name, percent }) =>
-                `${name} ${(percent * 100).toFixed(0)}%`
-              }
+    if (activeTab === "weekly") {
+      const currencySymbol = selectedCurrency === "PEN" ? "S/" : "$";
+      console.log("Weekly data:", processWeeklyData); // Debug log
+      
+      return (
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={processWeeklyData}
+              margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
             >
-              {data.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={entry.color} />
-              ))}
-            </Pie>
-            <Tooltip formatter={(value) => `$${value}`} />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis
+                dataKey="week"
+                angle={-45}
+                textAnchor="end"
+                height={60}
+                fontSize={11}
+                interval={0}
+              />
+              <YAxis
+                fontSize={11}
+                tickFormatter={(value) => `${currencySymbol}${Number(value).toLocaleString()}`}
+              />
+              <Tooltip
+                formatter={(value) => [
+                  `${currencySymbol}${Number(value).toLocaleString()}`,
+                  "Spent",
+                ]}
+                labelStyle={{ color: "#000" }}
+              />
+              <Line
+                type="monotone"
+                dataKey="amount"
+                stroke="#8884d8"
+                strokeWidth={3}
+                dot={{ fill: "#8884d8", strokeWidth: 2, r: 6 }}
+                activeDot={{ r: 8, stroke: "#8884d8", strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      );
+    }
+
+    // Fallback (should not be reached with new tab structure)
+    return (
+      <div className="h-[300px] flex items-center justify-center">
+        <p className="text-muted-foreground">No data available</p>
       </div>
     );
   };
@@ -255,27 +374,42 @@ export function SpendingOverview() {
       <CardHeader>
         <CardTitle>Spending Overview</CardTitle>
         <CardDescription>
-          Your spending breakdown and monthly trends
+          Your monthly trends and weekly spending patterns
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="monthly">Monthly</TabsTrigger>
-            <TabsTrigger value="week">Week</TabsTrigger>
-            <TabsTrigger value="month">Month</TabsTrigger>
-            <TabsTrigger value="year">Year</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between mb-4">
+            <TabsList className="grid w-fit grid-cols-2">
+              <TabsTrigger value="monthly">Monthly</TabsTrigger>
+              <TabsTrigger value="weekly">Weekly</TabsTrigger>
+            </TabsList>
+            
+            {/* Currency toggle - only show for weekly view */}
+            {activeTab === "weekly" && (
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant={selectedCurrency === "PEN" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCurrency("PEN")}
+                >
+                  PEN
+                </Button>
+                <Button
+                  variant={selectedCurrency === "USD" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCurrency("USD")}
+                >
+                  USD
+                </Button>
+              </div>
+            )}
+          </div>
+          
           <TabsContent value="monthly" className="space-y-4">
             {renderChart()}
           </TabsContent>
-          <TabsContent value="week" className="space-y-4">
-            {renderChart()}
-          </TabsContent>
-          <TabsContent value="month" className="space-y-4">
-            {renderChart()}
-          </TabsContent>
-          <TabsContent value="year" className="space-y-4">
+          <TabsContent value="weekly" className="space-y-4">
             {renderChart()}
           </TabsContent>
         </Tabs>

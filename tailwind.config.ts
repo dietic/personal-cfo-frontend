@@ -37,6 +37,10 @@ const config = {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
         },
+        "soft-destructive": {
+          DEFAULT: "hsl(var(--soft-destructive))",
+          foreground: "hsl(var(--soft-destructive-foreground))",
+        },
         success: {
           DEFAULT: "hsl(var(--success))",
           foreground: "hsl(var(--success-foreground))",

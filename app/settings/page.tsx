@@ -12,12 +12,15 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Tag, Settings, Key } from "lucide-react";
+import { Bell, Tag, Settings, Key, Palette } from "lucide-react";
 import { SimpleCategoriesManagement } from "@/components/simple-categories-management";
 import { KeywordManagement } from "@/components/keyword-management";
+import { useBrandedCards, useSettings } from "@/lib/settings-context";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("notifications");
+  const [activeTab, setActiveTab] = useState("display");
+  const { updateSetting } = useSettings();
+  const brandedCards = useBrandedCards();
 
   return (
     <div className="flex flex-col gap-6">
@@ -31,7 +34,14 @@ export default function SettingsPage() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger
+            value="display"
+            className="flex items-center gap-2"
+          >
+            <Palette className="h-4 w-4" />
+            Display
+          </TabsTrigger>
           <TabsTrigger
             value="notifications"
             className="flex items-center gap-2"
@@ -48,6 +58,36 @@ export default function SettingsPage() {
             Keywords
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="display" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="h-5 w-5" />
+                Display Preferences
+              </CardTitle>
+              <CardDescription>
+                Customize how your cards and data are displayed
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Branded Cards</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Show authentic bank colors on your cards instead of generic styling
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={brandedCards}
+                    onCheckedChange={(checked) => updateSetting('brandedCards', checked)}
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="notifications" className="space-y-6">
           <Card>
@@ -77,36 +117,6 @@ export default function SettingsPage() {
                     <Label>Payment Reminders</Label>
                     <p className="text-sm text-muted-foreground">
                       Receive reminders for upcoming card payments
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Transaction Alerts</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get notified of large or unusual transactions
-                    </p>
-                  </div>
-                  <Switch />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Weekly Summary</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Receive a weekly spending summary
-                    </p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Monthly Reports</Label>
-                    <p className="text-sm text-muted-foreground">
-                      Get detailed monthly financial reports
                     </p>
                   </div>
                   <Switch defaultChecked />

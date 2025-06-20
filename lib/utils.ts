@@ -8,12 +8,29 @@ export function cn(...inputs: ClassValue[]) {
 
 /**
  * Get the display name for a user.
- * Falls back to email if name is not available.
+ * Prefers first_name + last_name, then falls back to email.
  */
 export function getUserDisplayName(user: User | null): string {
   if (!user) return "User";
 
-  if (user.name) {
+  // Check if we have first_name or last_name
+  const firstName = user.first_name?.trim();
+  const lastName = user.last_name?.trim();
+  
+  if (firstName && lastName) {
+    return `${firstName} ${lastName}`;
+  }
+  
+  if (firstName) {
+    return firstName;
+  }
+  
+  if (lastName) {
+    return lastName;
+  }
+
+  // Check for legacy name field (for backward compatibility)
+  if ('name' in user && typeof user.name === 'string' && user.name) {
     return user.name;
   }
 
@@ -28,7 +45,23 @@ export function getUserDisplayName(user: User | null): string {
 export function getUserInitials(user: User | null): string {
   if (!user) return "U";
 
-  if (user.name) {
+  const firstName = user.first_name?.trim();
+  const lastName = user.last_name?.trim();
+
+  if (firstName && lastName) {
+    return (firstName[0] + lastName[0]).toUpperCase();
+  }
+  
+  if (firstName) {
+    return firstName[0].toUpperCase();
+  }
+  
+  if (lastName) {
+    return lastName[0].toUpperCase();
+  }
+
+  // Check for legacy name field (for backward compatibility)
+  if ('name' in user && typeof user.name === 'string' && user.name) {
     const nameParts = user.name.split(" ");
     if (nameParts.length >= 2) {
       return (nameParts[0][0] + nameParts[1][0]).toUpperCase();

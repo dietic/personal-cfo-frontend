@@ -20,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, CreditCard } from "lucide-react";
-import { useCreateCard } from "@/lib/hooks";
+import { Plus, CreditCard, Building2 } from "lucide-react";
+import { useCreateCard, useBankProviders } from "@/lib/hooks";
 import { CardCreate } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,9 +36,12 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
     card_name: "",
     card_type: "",
     network_provider: "",
-    bank_provider: "",
+    bank_provider_id: "",  // Changed to bank_provider_id
     payment_due_date: "",
   });
+
+  // Fetch bank providers - defaulting to Peru since that's our focus
+  const { data: bankProviders, isLoading: bankProvidersLoading } = useBankProviders("PE", false);
 
   const createCardMutation = useCreateCard();
 
@@ -49,7 +52,7 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
       card_name: formData.card_name,
       card_type: formData.card_type || null,
       network_provider: formData.network_provider || null,
-      bank_provider: formData.bank_provider || null,
+      bank_provider_id: formData.bank_provider_id || null,  // Updated field name
       payment_due_date: formData.payment_due_date || null,
     };
 
@@ -60,7 +63,7 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
         card_name: "",
         card_type: "",
         network_provider: "",
-        bank_provider: "",
+        bank_provider_id: "",  // Updated field name
         payment_due_date: "",
       });
       setOpen(false);
@@ -153,32 +156,70 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="bank_provider">Bank Provider</Label>
+              <Label htmlFor="bank_provider_id">
+                <Building2 className="w-4 h-4 inline mr-2" />
+                Bank Provider
+              </Label>
               <Select
-                value={formData.bank_provider}
+                value={formData.bank_provider_id}
                 onValueChange={(value) =>
-                  setFormData({ ...formData, bank_provider: value })
+                  setFormData({ ...formData, bank_provider_id: value })
                 }
+                disabled={bankProvidersLoading}
               >
-                <SelectTrigger id="bank_provider">
-                  <SelectValue placeholder="Select bank" />
+                <SelectTrigger id="bank_provider_id">
+                  <SelectValue 
+                    placeholder={
+                      bankProvidersLoading 
+                        ? "Loading banks..." 
+                        : "Select your bank"
+                    } 
+                  />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Chase">Chase</SelectItem>
-                  <SelectItem value="Bank of America">
-                    Bank of America
-                  </SelectItem>
-                  <SelectItem value="Wells Fargo">Wells Fargo</SelectItem>
-                  <SelectItem value="Citi">Citi</SelectItem>
-                  <SelectItem value="Capital One">Capital One</SelectItem>
-                  <SelectItem value="American Express">
-                    American Express
-                  </SelectItem>
-                  <SelectItem value="Discover">Discover</SelectItem>
-                  <SelectItem value="US Bank">US Bank</SelectItem>
-                  <SelectItem value="PNC">PNC</SelectItem>
-                  <SelectItem value="Truist">Truist</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
+                  {/* Popular banks first */}
+                  {bankProviders
+                    ?.filter(bank => bank.is_popular)
+                    .map((bank) => (
+                      <SelectItem key={bank.id} value={bank.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {bank.short_name || bank.name}
+                          </span>
+                          {bank.short_name && bank.short_name !== bank.name && (
+                            <span className="text-xs text-muted-foreground">
+                              ({bank.name})
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
+                  
+                  {/* Separator if we have both popular and regular banks */}
+                  {bankProviders?.some(bank => bank.is_popular) && 
+                   bankProviders?.some(bank => !bank.is_popular) && (
+                    <SelectItem value="separator" disabled>
+                      ──────────────────
+                    </SelectItem>
+                  )}
+                  
+                  {/* Other banks */}
+                  {bankProviders
+                    ?.filter(bank => !bank.is_popular)
+                    .map((bank) => (
+                      <SelectItem key={bank.id} value={bank.id}>
+                        <div className="flex items-center gap-2">
+                          <span>
+                            {bank.short_name || bank.name}
+                          </span>
+                          {bank.short_name && bank.short_name !== bank.name && (
+                            <span className="text-xs text-muted-foreground">
+                              ({bank.name})
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>

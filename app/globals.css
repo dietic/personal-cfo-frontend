@@ -28,6 +28,9 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
+    --soft-destructive: 0 84% 66%;
+    --soft-destructive-foreground: 222.2 84% 4.9;
+
     --success: 142.1 76.2% 36.3%;
     --success-foreground: 355.7 100% 97.3%;
 
@@ -72,6 +75,9 @@
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
+
+    --soft-destructive: 0 84% 66%;
+    --soft-destructive-foreground: 222.2 84% 4.9;
 
     --success: 142.1 70.6% 45.3%;
     --success-foreground: 144.9 80.4% 10%;

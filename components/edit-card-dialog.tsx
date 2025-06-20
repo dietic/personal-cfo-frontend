@@ -20,7 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUpdateCard } from "@/lib/hooks";
+import { Building2 } from "lucide-react";
+import { useUpdateCard, useBankProviders } from "@/lib/hooks";
 import { Card, CardUpdate } from "@/lib/types";
 import { toast } from "sonner";
 
@@ -35,9 +36,12 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
     card_name: card.card_name,
     card_type: card.card_type || "",
     network_provider: card.network_provider || "",
-    bank_provider: card.bank_provider || "",
+    bank_provider_id: card.bank_provider_id || "",  // Updated field name
     payment_due_date: card.payment_due_date || "",
   });
+
+  // Fetch bank providers for dropdown
+  const { data: bankProviders, isLoading: bankProvidersLoading } = useBankProviders("PE", false);
 
   const updateMutation = useUpdateCard();
 
@@ -136,18 +140,74 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="bank_provider" className="text-right">
+              <Label htmlFor="bank_provider_id" className="text-right">
+                <Building2 className="w-4 h-4 inline mr-1" />
                 Bank
               </Label>
-              <Input
-                id="bank_provider"
-                value={formData.bank_provider || ""}
-                onChange={(e) =>
-                  handleInputChange("bank_provider", e.target.value)
-                }
-                className="col-span-3"
-                placeholder="Bank Name"
-              />
+              <div className="col-span-3">
+                <Select
+                  value={formData.bank_provider_id || ""}
+                  onValueChange={(value) =>
+                    handleInputChange("bank_provider_id", value)
+                  }
+                  disabled={bankProvidersLoading}
+                >
+                  <SelectTrigger>
+                    <SelectValue 
+                      placeholder={
+                        bankProvidersLoading 
+                          ? "Loading banks..." 
+                          : "Select your bank"
+                      } 
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Popular banks first */}
+                    {bankProviders
+                      ?.filter(bank => bank.is_popular)
+                      .map((bank) => (
+                        <SelectItem key={bank.id} value={bank.id}>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {bank.short_name || bank.name}
+                            </span>
+                            {bank.short_name && bank.short_name !== bank.name && (
+                              <span className="text-xs text-muted-foreground">
+                                ({bank.name})
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    
+                    {/* Separator if we have both popular and regular banks */}
+                    {bankProviders?.some(bank => bank.is_popular) && 
+                     bankProviders?.some(bank => !bank.is_popular) && (
+                      <SelectItem value="separator" disabled>
+                        ──────────────────
+                      </SelectItem>
+                    )}
+                    
+                    {/* Other banks */}
+                    {bankProviders
+                      ?.filter(bank => !bank.is_popular)
+                      .map((bank) => (
+                        <SelectItem key={bank.id} value={bank.id}>
+                          <div className="flex items-center gap-2">
+                            <span>
+                              {bank.short_name || bank.name}
+                            </span>
+                            {bank.short_name && bank.short_name !== bank.name && (
+                              <span className="text-xs text-muted-foreground">
+                                ({bank.name})
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="payment_due_date" className="text-right">

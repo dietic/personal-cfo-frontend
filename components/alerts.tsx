@@ -69,24 +69,42 @@ export function Alerts() {
     cards
       ?.filter((card) => card.payment_due_date)
       .map((card) => {
-        const dueDate = parseISO(card.payment_due_date!);
+        // Convert the stored date to a recurring monthly due date
+        // Example: If stored date is "2025-05-20", we extract day "20" 
+        // and calculate the 20th of the current/next month
+        const storedDate = parseISO(card.payment_due_date!);
+        const dueDayOfMonth = storedDate.getDate(); // Get the day (e.g., 20 for 20th)
+        
         const today = new Date();
-        const daysUntilDue = Math.ceil(
-          (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
+        
+        // Calculate the next due date (this month or next month)
+        let nextDueDate = new Date(currentYear, currentMonth, dueDayOfMonth);
+        
+        // If the due date for this month has already passed, use next month
+        if (nextDueDate < today) {
+          nextDueDate = new Date(currentYear, currentMonth + 1, dueDayOfMonth);
+        }
+        
+        // Calculate days remaining (using floor for accurate day counting)
+        const daysUntilDue = Math.floor(
+          (nextDueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
         );
 
-        if (daysUntilDue <= 7 && daysUntilDue >= 0) {
+        // Show alert 5 days before due date (as requested)
+        if (daysUntilDue <= 5 && daysUntilDue >= 0) {
           return {
             id: `payment-${card.id}`,
-            type: daysUntilDue <= 3 ? "warning" : "info",
-            title: "Payment Due Soon",
+            type: daysUntilDue <= 2 ? "warning" : "info",
+            title: "Card Payment Due Soon",
             description: `${card.card_name} payment due ${
               daysUntilDue === 0
                 ? "today"
                 : daysUntilDue === 1
                 ? "tomorrow"
                 : `in ${daysUntilDue} days`
-            }`,
+            } (${format(nextDueDate, "MMM dd")})`,
             icon: Calendar,
           };
         }

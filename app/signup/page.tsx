@@ -1,6 +1,7 @@
 import { Metadata } from "next";
 import { SignupForm } from "@/components/signup-form";
 import { Logo } from "@/components/logo";
+import { ThemeToggleButton } from "@/components/theme-toggle-button";
 
 export const metadata: Metadata = {
   title: "Sign Up - PersonalCFO",
@@ -9,7 +10,12 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex relative">
+      {/* Theme toggle button */}
+      <div className="absolute top-4 right-4 z-10">
+        <ThemeToggleButton />
+      </div>
+      
       {/* Left side - Decorative */}
       <div className="hidden lg:flex lg:flex-1 lg:flex-col lg:justify-center lg:px-8 bg-muted/30">
         <div className="mx-auto max-w-md text-center space-y-6">

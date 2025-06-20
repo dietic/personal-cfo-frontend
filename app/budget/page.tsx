@@ -1,6 +1,5 @@
 import { PageHeader } from "@/components/page-header";
 import { BudgetCategories } from "@/components/budget-categories";
-import { BudgetSimulator } from "@/components/budget-simulator";
 
 export default function BudgetPage() {
   return (
@@ -11,7 +10,6 @@ export default function BudgetPage() {
       />
 
       <BudgetCategories />
-      <BudgetSimulator />
     </div>
   );
 }

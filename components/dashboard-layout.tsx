@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
+import { ThemeToggleButton } from "@/components/theme-toggle-button";
 import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -190,11 +191,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => router.push("/profile")}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => router.push("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </DropdownMenuItem>
@@ -215,6 +216,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           <header className="flex h-14 items-center gap-4 border-b bg-background px-6">
             <SidebarTrigger />
             <div className="ml-auto flex items-center gap-4">
+              <ThemeToggleButton />
               <UserNav />
             </div>
           </header>

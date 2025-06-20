@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Plus, Edit, Trash2, TrendingUp, TrendingDown } from "lucide-react";
+import { format } from "date-fns";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -62,7 +63,13 @@ export function BudgetCategories() {
     error: budgetsError,
   } = useBudgets();
   const { data: categorySpending, isLoading: spendingLoading } =
-    useCategorySpending();
+    useCategorySpending({
+      start_date: format(
+        new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        "yyyy-MM-dd"
+      ),
+      end_date: format(new Date(), "yyyy-MM-dd"),
+    });
   const { data: categories, isLoading: categoriesLoading } = useCategories();
   const createBudgetMutation = useCreateBudget();
   const updateBudgetMutation = useUpdateBudget();
@@ -171,7 +178,7 @@ export function BudgetCategories() {
 
   const getBudgetProgress = (budget: Budget) => {
     const spending = categorySpending?.find(
-      (s) => s.category === budget.category
+      (s) => s.category === budget.category && s.currency === budget.currency
     );
     const spent = parseFloat(spending?.amount || "0");
     const percentage =

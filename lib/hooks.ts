@@ -3,9 +3,13 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import {
+  User,
+  UserProfileUpdate,
   Card,
   CardCreate,
   CardUpdate,
+  BankProvider,
+  BankProviderSimple,
   Category,
   CategoryCreate,
   CategoryUpdate,
@@ -35,8 +39,12 @@ import { toast } from "sonner";
 
 // Query Keys
 export const queryKeys = {
+  userProfile: ["user", "profile"] as const,
   cards: ["cards"] as const,
   card: (id: string) => ["cards", id] as const,
+  bankProviders: (country?: string, popularOnly?: boolean) => 
+    ["bank-providers", country, popularOnly] as const,
+  bankProvider: (id: string) => ["bank-providers", id] as const,
   categories: ["categories"] as const,
   category: (id: string) => ["categories", id] as const,
   currencies: ["currencies"] as const,
@@ -62,6 +70,30 @@ export const queryKeys = {
     insights: ["analytics", "insights"] as const,
   },
 };
+
+// User Profile Hooks
+export function useUserProfile() {
+  return useQuery({
+    queryKey: queryKeys.userProfile,
+    queryFn: () => apiClient.getUserProfile(),
+  });
+}
+
+export function useUpdateUserProfile() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UserProfileUpdate) => apiClient.updateUserProfile(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.userProfile });
+      toast.success("Profile updated successfully");
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.detail || "Failed to update profile";
+      toast.error(message);
+    },
+  });
+}
 
 // Cards Hooks
 export function useCards() {
@@ -126,6 +158,31 @@ export function useDeleteCard() {
       const message = error.response?.data?.detail || "Failed to delete card";
       toast.error(message);
     },
+  });
+}
+
+// Bank Providers Hooks
+export function useBankProviders(country?: string, popularOnly?: boolean) {
+  return useQuery({
+    queryKey: queryKeys.bankProviders(country, popularOnly),
+    queryFn: () => {
+      // Build query parameters
+      const params = new URLSearchParams();
+      if (country) params.append('country', country);
+      if (popularOnly) params.append('popular_only', 'true');
+      
+      return apiClient.getBankProviders(params.toString());
+    },
+    staleTime: 1000 * 60 * 30, // 30 minutes - bank data doesn't change often
+  });
+}
+
+export function useBankProvider(bankId: string) {
+  return useQuery({
+    queryKey: queryKeys.bankProvider(bankId),
+    queryFn: () => apiClient.getBankProvider(bankId),
+    enabled: !!bankId,
+    staleTime: 1000 * 60 * 30, // 30 minutes
   });
 }
 
@@ -438,9 +495,11 @@ export function useUploadStatementSimple() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (file: File) => apiClient.uploadStatementSimple(file),
+    mutationFn: ({ file, cardId }: { file: File; cardId: string }) => apiClient.uploadStatementSimple(file, cardId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
       toast.success("Statement processed successfully");
     },
     onError: (error: any) => {
@@ -501,6 +560,8 @@ export function useExtractTransactions() {
     }) => apiClient.extractTransactions(statementId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
     },
     onError: (error: any) => {
       const message =
@@ -529,6 +590,32 @@ export function useCategorizeTransactions() {
     onError: (error: any) => {
       const message =
         error.response?.data?.detail || "Failed to categorize transactions";
+      toast.error(message);
+    },
+  });
+}
+
+export function useRecategorizeTransactions() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      statementId,
+      data,
+    }: {
+      statementId: string;
+      data: CategorizationRequest;
+    }) => apiClient.recategorizeTransactions(statementId, data),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      const totalProcessed = data.transactions_categorized + data.uncategorized;
+      toast.success(`Recategorized ${data.transactions_categorized} of ${totalProcessed} transactions`);
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to recategorize transactions";
       toast.error(message);
     },
   });

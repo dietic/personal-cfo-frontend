@@ -29,33 +29,91 @@ import { Card as BackendCard } from "@/lib/types";
 import { AddCardDialog } from "@/components/add-card-dialog";
 import { EditCardDialog } from "@/components/edit-card-dialog";
 import { DeleteCardDialog } from "@/components/delete-card-dialog";
+import { useRouter } from "next/navigation";
+import { useBrandedCards } from "@/lib/settings-context";
 
-// Transform backend card to frontend card format
-function transformCard(backendCard: BackendCard) {
+// Transform backend card to frontend card format with conditional bank provider colors
+function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
+  // Generate theme-aware Tailwind classes for bank colors - respecting user's branded cards preference
+  const getCardGradient = () => {
+    const bankProvider = backendCard.bank_provider;
+    
+    // If branded cards are disabled, always use the generic gradient
+    if (!useBrandedColors) {
+      return "from-slate-600 to-slate-800 dark:from-slate-500 dark:to-slate-700"; // Generic gradient that adapts to theme
+    }
+    
+    // If branded cards are enabled, use authentic bank colors with theme support
+    if (bankProvider?.color_primary && bankProvider?.color_secondary) {
+      // Map bank colors to Tailwind classes that support light/dark themes
+      const bankColorMap: Record<string, string> = {
+        // BCP: Deep blue to orange
+        "bcp": "from-blue-900 to-orange-600 dark:from-blue-800 dark:to-orange-500",
+        // Interbank: Green gradient
+        "interbank": "from-green-700 to-green-500 dark:from-green-600 dark:to-green-400", 
+        // BBVA: Blue gradient
+        "bbva continental": "from-blue-800 to-blue-600 dark:from-blue-700 dark:to-blue-500",
+        // Scotiabank: Red gradient
+        "scotiabank": "from-red-700 to-red-500 dark:from-red-600 dark:to-red-400",
+        // Diners: Navy to light blue
+        "diners": "from-blue-900 to-blue-500 dark:from-blue-800 dark:to-blue-400",
+      };
+      
+      const bankKey = bankProvider.short_name?.toLowerCase() || '';
+      if (bankColorMap[bankKey]) {
+        return bankColorMap[bankKey];
+      }
+    }
+    
+    // Fallback to network-based colors if no bank provider
+    switch (backendCard.network_provider?.toLowerCase()) {
+      case "visa":
+        return "linear-gradient(135deg, #1a365d 0%, #2d5a87 100%)"; // Visa blue gradient
+      case "mastercard":
+        return "linear-gradient(135deg, #eb5424 0%, #f2994a 100%)"; // Mastercard orange gradient
+      case "amex":
+        return "linear-gradient(135deg, #006fcf 0%, #003d82 100%)"; // Amex blue gradient
+      case "discover":
+        return "linear-gradient(135deg, #ff6900 0%, #fcb900 100%)"; // Discover orange gradient
+      default:
+        return "linear-gradient(135deg, #374151 0%, #1f2937 100%)"; // Default gray gradient
+    }
+  };
+
   return {
     id: backendCard.id,
     name: backendCard.card_name,
     type: backendCard.card_type || "Credit Card",
-    lastFour: "****", // Backend doesn't provide this
-    balance: 0, // Backend doesn't provide balance directly
-    limit: 5000, // Default limit, could be added to backend
+    lastFour: "****", // Simple identifier, not critical for expense tracking
     dueDate: backendCard.payment_due_date || undefined,
-    utilization: 0, // Would need to calculate from transactions
-    alerts: [], // Would need to implement alerts logic
+    alerts: [], // For future alerts implementation
     network:
       (backendCard.network_provider?.toLowerCase() as
         | "visa"
         | "mastercard"
         | "amex"
         | "discover") || "visa",
-    color: "from-blue-600 to-indigo-800 dark:from-blue-500 dark:to-indigo-700", // Default color
+    color: getCardGradient(),
+    bankProvider: backendCard.bank_provider, // Pass bank provider data
   };
 }
 
 export function CardsList() {
   const { data: backendCards, isLoading, error } = useCards();
+  const router = useRouter();
+  const brandedCards = useBrandedCards(); // Get the user's branded cards preference
 
-  const cards = backendCards?.map(transformCard) || [];
+  const cards = backendCards?.map(card => transformCard(card, brandedCards)) || [];
+
+  // Handle navigation to transactions with card filter
+  const handleViewTransactions = (cardId: string, cardName: string) => {
+    // Navigate to transactions page with card filter pre-applied
+    const searchParams = new URLSearchParams({
+      card_id: cardId,
+      card_name: cardName, // Include card name for better UX
+    });
+    router.push(`/transactions?${searchParams.toString()}`);
+  };
 
   if (error) {
     return (
@@ -159,7 +217,11 @@ export function CardsList() {
               <CreditCard card={card} />
             </CardContent>
             <CardFooter>
-              <Button variant="outline" className="w-full">
+              <Button 
+                variant="outline" 
+                className="w-full"
+                onClick={() => handleViewTransactions(card.id.toString(), card.name)}
+              >
                 View Transactions
               </Button>
             </CardFooter>

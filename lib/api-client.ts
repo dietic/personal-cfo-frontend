@@ -5,9 +5,12 @@ import {
   User,
   UserCreate,
   UserLogin,
+  UserProfileUpdate,
   Card,
   CardCreate,
   CardUpdate,
+  BankProvider,
+  BankProviderSimple,
   Category,
   CategoryCreate,
   CategoryUpdate,
@@ -45,7 +48,7 @@ import {
   CategoryKeywordResponse,
 } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const TOKEN_KEY = "access_token";
 
 class APIClient {
@@ -137,11 +140,16 @@ class APIClient {
     this.removeToken();
   }
 
-  // Note: Backend doesn't have a /me endpoint yet
-  // async getCurrentUser(): Promise<User> {
-  //   const response = await this.client.get<User>('/api/v1/auth/me');
-  //   return response.data;
-  // }
+  // User profile endpoints
+  async getUserProfile(): Promise<User> {
+    const response = await this.client.get<User>('/api/v1/users/profile');
+    return response.data;
+  }
+
+  async updateUserProfile(data: UserProfileUpdate): Promise<User> {
+    const response = await this.client.put<User>('/api/v1/users/profile', data);
+    return response.data;
+  }
 
   // Cards endpoints
   async getCards(): Promise<Card[]> {
@@ -169,6 +177,22 @@ class APIClient {
 
   async deleteCard(cardId: string): Promise<void> {
     await this.client.delete(`/api/v1/cards/${cardId}`);
+  }
+
+  // Bank Providers endpoints
+  async getBankProviders(queryParams?: string): Promise<BankProviderSimple[]> {
+    const url = queryParams 
+      ? `/api/v1/bank-providers/?${queryParams}` 
+      : "/api/v1/bank-providers/";
+    const response = await this.client.get<BankProviderSimple[]>(url);
+    return response.data;
+  }
+
+  async getBankProvider(bankId: string): Promise<BankProvider> {
+    const response = await this.client.get<BankProvider>(
+      `/api/v1/bank-providers/${bankId}`
+    );
+    return response.data;
   }
 
   // Categories endpoints
@@ -379,9 +403,10 @@ class APIClient {
   }
 
   // New simplified statement upload (extract + categorize in one step)
-  async uploadStatementSimple(file: File): Promise<Statement> {
+  async uploadStatementSimple(file: File, cardId: string): Promise<Statement> {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("card_id", cardId);
 
     const response = await this.client.post<Statement>(
       "/api/v1/statements/upload-simple",
@@ -453,6 +478,17 @@ class APIClient {
   ): Promise<CategorizationResponse> {
     const response = await this.client.post<CategorizationResponse>(
       `/api/v1/statements/${statementId}/categorize`,
+      data
+    );
+    return response.data;
+  }
+
+  async recategorizeTransactions(
+    statementId: string,
+    data: CategorizationRequest
+  ): Promise<CategorizationResponse> {
+    const response = await this.client.post<CategorizationResponse>(
+      `/api/v1/statements/${statementId}/recategorize`,
       data
     );
     return response.data;
