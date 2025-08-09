@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect } from "react";
 
 const PENDING_VERIFICATION_KEY = "pcfo.pendingVerificationEmail";
 
@@ -29,7 +29,13 @@ export function VerificationGate() {
     const emailParam = searchParams.get("email");
 
     // Allow landing, login, terms, and privacy
-    const isAllowedBase = ["/", "/landing", "/login", "/terms", "/privacy"].includes(pathname);
+    const isAllowedBase = [
+      "/",
+      "/landing",
+      "/login",
+      "/terms",
+      "/privacy",
+    ].includes(pathname);
 
     // Allow the OTP screen specifically (on /signup with step=otp)
     const isOnOtpScreen = pathname === "/signup" && step === "otp";
@@ -37,14 +43,18 @@ export function VerificationGate() {
     if (isOnOtpScreen) {
       // Ensure the URL email matches the stored pending email for consistency
       if (emailParam !== pendingEmail) {
-        router.replace(`/signup?step=otp&email=${encodeURIComponent(pendingEmail)}`);
+        router.replace(
+          `/signup?step=otp&email=${encodeURIComponent(pendingEmail)}`
+        );
       }
       return;
     }
 
     // On plain /signup or any other route (except allowed), force OTP screen
     if (!isAllowedBase) {
-      router.replace(`/signup?step=otp&email=${encodeURIComponent(pendingEmail)}`);
+      router.replace(
+        `/signup?step=otp&email=${encodeURIComponent(pendingEmail)}`
+      );
     }
   }, [pathname, router, searchParams]);
 

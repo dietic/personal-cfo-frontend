@@ -1,8 +1,8 @@
 "use client";
 
-import React, { Suspense } from "react";
-import { StatementImport } from "@/components/statement-import";
 import { PageHeader } from "@/components/page-header";
+import { StatementImport } from "@/components/statement-import";
+import { Suspense } from "react";
 
 function ImportPageContent() {
   return (
@@ -22,7 +22,11 @@ function ImportPageContent() {
 
 export default function ImportPage() {
   return (
-    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading…</div>}>
+    <Suspense
+      fallback={
+        <div className="p-4 text-sm text-muted-foreground">Loading…</div>
+      }
+    >
       <ImportPageContent />
     </Suspense>
   );

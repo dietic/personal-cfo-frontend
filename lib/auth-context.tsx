@@ -1,6 +1,10 @@
 "use client";
 
 import { apiClient } from "@/lib/api-client";
+import {
+  clearPendingVerification,
+  setPendingVerification,
+} from "@/lib/auth-constants";
 import { User, UserCreate, UserLogin } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import React, {
@@ -12,11 +16,6 @@ import React, {
   useState,
 } from "react";
 import { toast } from "sonner";
-import {
-  setPendingVerification,
-  clearPendingVerification,
-  getPendingVerification,
-} from "@/lib/auth-constants";
 
 // Helper function to decode JWT token
 function decodeJWT(token: string) {
@@ -146,7 +145,9 @@ export function AuthProvider({
             const emailToUse = profile.email || data.email;
             setPendingVerification(emailToUse);
             toast.message("Please verify your email to continue.");
-            router.push(`/signup?step=otp&email=${encodeURIComponent(emailToUse)}`);
+            router.push(
+              `/signup?step=otp&email=${encodeURIComponent(emailToUse)}`
+            );
             return;
           }
         } catch (profileErr: any) {
@@ -155,7 +156,9 @@ export function AuthProvider({
           if (status === 403 || status === 401) {
             setPendingVerification(data.email);
             toast.message("Please verify your email to continue.");
-            router.push(`/signup?step=otp&email=${encodeURIComponent(data.email)}`);
+            router.push(
+              `/signup?step=otp&email=${encodeURIComponent(data.email)}`
+            );
             return;
           }
           console.warn(
@@ -187,8 +190,12 @@ export function AuthProvider({
         if (status === 403) {
           // Backend blocks unverified users from logging in
           setPendingVerification(data.email);
-          toast.message("Your account is not verified. Enter the code we emailed to activate it.");
-          router.push(`/signup?step=otp&email=${encodeURIComponent(data.email)}`);
+          toast.message(
+            "Your account is not verified. Enter the code we emailed to activate it."
+          );
+          router.push(
+            `/signup?step=otp&email=${encodeURIComponent(data.email)}`
+          );
           return;
         }
         const message =
@@ -203,27 +210,24 @@ export function AuthProvider({
     [router]
   );
 
-  const register = useCallback(
-    async (data: UserCreate) => {
-      try {
-        setIsLoading(true);
-        await apiClient.register(data);
-        // Mark pending verification and don't log in automatically
-        setPendingVerification(data.email);
-        toast.success(
-          "Account created. Check your email for the verification code."
-        );
-      } catch (error: any) {
-        console.error("Registration error:", error);
-        const message = error.response?.data?.detail || "Registration failed";
-        toast.error(message);
-        throw error;
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    []
-  );
+  const register = useCallback(async (data: UserCreate) => {
+    try {
+      setIsLoading(true);
+      await apiClient.register(data);
+      // Mark pending verification and don't log in automatically
+      setPendingVerification(data.email);
+      toast.success(
+        "Account created. Check your email for the verification code."
+      );
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      const message = error.response?.data?.detail || "Registration failed";
+      toast.error(message);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   const logout = useCallback(() => {
     apiClient.logout();

@@ -1,7 +1,9 @@
 "use client";
 
-import React, { Suspense, useEffect, useState } from "react";
+import { ExcludedKeywordsManagement } from "@/components/excluded-keywords-management";
+import { KeywordManagement } from "@/components/keyword-management";
 import { PageHeader } from "@/components/page-header";
+import { SimpleCategoriesManagement } from "@/components/simple-categories-management";
 import {
   Card,
   CardContent,
@@ -9,15 +11,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Tag, Key, Palette, Ban } from "lucide-react";
-import { SimpleCategoriesManagement } from "@/components/simple-categories-management";
-import { KeywordManagement } from "@/components/keyword-management";
 import { useBrandedCards, useSettings } from "@/lib/settings-context";
-import { useSearchParams, useRouter } from "next/navigation";
-import { ExcludedKeywordsManagement } from "@/components/excluded-keywords-management";
+import { Ban, Bell, Key, Palette, Tag } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
 function SettingsPageContent() {
   const searchParams = useSearchParams();
@@ -51,10 +51,7 @@ function SettingsPageContent() {
         className="space-y-6"
       >
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger
-            value="display"
-            className="flex items-center gap-2"
-          >
+          <TabsTrigger value="display" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
             Display
           </TabsTrigger>
@@ -96,12 +93,15 @@ function SettingsPageContent() {
                   <div className="space-y-0.5">
                     <Label>Branded Cards</Label>
                     <p className="text-sm text-muted-foreground">
-                      Show authentic bank colors on your cards instead of generic styling
+                      Show authentic bank colors on your cards instead of
+                      generic styling
                     </p>
                   </div>
                   <Switch
                     checked={brandedCards}
-                    onCheckedChange={(checked) => updateSetting('brandedCards', checked)}
+                    onCheckedChange={(checked) =>
+                      updateSetting("brandedCards", checked)
+                    }
                   />
                 </div>
               </div>
@@ -166,7 +166,13 @@ function SettingsPageContent() {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading settings…</div>}>
+    <Suspense
+      fallback={
+        <div className="p-4 text-sm text-muted-foreground">
+          Loading settings…
+        </div>
+      }
+    >
       <SettingsPageContent />
     </Suspense>
   );

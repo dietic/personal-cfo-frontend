@@ -1,8 +1,6 @@
 "use client";
 
-import type React from "react";
-import { useState, useEffect, useRef } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,23 +10,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Github,
-  Eye,
-  EyeOff,
-  Mail,
-  Lock,
-  User,
-  CheckCircle,
-} from "lucide-react";
-import Link from "next/link";
-import { useAuth } from "@/lib/auth-context";
 import { apiClient } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth-context";
+import { CheckCircle, Eye, EyeOff, Github, Lock, Mail } from "lucide-react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import type React from "react";
+import { useEffect, useRef, useState } from "react";
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
@@ -158,7 +150,9 @@ export function SignupForm() {
         {step === "form" ? (
           <>
             <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl text-center">Create Account</CardTitle>
+              <CardTitle className="text-2xl text-center">
+                Create Account
+              </CardTitle>
               <CardDescription className="text-center">
                 Enter your details to create your PersonalCFO account
               </CardDescription>
@@ -277,7 +271,9 @@ export function SignupForm() {
                 <Checkbox
                   id="terms"
                   checked={agreeTerms}
-                  onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
+                  onCheckedChange={(checked) =>
+                    setAgreeTerms(checked as boolean)
+                  }
                 />
                 <label
                   htmlFor="terms"
@@ -288,7 +284,10 @@ export function SignupForm() {
                     Terms of Service
                   </Link>{" "}
                   and{" "}
-                  <Link href="/privacy" className="text-primary hover:underline">
+                  <Link
+                    href="/privacy"
+                    className="text-primary hover:underline"
+                  >
                     Privacy Policy
                   </Link>
                 </label>
@@ -313,7 +312,12 @@ export function SignupForm() {
                 </div>
               </div>
 
-              <Button variant="outline" type="button" className="w-full" disabled>
+              <Button
+                variant="outline"
+                type="button"
+                className="w-full"
+                disabled
+              >
                 <Github className="mr-2 h-4 w-4" />
                 GitHub (Coming Soon)
               </Button>

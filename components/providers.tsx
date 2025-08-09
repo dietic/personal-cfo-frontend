@@ -1,11 +1,11 @@
 "use client";
 
-import React, { Suspense } from "react";
-import { ThemeProvider } from "@/components/theme-provider";
 import { QueryProvider } from "@/components/query-provider";
+import { ThemeProvider } from "@/components/theme-provider";
+import { VerificationGate } from "@/components/verification-gate";
 import { AuthProvider } from "@/lib/auth-context";
 import { SettingsProvider } from "@/lib/settings-context";
-import { VerificationGate } from "@/components/verification-gate";
+import React, { Suspense } from "react";
 
 interface ProvidersProps {
   children: React.ReactNode;

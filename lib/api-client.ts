@@ -30,6 +30,8 @@ import {
   ExcludedKeywordListResponse,
   ExtractionRequest,
   ExtractionResponse,
+  OTPResendRequest,
+  OTPVerifyRequest,
   RecurringService,
   RecurringServiceCreate,
   RecurringServiceUpdate,
@@ -50,8 +52,6 @@ import {
   UserLogin,
   UserProfileUpdate,
   YearComparison,
-  OTPVerifyRequest,
-  OTPResendRequest,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
