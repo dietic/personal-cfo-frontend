@@ -39,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  useCards,
   useDeleteStatementsBulk,
   useRecategorizeTransactions,
   useStatements,
@@ -78,6 +79,7 @@ export function StatementsList() {
   } = useStatements();
   const recategorizeMutation = useRecategorizeTransactions();
   const bulkDeleteMutation = useDeleteStatementsBulk();
+  const { data: cards } = useCards();
 
   // Derived helpers for selection
   const filteredStatements =
@@ -340,6 +342,12 @@ export function StatementsList() {
     );
   };
 
+  const getCardName = (cardId?: string | null) => {
+    if (!cardId || !cards) return "-";
+    const card = cards.find((c) => c.id === cardId);
+    return card?.card_name || "-";
+  };
+
   if (error) {
     return (
       <Card>
@@ -490,6 +498,7 @@ export function StatementsList() {
                     />
                   </TableHead>
                   <TableHead>File Name</TableHead>
+                  <TableHead>Card</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Upload Date</TableHead>
                   <TableHead>File Type</TableHead>
@@ -523,6 +532,11 @@ export function StatementsList() {
                           </p>
                         </div>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm">
+                        {getCardName(statement.card_id)}
+                      </span>
                     </TableCell>
                     <TableCell>{renderStatusBadge(statement)}</TableCell>
                     <TableCell>{formatDate(statement.created_at)}</TableCell>

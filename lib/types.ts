@@ -187,6 +187,8 @@ export interface Statement {
   file_type: string;
   id: string;
   user_id: string;
+  // Related card (optional)
+  card_id?: string | null;
   file_path: string;
   statement_month?: string | null;
   status: string;
