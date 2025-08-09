@@ -656,7 +656,7 @@ export function TransactionsList({
                                 onSelect={(e) => {
                                   e.preventDefault();
                                 }}
-                                className="flex items-center gap-2 text-destructive focus:text-destructive"
+                                className="flex items-center gap-2 font-medium text-red-600 dark:text-red-400 hover:text-red-600 focus:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10 focus:bg-red-500/10"
                               >
                                 <Trash2 className="h-4 w-4" />
                                 Delete Transaction
