@@ -1,7 +1,10 @@
+"use client";
+
+import React, { Suspense } from "react";
 import { StatementImport } from "@/components/statement-import";
 import { PageHeader } from "@/components/page-header";
 
-export default function ImportPage() {
+function ImportPageContent() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
@@ -14,5 +17,13 @@ export default function ImportPage() {
       />
       <StatementImport />
     </div>
+  );
+}
+
+export default function ImportPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading…</div>}>
+      <ImportPageContent />
+    </Suspense>
   );
 }

@@ -50,6 +50,8 @@ import {
   UserLogin,
   UserProfileUpdate,
   YearComparison,
+  OTPVerifyRequest,
+  OTPResendRequest,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
@@ -70,7 +72,7 @@ class APIClient {
     this.client.interceptors.request.use((config) => {
       const token = this.getToken();
       if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        (config.headers as any).Authorization = `Bearer ${token}`;
       }
       return config;
     });
@@ -79,7 +81,8 @@ class APIClient {
     this.client.interceptors.response.use(
       (response) => response,
       async (error) => {
-        if (error.response?.status === 401) {
+        const status = error?.response?.status;
+        if (status === 401) {
           this.removeToken();
           // Skip redirect in development for testing purposes
           const isDevelopment = process.env.NODE_ENV === "development";
@@ -95,7 +98,11 @@ class APIClient {
         }
         const message =
           error?.response?.data?.detail || error?.message || "Request failed";
-        return Promise.reject(new Error(message));
+        // Preserve response/status so callers can branch on them (e.g., 403 for unverified login)
+        const enhanced: any = new Error(message);
+        enhanced.response = error?.response;
+        enhanced.status = status;
+        return Promise.reject(enhanced);
       }
     );
   }
@@ -125,6 +132,22 @@ class APIClient {
   async register(data: UserCreate): Promise<User> {
     const response = await this.client.post<User>(
       "/api/v1/auth/register",
+      data
+    );
+    return response.data;
+  }
+
+  async verifyOTP(data: OTPVerifyRequest): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>(
+      "/api/v1/auth/verify-otp",
+      data
+    );
+    return response.data;
+  }
+
+  async resendOTP(data: OTPResendRequest): Promise<{ message: string }> {
+    const response = await this.client.post<{ message: string }>(
+      "/api/v1/auth/resend-otp",
       data
     );
     return response.data;

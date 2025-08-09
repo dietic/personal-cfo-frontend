@@ -12,6 +12,11 @@ import React, {
   useState,
 } from "react";
 import { toast } from "sonner";
+import {
+  setPendingVerification,
+  clearPendingVerification,
+  getPendingVerification,
+} from "@/lib/auth-constants";
 
 // Helper function to decode JWT token
 function decodeJWT(token: string) {
@@ -83,6 +88,14 @@ export function AuthProvider({
           try {
             const profile = await apiClient.getUserProfile();
             setUser(normalizeUser(profile));
+            // If user is not active (email not verified), enforce OTP flow
+            if (profile && profile.is_active === false && profile.email) {
+              setPendingVerification(profile.email);
+              router.replace(
+                `/signup?step=otp&email=${encodeURIComponent(profile.email)}`
+              );
+              return;
+            }
           } catch (profileErr) {
             console.warn(
               "Failed to fetch profile; using JWT fallback",
@@ -127,7 +140,24 @@ export function AuthProvider({
         try {
           const profile = await apiClient.getUserProfile();
           setUser(normalizeUser(profile));
-        } catch (profileErr) {
+
+          // If user isn't active yet, enforce OTP flow
+          if (profile && profile.is_active === false) {
+            const emailToUse = profile.email || data.email;
+            setPendingVerification(emailToUse);
+            toast.message("Please verify your email to continue.");
+            router.push(`/signup?step=otp&email=${encodeURIComponent(emailToUse)}`);
+            return;
+          }
+        } catch (profileErr: any) {
+          // If profile fetch fails due to unverified account, mark pending and redirect to OTP
+          const status = profileErr?.response?.status;
+          if (status === 403 || status === 401) {
+            setPendingVerification(data.email);
+            toast.message("Please verify your email to continue.");
+            router.push(`/signup?step=otp&email=${encodeURIComponent(data.email)}`);
+            return;
+          }
           console.warn(
             "Failed to fetch profile post-login; using JWT fallback",
             profileErr
@@ -147,10 +177,20 @@ export function AuthProvider({
           );
         }
 
+        // Clear any pending verification flag on successful login/profile fetch
+        clearPendingVerification();
         toast.success("Login successful!");
         router.push("/dashboard");
       } catch (error: any) {
         console.error("Login error:", error);
+        const status = error?.response?.status || error?.status;
+        if (status === 403) {
+          // Backend blocks unverified users from logging in
+          setPendingVerification(data.email);
+          toast.message("Your account is not verified. Enter the code we emailed to activate it.");
+          router.push(`/signup?step=otp&email=${encodeURIComponent(data.email)}`);
+          return;
+        }
         const message =
           error.response?.data?.detail || error.message || "Login failed";
         toast.error(message);
@@ -168,11 +208,11 @@ export function AuthProvider({
       try {
         setIsLoading(true);
         await apiClient.register(data);
-
-        // After registration, log the user in
-        await login({ email: data.email, password: data.password });
-
-        toast.success("Registration successful!");
+        // Mark pending verification and don't log in automatically
+        setPendingVerification(data.email);
+        toast.success(
+          "Account created. Check your email for the verification code."
+        );
       } catch (error: any) {
         console.error("Registration error:", error);
         const message = error.response?.data?.detail || "Registration failed";
@@ -182,12 +222,13 @@ export function AuthProvider({
         setIsLoading(false);
       }
     },
-    [login]
+    []
   );
 
   const logout = useCallback(() => {
     apiClient.logout();
     setUser(null);
+    clearPendingVerification();
     router.push("/login");
     toast.success("Logged out successfully");
   }, [router]);

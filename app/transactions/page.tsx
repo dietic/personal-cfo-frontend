@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import React, { Suspense, useState, useCallback, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { TransactionsList } from "@/components/transactions-list";
 import { TransactionsFilter } from "@/components/transactions-filter";
@@ -12,7 +12,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { TransactionFilters } from "@/lib/types";
 
-export default function TransactionsPage() {
+function TransactionsPageContent() {
   const searchParams = useSearchParams();
   const [filters, setFilters] = useState<TransactionFilters>({});
   const [currency, setCurrency] = useState<string | undefined>(undefined);
@@ -90,5 +90,13 @@ export default function TransactionsPage() {
       <TransactionsFilter onFiltersChange={handleFiltersChange} initialFilters={filters} />
       <TransactionsList filters={filters} currency={currency} />
     </div>
+  );
+}
+
+export default function TransactionsPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading transactions...</div>}>
+      <TransactionsPageContent />
+    </Suspense>
   );
 }

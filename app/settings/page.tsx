@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import {
   Card,
@@ -19,7 +19,7 @@ import { useBrandedCards, useSettings } from "@/lib/settings-context";
 import { useSearchParams, useRouter } from "next/navigation";
 import { ExcludedKeywordsManagement } from "@/components/excluded-keywords-management";
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const paramTab = (searchParams.get("tab") as string) || "display";
@@ -161,5 +161,13 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading settings…</div>}>
+      <SettingsPageContent />
+    </Suspense>
   );
 }

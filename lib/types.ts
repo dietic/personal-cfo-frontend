@@ -431,3 +431,12 @@ export interface SignupStatsResponse {
   tz: string;
   data: SignupStatsPoint[];
 }
+
+export interface OTPVerifyRequest {
+  email: string;
+  code: string;
+}
+
+export interface OTPResendRequest {
+  email: string;
+}
