@@ -501,7 +501,14 @@ export function useDeleteStatementsBulk() {
       }
 
       const failureCount = failedIds.length;
-      return { successCount, failureCount, transactionsDeleted, total: statementIds.length, failedIds, successIds };
+      return {
+        successCount,
+        failureCount,
+        transactionsDeleted,
+        total: statementIds.length,
+        failedIds,
+        successIds,
+      };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
@@ -520,7 +527,8 @@ export function useDeleteStatementsBulk() {
       }
     },
     onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to delete statements";
+      const message =
+        error.response?.data?.detail || "Failed to delete statements";
       toast.error(message);
     },
   });

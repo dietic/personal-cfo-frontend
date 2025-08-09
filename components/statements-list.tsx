@@ -1,6 +1,16 @@
 "use client";
 
 import { DeleteStatementDialog } from "@/components/delete-statement-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,17 +38,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import {
   useDeleteStatementsBulk,
   useRecategorizeTransactions,
@@ -603,8 +603,8 @@ export function StatementsList() {
             <AlertDialogDescription>
               Are you sure you want to delete {selectedIds.size} selected
               statement{selectedIds.size === 1 ? "" : "s"}? This will also
-              delete all transactions associated with them. This action cannot be
-              undone.
+              delete all transactions associated with them. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="text-sm text-muted-foreground">
