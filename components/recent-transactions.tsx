@@ -1,5 +1,8 @@
 "use client";
 
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,18 +10,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCards, useCategoryColors, useTransactions } from "@/lib/hooks";
+import { format, parseISO } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { useTransactions, useCards } from "@/lib/hooks";
-import { format, parseISO } from "date-fns";
 
 export function RecentTransactions() {
   const { data: transactions, isLoading, error } = useTransactions();
   const { data: cards } = useCards();
+  const { getCategoryBadgeStyle } = useCategoryColors();
 
   // Create a map of card IDs to card names for display
   const cardMap =
@@ -45,28 +46,6 @@ export function RecentTransactions() {
       .join("")
       .toUpperCase()
       .slice(0, 2);
-  };
-
-  // Function to get badge color based on category
-  const getBadgeVariant = (category?: string | null) => {
-    if (!category) return "secondary";
-
-    switch (category.toLowerCase()) {
-      case "groceries":
-        return "default";
-      case "entertainment":
-        return "secondary";
-      case "transportation":
-      case "transport":
-        return "outline";
-      case "shopping":
-        return "destructive";
-      case "food":
-      case "dining":
-        return "default";
-      default:
-        return "secondary";
-    }
   };
 
   if (error) {
@@ -151,8 +130,21 @@ export function RecentTransactions() {
                     </AvatarFallback>
                   </Avatar>
                   <div>
-                    <p className="font-medium">{transaction.merchant}</p>
+                    <p className="font-medium">
+                      {transaction.description &&
+                      transaction.description !== transaction.merchant
+                        ? transaction.description
+                        : transaction.merchant}
+                    </p>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      {transaction.description &&
+                        transaction.description !== transaction.merchant &&
+                        transaction.merchant && (
+                          <>
+                            <span>{transaction.merchant}</span>
+                            <span>•</span>
+                          </>
+                        )}
                       <span>{formatDate(transaction.transaction_date)}</span>
                       <span>•</span>
                       <span>
@@ -162,7 +154,10 @@ export function RecentTransactions() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <Badge variant={getBadgeVariant(transaction.category)}>
+                  <Badge
+                    variant="secondary"
+                    style={getCategoryBadgeStyle(transaction.category)}
+                  >
                     {transaction.category || "Uncategorized"}
                   </Badge>
                   <div className="text-right">

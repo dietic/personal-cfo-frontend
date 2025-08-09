@@ -1,9 +1,16 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
-import { User, UserLogin, UserCreate, Token } from "@/lib/types";
 import { apiClient } from "@/lib/api-client";
+import { User, UserCreate, UserLogin } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { toast } from "sonner";
 
 // Helper function to decode JWT token
@@ -26,6 +33,24 @@ function decodeJWT(token: string) {
   }
 }
 
+function normalizeUser(partial: Partial<User>): User {
+  return {
+    id: partial.id ?? "current-user",
+    email: partial.email ?? "user@example.com",
+    first_name: partial.first_name,
+    last_name: partial.last_name,
+    name: partial.name,
+    phone_number: partial.phone_number,
+    profile_picture_url: partial.profile_picture_url,
+    preferred_currency: partial.preferred_currency ?? "PEN",
+    timezone: partial.timezone ?? "America/Lima",
+    is_active: partial.is_active ?? true,
+    is_admin: partial.is_admin ?? false,
+    created_at: partial.created_at ?? new Date().toISOString(),
+    updated_at: partial.updated_at,
+  };
+}
+
 interface AuthContextType {
   user: User | null;
   isLoading: boolean;
@@ -38,7 +63,9 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
@@ -50,21 +77,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const initAuth = async () => {
       try {
         if (apiClient.isAuthenticated()) {
-          // Try to refresh token to validate it's still valid
+          // Validate/refresh token
           await apiClient.refreshToken();
-          // Get user email from JWT token
-          const token = apiClient.getToken();
-          if (token) {
-            const payload = decodeJWT(token);
-            const email = payload?.sub || "user@example.com";
-            const name = payload?.name || payload?.username || payload?.full_name;
-            setUser({
-              id: "current-user",
-              email: email,
-              name: name,
-              is_active: true,
-              created_at: new Date().toISOString(),
-            });
+          // Try to fetch full profile (to get is_admin)
+          try {
+            const profile = await apiClient.getUserProfile();
+            setUser(normalizeUser(profile));
+          } catch (profileErr) {
+            console.warn(
+              "Failed to fetch profile; using JWT fallback",
+              profileErr
+            );
+            // Fallback to minimal user decoded from JWT
+            const token = apiClient.getToken();
+            if (token) {
+              const payload = decodeJWT(token);
+              const email = payload?.sub || "user@example.com";
+              const name =
+                payload?.name || payload?.username || payload?.full_name;
+              setUser(
+                normalizeUser({
+                  email,
+                  name,
+                })
+              );
+            }
           }
         }
       } catch (error) {
@@ -80,85 +117,102 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
   }, []);
 
-  const login = async (data: UserLogin) => {
-    try {
-      setIsLoading(true);
-      const tokenResponse = await apiClient.login(data);
+  const login = useCallback(
+    async (data: UserLogin) => {
+      try {
+        setIsLoading(true);
+        await apiClient.login(data);
 
-      // Extract user information from JWT token
-      const token = apiClient.getToken();
-      let name;
-      if (token) {
-        const payload = decodeJWT(token);
-        name = payload?.name || payload?.username || payload?.full_name;
+        // After login, try to fetch full profile
+        try {
+          const profile = await apiClient.getUserProfile();
+          setUser(normalizeUser(profile));
+        } catch (profileErr) {
+          console.warn(
+            "Failed to fetch profile post-login; using JWT fallback",
+            profileErr
+          );
+          // Fallback to minimal user from JWT
+          const token = apiClient.getToken();
+          let name: string | undefined;
+          if (token) {
+            const payload = decodeJWT(token);
+            name = payload?.name || payload?.username || payload?.full_name;
+          }
+          setUser(
+            normalizeUser({
+              email: data.email,
+              name,
+            })
+          );
+        }
+
+        toast.success("Login successful!");
+        router.push("/dashboard");
+      } catch (error: any) {
+        console.error("Login error:", error);
+        const message =
+          error.response?.data?.detail || error.message || "Login failed";
+        toast.error(message);
+        // Re-throw for forms
+        throw new Error(message);
+      } finally {
+        setIsLoading(false);
       }
+    },
+    [router]
+  );
 
-      // Create user object from login data since backend doesn't have /me endpoint
-      setUser({
-        id: "current-user",
-        email: data.email,
-        name: name,
-        is_active: true,
-        created_at: new Date().toISOString(),
-      });
+  const register = useCallback(
+    async (data: UserCreate) => {
+      try {
+        setIsLoading(true);
+        await apiClient.register(data);
 
-      toast.success("Login successful!");
-      router.push("/");
-    } catch (error: any) {
-      console.error("Login error:", error);
-      const message = error.response?.data?.detail || "Login failed";
-      toast.error(message);
-      // Re-throw the error so the form can catch it and display the error
-      throw new Error(message);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+        // After registration, log the user in
+        await login({ email: data.email, password: data.password });
 
-  const register = async (data: UserCreate) => {
-    try {
-      setIsLoading(true);
-      await apiClient.register(data);
+        toast.success("Registration successful!");
+      } catch (error: any) {
+        console.error("Registration error:", error);
+        const message = error.response?.data?.detail || "Registration failed";
+        toast.error(message);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [login]
+  );
 
-      // After registration, log the user in
-      await login({ email: data.email, password: data.password });
-
-      toast.success("Registration successful!");
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      const message = error.response?.data?.detail || "Registration failed";
-      toast.error(message);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
+  const logout = useCallback(() => {
     apiClient.logout();
     setUser(null);
     router.push("/login");
     toast.success("Logged out successfully");
-  };
+  }, [router]);
 
-  const refreshToken = async () => {
+  const refreshToken = useCallback(async () => {
     try {
       await apiClient.refreshToken();
     } catch (error) {
       logout();
       throw error;
     }
-  };
+  }, [logout]);
 
-  const value: AuthContextType = {
-    user,
-    isLoading,
-    isAuthenticated,
-    login,
-    register,
-    logout,
-    refreshToken,
-  };
+  const value: AuthContextType = useMemo(
+    () => ({
+      user,
+      isLoading,
+      isAuthenticated,
+      login,
+      register,
+      logout,
+      refreshToken,
+    }),
+    [user, isLoading, isAuthenticated, login, register, logout, refreshToken]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

@@ -1,10 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import dynamic from "next/dynamic";
+import React, { useState } from "react";
 
-export function QueryProvider({ children }: { children: React.ReactNode }) {
+const ReactQueryDevtools = dynamic(
+  () =>
+    import("@tanstack/react-query-devtools").then((m) => m.ReactQueryDevtools),
+  { ssr: false, loading: () => null }
+);
+
+export function QueryProvider({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -42,7 +50,9 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
   return (
     <QueryClientProvider client={queryClient}>
       {children}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {process.env.NODE_ENV === "development" ? (
+        <ReactQueryDevtools initialIsOpen={false} />
+      ) : null}
     </QueryClientProvider>
   );
 }

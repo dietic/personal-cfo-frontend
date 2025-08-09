@@ -1,14 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { BulkDeleteTransactionsDialog } from "@/components/bulk-delete-transactions-dialog";
+import { CategorySelect } from "@/components/category-select";
+import { DeleteTransactionDialog } from "@/components/delete-transaction-dialog";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,39 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import {
-  MoreHorizontal,
-  Search,
-  Tag,
-  MessageSquare,
-  Trash2,
-} from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -58,16 +23,56 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { useTransactions, useCards, useUpdateTransaction } from "@/lib/hooks";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  useCards,
+  useCategoryColors,
+  useTransactions,
+  useUpdateTransaction,
+} from "@/lib/hooks";
+import type { TransactionFilters } from "@/lib/types";
 import { Transaction } from "@/lib/types";
 import { format, parseISO } from "date-fns";
-import { CategorySelect } from "@/components/category-select";
-import { DeleteTransactionDialog } from "@/components/delete-transaction-dialog";
-import { BulkDeleteTransactionsDialog } from "@/components/bulk-delete-transactions-dialog";
-import type { TransactionFilters } from "@/lib/types";
+import {
+  MessageSquare,
+  MoreHorizontal,
+  Search,
+  Tag,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface TransactionsListProps {
   filters?: TransactionFilters;
@@ -91,7 +96,7 @@ export function TransactionsList({
   const [editingDescription, setEditingDescription] = useState("");
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
@@ -99,6 +104,7 @@ export function TransactionsList({
   const { data: transactions, isLoading, error } = useTransactions(filters);
   const { data: cards } = useCards();
   const updateTransactionMutation = useUpdateTransaction();
+  const { getCategoryBadgeStyle } = useCategoryColors();
 
   // Update search query when external search query changes
   useEffect(() => {
@@ -140,7 +146,10 @@ export function TransactionsList({
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedTransactions = filteredTransactions.slice(startIndex, endIndex);
+  const paginatedTransactions = filteredTransactions.slice(
+    startIndex,
+    endIndex
+  );
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -176,22 +185,6 @@ export function TransactionsList({
     }
   };
 
-  const getCategoryColor = (category?: string) => {
-    if (!category) return "secondary";
-
-    const colors: Record<string, string> = {
-      groceries: "bg-green-100 text-green-800",
-      dining: "bg-orange-100 text-orange-800",
-      transport: "bg-blue-100 text-blue-800",
-      shopping: "bg-purple-100 text-purple-800",
-      entertainment: "bg-pink-100 text-pink-800",
-      utilities: "bg-gray-100 text-gray-800",
-      healthcare: "bg-red-100 text-red-800",
-    };
-
-    return colors[category.toLowerCase()] || "secondary";
-  };
-
   const getInitials = (merchant: string) => {
     return merchant
       .split(" ")
@@ -216,15 +209,15 @@ export function TransactionsList({
     if (checked) {
       // Select all transactions on the current page
       const currentPageIds = paginatedTransactions.map((t) => t.id);
-      setSelectedTransactions(prev => [
-        ...prev.filter(id => !currentPageIds.includes(id)), // Keep selections from other pages
-        ...currentPageIds // Add all from current page
+      setSelectedTransactions((prev) => [
+        ...prev.filter((id) => !currentPageIds.includes(id)), // Keep selections from other pages
+        ...currentPageIds, // Add all from current page
       ]);
     } else {
       // Deselect all transactions on the current page
       const currentPageIds = paginatedTransactions.map((t) => t.id);
-      setSelectedTransactions(prev => 
-        prev.filter(id => !currentPageIds.includes(id))
+      setSelectedTransactions((prev) =>
+        prev.filter((id) => !currentPageIds.includes(id))
       );
     }
   };
@@ -348,10 +341,11 @@ export function TransactionsList({
           <div>
             <CardTitle>All Transactions</CardTitle>
             <CardDescription>
-              {totalItems === 0 
-                ? "No transactions found" 
-                : `Showing ${totalItems} transaction${totalItems === 1 ? '' : 's'}`
-              }
+              {totalItems === 0
+                ? "No transactions found"
+                : `Showing ${totalItems} transaction${
+                    totalItems === 1 ? "" : "s"
+                  }`}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -367,8 +361,13 @@ export function TransactionsList({
               </Button>
             )}
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Items per page:</span>
-              <Select value={itemsPerPage.toString()} onValueChange={handleItemsPerPageChange}>
+              <span className="text-sm text-muted-foreground">
+                Items per page:
+              </span>
+              <Select
+                value={itemsPerPage.toString()}
+                onValueChange={handleItemsPerPageChange}
+              >
                 <SelectTrigger className="w-20">
                   <SelectValue />
                 </SelectTrigger>
@@ -407,7 +406,7 @@ export function TransactionsList({
                       <Checkbox
                         checked={
                           paginatedTransactions.length > 0 &&
-                          paginatedTransactions.every(transaction =>
+                          paginatedTransactions.every((transaction) =>
                             selectedTransactions.includes(transaction.id)
                           )
                         }
@@ -426,252 +425,272 @@ export function TransactionsList({
                 </TableHeader>
                 <TableBody>
                   {paginatedTransactions.map((transaction) => (
-                  <TableRow key={transaction.id}>
-                    <TableCell>
-                      <Checkbox
-                        checked={selectedTransactions.includes(transaction.id)}
-                        onCheckedChange={(checked) =>
-                          handleSelectTransaction(
-                            transaction.id,
-                            checked as boolean
-                          )
-                        }
-                        aria-label={`Select transaction from ${transaction.merchant}`}
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>
-                            {getInitials(transaction.merchant)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">{transaction.merchant}</p>
-                          {transaction.description && (
-                            <p className="text-xs text-muted-foreground">
-                              {transaction.description}
-                            </p>
+                    <TableRow key={transaction.id}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedTransactions.includes(
+                            transaction.id
                           )}
+                          onCheckedChange={(checked) =>
+                            handleSelectTransaction(
+                              transaction.id,
+                              checked as boolean
+                            )
+                          }
+                          aria-label={`Select transaction from ${transaction.merchant}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback>
+                              {getInitials(transaction.merchant)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <p className="font-medium">
+                              {transaction.description &&
+                              transaction.description !== transaction.merchant
+                                ? transaction.description
+                                : transaction.merchant}
+                            </p>
+                            {transaction.description &&
+                              transaction.description !==
+                                transaction.merchant &&
+                              transaction.merchant && (
+                                <p className="text-xs text-muted-foreground">
+                                  {transaction.merchant}
+                                </p>
+                              )}
+                          </div>
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {formatDate(transaction.transaction_date)}
-                    </TableCell>
-                    <TableCell>
-                      {transaction.category ? (
-                        <Badge
-                          variant="secondary"
-                          className={getCategoryColor(transaction.category)}
-                        >
-                          {transaction.category}
+                      </TableCell>
+                      <TableCell>
+                        {formatDate(transaction.transaction_date)}
+                      </TableCell>
+                      <TableCell>
+                        {transaction.category ? (
+                          <Badge
+                            variant="secondary"
+                            style={getCategoryBadgeStyle(transaction.category)}
+                          >
+                            {transaction.category}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            Sin categoría
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {cardMap[transaction.card_id] || "Unknown Card"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="text-xs">
+                          {transaction.currency}
                         </Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">
-                          Sin categoría
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {cardMap[transaction.card_id] || "Unknown Card"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className="text-xs">
-                        {transaction.currency}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      -{formatAmount(transaction.amount, transaction.currency)}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <Dialog
-                            open={categoryDialogOpen}
-                            onOpenChange={setCategoryDialogOpen}
-                          >
-                            <DialogTrigger asChild>
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  handleEditCategory(transaction);
-                                }}
-                                className="flex items-center gap-2"
-                              >
-                                <Tag className="h-4 w-4" />
-                                Edit Category
-                              </DropdownMenuItem>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Edit Category</DialogTitle>
-                                <DialogDescription>
-                                  Select a category for this transaction from
-                                  the dropdown below.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="grid gap-4 py-4">
-                                <div className="grid gap-2">
-                                  <Label htmlFor="category">Category</Label>
-                                  <CategorySelect
-                                    value={editingCategory}
-                                    onValueChange={setEditingCategory}
-                                    placeholder="Search and select a category..."
-                                  />
-                                </div>
-                                {editingTransaction && (
-                                  <div className="text-sm text-muted-foreground">
-                                    <p>
-                                      <strong>Transaction:</strong>{" "}
-                                      {editingTransaction.merchant}
-                                    </p>
-                                    <p>
-                                      <strong>Amount:</strong> $
-                                      {editingTransaction.amount}
-                                    </p>
-                                    <p>
-                                      <strong>Current Category:</strong>{" "}
-                                      {editingTransaction.category || "None"}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                              <DialogFooter>
-                                <Button
-                                  variant="outline"
-                                  onClick={() => setCategoryDialogOpen(false)}
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  type="submit"
-                                  onClick={handleSaveCategory}
-                                  disabled={updateTransactionMutation.isPending}
-                                >
-                                  {updateTransactionMutation.isPending
-                                    ? "Saving..."
-                                    : "Save Changes"}
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-
-                          <Dialog
-                            open={descriptionDialogOpen}
-                            onOpenChange={setDescriptionDialogOpen}
-                          >
-                            <DialogTrigger asChild>
-                              <DropdownMenuItem
-                                onSelect={(e) => {
-                                  e.preventDefault();
-                                  handleEditDescription(transaction);
-                                }}
-                                className="flex items-center gap-2"
-                              >
-                                <MessageSquare className="h-4 w-4" />
-                                Edit Description
-                              </DropdownMenuItem>
-                            </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>Edit Description</DialogTitle>
-                                <DialogDescription>
-                                  Add or edit the description for this
-                                  transaction.
-                                </DialogDescription>
-                              </DialogHeader>
-                              <div className="grid gap-4 py-4">
-                                <div className="grid gap-2">
-                                  <Label htmlFor="description">
-                                    Description
-                                  </Label>
-                                  <Textarea
-                                    id="description"
-                                    value={editingDescription}
-                                    onChange={(e) =>
-                                      setEditingDescription(e.target.value)
-                                    }
-                                    placeholder="Add your description here..."
-                                    rows={3}
-                                  />
-                                </div>
-                                {editingTransaction && (
-                                  <div className="text-sm text-muted-foreground">
-                                    <p>
-                                      <strong>Transaction:</strong>{" "}
-                                      {editingTransaction.merchant}
-                                    </p>
-                                    <p>
-                                      <strong>Amount:</strong> $
-                                      {editingTransaction.amount}
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                              <DialogFooter>
-                                <Button
-                                  variant="outline"
-                                  onClick={() =>
-                                    setDescriptionDialogOpen(false)
-                                  }
-                                >
-                                  Cancel
-                                </Button>
-                                <Button
-                                  type="submit"
-                                  onClick={handleSaveDescription}
-                                  disabled={updateTransactionMutation.isPending}
-                                >
-                                  {updateTransactionMutation.isPending
-                                    ? "Saving..."
-                                    : "Save Description"}
-                                </Button>
-                              </DialogFooter>
-                            </DialogContent>
-                          </Dialog>
-
-                          <DeleteTransactionDialog transaction={transaction}>
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault();
-                              }}
-                              className="flex items-center gap-2 text-destructive focus:text-destructive"
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        -
+                        {formatAmount(transaction.amount, transaction.currency)}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <Dialog
+                              open={categoryDialogOpen}
+                              onOpenChange={setCategoryDialogOpen}
                             >
-                              <Trash2 className="h-4 w-4" />
-                              Delete Transaction
-                            </DropdownMenuItem>
-                          </DeleteTransactionDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    handleEditCategory(transaction);
+                                  }}
+                                  className="flex items-center gap-2"
+                                >
+                                  <Tag className="h-4 w-4" />
+                                  Edit Category
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Edit Category</DialogTitle>
+                                  <DialogDescription>
+                                    Select a category for this transaction from
+                                    the dropdown below.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="category">Category</Label>
+                                    <CategorySelect
+                                      value={editingCategory}
+                                      onValueChange={setEditingCategory}
+                                      placeholder="Search and select a category..."
+                                    />
+                                  </div>
+                                  {editingTransaction && (
+                                    <div className="text-sm text-muted-foreground">
+                                      <p>
+                                        <strong>Transaction:</strong>{" "}
+                                        {editingTransaction.merchant}
+                                      </p>
+                                      <p>
+                                        <strong>Amount:</strong> $
+                                        {editingTransaction.amount}
+                                      </p>
+                                      <p>
+                                        <strong>Current Category:</strong>{" "}
+                                        {editingTransaction.category || "None"}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                                <DialogFooter>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => setCategoryDialogOpen(false)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="submit"
+                                    onClick={handleSaveCategory}
+                                    disabled={
+                                      updateTransactionMutation.isPending
+                                    }
+                                  >
+                                    {updateTransactionMutation.isPending
+                                      ? "Saving..."
+                                      : "Save Changes"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+
+                            <Dialog
+                              open={descriptionDialogOpen}
+                              onOpenChange={setDescriptionDialogOpen}
+                            >
+                              <DialogTrigger asChild>
+                                <DropdownMenuItem
+                                  onSelect={(e) => {
+                                    e.preventDefault();
+                                    handleEditDescription(transaction);
+                                  }}
+                                  className="flex items-center gap-2"
+                                >
+                                  <MessageSquare className="h-4 w-4" />
+                                  Edit Description
+                                </DropdownMenuItem>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Edit Description</DialogTitle>
+                                  <DialogDescription>
+                                    Add or edit the description for this
+                                    transaction.
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <div className="grid gap-4 py-4">
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="description">
+                                      Description
+                                    </Label>
+                                    <Textarea
+                                      id="description"
+                                      value={editingDescription}
+                                      onChange={(e) =>
+                                        setEditingDescription(e.target.value)
+                                      }
+                                      placeholder="Add your description here..."
+                                      rows={3}
+                                    />
+                                  </div>
+                                  {editingTransaction && (
+                                    <div className="text-sm text-muted-foreground">
+                                      <p>
+                                        <strong>Transaction:</strong>{" "}
+                                        {editingTransaction.merchant}
+                                      </p>
+                                      <p>
+                                        <strong>Amount:</strong> $
+                                        {editingTransaction.amount}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                                <DialogFooter>
+                                  <Button
+                                    variant="outline"
+                                    onClick={() =>
+                                      setDescriptionDialogOpen(false)
+                                    }
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    type="submit"
+                                    onClick={handleSaveDescription}
+                                    disabled={
+                                      updateTransactionMutation.isPending
+                                    }
+                                  >
+                                    {updateTransactionMutation.isPending
+                                      ? "Saving..."
+                                      : "Save Description"}
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+
+                            <DeleteTransactionDialog transaction={transaction}>
+                              <DropdownMenuItem
+                                onSelect={(e) => {
+                                  e.preventDefault();
+                                }}
+                                className="flex items-center gap-2 text-destructive focus:text-destructive"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete Transaction
+                              </DropdownMenuItem>
+                            </DeleteTransactionDialog>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-            
+
             {/* Pagination Controls */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-2 py-4">
                 <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} transactions
+                  Showing {startIndex + 1} to {Math.min(endIndex, totalItems)}{" "}
+                  of {totalItems} transactions
                 </div>
                 <Pagination>
                   <PaginationContent>
                     <PaginationItem>
-                      <PaginationPrevious 
+                      <PaginationPrevious
                         onClick={() => handlePageChange(currentPage - 1)}
-                        className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        className={
+                          currentPage === 1
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
                       />
                     </PaginationItem>
-                    
+
                     {/* Page numbers */}
                     {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
                       let pageNumber;
@@ -686,7 +705,7 @@ export function TransactionsList({
                           pageNumber = currentPage - 2 + i;
                         }
                       }
-                      
+
                       return (
                         <PaginationItem key={pageNumber}>
                           <PaginationLink
@@ -699,11 +718,15 @@ export function TransactionsList({
                         </PaginationItem>
                       );
                     })}
-                    
+
                     <PaginationItem>
-                      <PaginationNext 
+                      <PaginationNext
                         onClick={() => handlePageChange(currentPage + 1)}
-                        className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                        className={
+                          currentPage === totalPages
+                            ? "pointer-events-none opacity-50"
+                            : "cursor-pointer"
+                        }
                       />
                     </PaginationItem>
                   </PaginationContent>

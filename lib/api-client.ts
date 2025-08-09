@@ -1,64 +1,62 @@
-import axios, { AxiosInstance, AxiosResponse } from "axios";
+import axios, { AxiosInstance } from "axios";
 import Cookies from "js-cookie";
 import {
+  AIInsight,
+  AdminUsersParams,
+  AnalyticsFilters,
+  AnalyticsResponse,
+  BankProvider,
+  BankProviderSimple,
+  Budget,
+  BudgetAlert,
+  BudgetCreate,
+  BudgetUpdate,
+  Card,
+  CardCreate,
+  CardUpdate,
+  CategorizationRequest,
+  CategorizationResponse,
+  CategorizeTransactionParams,
+  Category,
+  CategoryCreate,
+  CategoryKeywordCreate,
+  CategoryKeywordResponse,
+  CategoryKeywordUpdate,
+  CategoryKeywordsBulkCreate,
+  CategorySpending,
+  CategoryUpdate,
+  DetectAnomaliesParams,
+  ExcludedKeywordItem,
+  ExcludedKeywordListResponse,
+  ExtractionRequest,
+  ExtractionResponse,
+  RecurringService,
+  RecurringServiceCreate,
+  RecurringServiceUpdate,
+  SignupStatsResponse,
+  SpendingTrend,
+  Statement,
+  StatementProcess,
+  StatementStatusResponse,
+  ToggleUserActiveResponse,
   Token,
+  Transaction,
+  TransactionCreate,
+  TransactionFilters,
+  TransactionUpdate,
+  TrendsFilters,
   User,
   UserCreate,
   UserLogin,
   UserProfileUpdate,
-  Card,
-  CardCreate,
-  CardUpdate,
-  BankProvider,
-  BankProviderSimple,
-  Category,
-  CategoryCreate,
-  CategoryUpdate,
-  Transaction,
-  TransactionCreate,
-  TransactionUpdate,
-  TransactionFilters,
-  Budget,
-  BudgetCreate,
-  BudgetUpdate,
-  BudgetAlert,
-  RecurringService,
-  RecurringServiceCreate,
-  RecurringServiceUpdate,
-  Statement,
-  StatementProcess,
-  StatementStatusResponse,
-  ExtractionRequest,
-  ExtractionResponse,
-  CategorizationRequest,
-  CategorizationResponse,
-  AnalyticsResponse,
-  CategorySpending,
-  SpendingTrend,
   YearComparison,
-  AIInsight,
-  AnalyticsFilters,
-  TrendsFilters,
-  CategorizeTransactionParams,
-  DetectAnomaliesParams,
-  CategoryKeyword,
-  CategoryKeywordCreate,
-  CategoryKeywordUpdate,
-  CategoryKeywordsBulkCreate,
-  CategoryKeywordResponse,
-  NetworkProvider,
-  NetworkProviderCreate,
-  NetworkProviderUpdate,
-  CardType,
-  CardTypeCreate,
-  CardTypeUpdate,
 } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
 const TOKEN_KEY = "access_token";
 
 class APIClient {
-  private client: AxiosInstance;
+  private readonly client: AxiosInstance;
 
   constructor() {
     this.client = axios.create({
@@ -95,7 +93,9 @@ class APIClient {
             }
           }
         }
-        return Promise.reject(error);
+        const message =
+          error?.response?.data?.detail || error?.message || "Request failed";
+        return Promise.reject(new Error(message));
       }
     );
   }
@@ -148,12 +148,12 @@ class APIClient {
 
   // User profile endpoints
   async getUserProfile(): Promise<User> {
-    const response = await this.client.get<User>('/api/v1/users/profile');
+    const response = await this.client.get<User>("/api/v1/users/profile");
     return response.data;
   }
 
   async updateUserProfile(data: UserProfileUpdate): Promise<User> {
-    const response = await this.client.put<User>('/api/v1/users/profile', data);
+    const response = await this.client.put<User>("/api/v1/users/profile", data);
     return response.data;
   }
 
@@ -187,8 +187,8 @@ class APIClient {
 
   // Bank Providers endpoints
   async getBankProviders(queryParams?: string): Promise<BankProviderSimple[]> {
-    const url = queryParams 
-      ? `/api/v1/bank-providers/?${queryParams}` 
+    const url = queryParams
+      ? `/api/v1/bank-providers/?${queryParams}`
       : "/api/v1/bank-providers/";
     const response = await this.client.get<BankProviderSimple[]>(url);
     return response.data;
@@ -409,10 +409,17 @@ class APIClient {
   }
 
   // New simplified statement upload (extract + categorize in one step)
-  async uploadStatementSimple(file: File, cardId: string): Promise<Statement> {
+  async uploadStatementSimple(
+    file: File,
+    cardId: string,
+    password?: string
+  ): Promise<Statement> {
     const formData = new FormData();
     formData.append("file", file);
     formData.append("card_id", cardId);
+    if (password) {
+      formData.append("password", password);
+    }
 
     const response = await this.client.post<Statement>(
       "/api/v1/statements/upload-simple",
@@ -423,6 +430,87 @@ class APIClient {
         },
       }
     );
+    return response.data;
+  }
+
+  // NEW: Async statement upload - returns immediately, processes in background
+  async uploadStatementAsync(
+    file: File,
+    cardId: string,
+    password?: string
+  ): Promise<{
+    id: string;
+    filename: string;
+    status: string;
+    message: string;
+    created_at: string;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("card_id", cardId);
+    if (password) {
+      formData.append("password", password);
+    }
+
+    const response = await this.client.post(
+      "/api/v1/statements/upload-simple-async",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      }
+    );
+    return response.data;
+  }
+
+  // Check if PDF needs password
+  async checkPDFAccessibility(file: File): Promise<{
+    accessible: boolean;
+    encrypted: boolean;
+    pages: number;
+    error?: string;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await this.client.post<{
+      accessible: boolean;
+      encrypted: boolean;
+      pages: number;
+      error?: string;
+    }>("/api/v1/statements/check-pdf", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+    return response.data;
+  }
+
+  // Unlock password-protected PDF and upload
+  async unlockAndUploadPDF(
+    file: File,
+    password: string,
+    cardId: string
+  ): Promise<{
+    success: boolean;
+    message: string;
+    statement_id?: string;
+  }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("password", password);
+    formData.append("card_id", cardId);
+
+    const response = await this.client.post<{
+      success: boolean;
+      message: string;
+      statement_id?: string;
+    }>("/api/v1/statements/unlock-pdf", formData, {
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
     return response.data;
   }
 
@@ -462,7 +550,7 @@ class APIClient {
     statementId: string
   ): Promise<StatementStatusResponse> {
     const response = await this.client.get<StatementStatusResponse>(
-      `/api/v1/statements/${statementId}/status`
+      `/api/v1/statements/status/${statementId}`
     );
     return response.data;
   }
@@ -631,62 +719,79 @@ class APIClient {
     return response.data;
   }
 
+  // Excluded keywords endpoints
+  async getExcludedKeywords(): Promise<ExcludedKeywordListResponse> {
+    const response = await this.client.get<ExcludedKeywordListResponse>(
+      "/api/v1/user-settings/excluded-keywords/"
+    );
+    return response.data;
+  }
+
+  async addExcludedKeyword(keyword: string): Promise<ExcludedKeywordItem> {
+    const response = await this.client.post<ExcludedKeywordItem>(
+      "/api/v1/user-settings/excluded-keywords/",
+      { keyword }
+    );
+    return response.data;
+  }
+
+  async deleteExcludedKeyword(keywordId: string): Promise<void> {
+    await this.client.delete(
+      `/api/v1/user-settings/excluded-keywords/${keywordId}`
+    );
+  }
+
+  async resetExcludedKeywords(): Promise<ExcludedKeywordListResponse> {
+    const response = await this.client.post<ExcludedKeywordListResponse>(
+      "/api/v1/user-settings/excluded-keywords/reset",
+      {}
+    );
+    return response.data;
+  }
+
+  // Admin endpoints
+  async adminListUsers(params: AdminUsersParams = {}): Promise<User[]> {
+    const response = await this.client.get<User[]>("/api/v1/admin/users", {
+      params: {
+        limit: 25,
+        sort: "created_at",
+        order: "desc",
+        ...params,
+      },
+    });
+    return response.data;
+  }
+
+  async adminToggleUserActive(
+    userId: string,
+    isActive: boolean
+  ): Promise<ToggleUserActiveResponse> {
+    const response = await this.client.patch<ToggleUserActiveResponse>(
+      `/api/v1/admin/users/${userId}`,
+      { is_active: isActive }
+    );
+    return response.data;
+  }
+
+  async adminSignupStats(
+    start?: string,
+    end?: string,
+    tz: string = "America/Lima"
+  ): Promise<SignupStatsResponse> {
+    const response = await this.client.get<SignupStatsResponse>(
+      "/api/v1/admin/stats/signups",
+      {
+        params: { start, end, tz },
+      }
+    );
+    return response.data;
+  }
+
   // Health check
   async healthCheck(): Promise<any> {
     const response = await this.client.get("/health");
     return response.data;
   }
-
-  // Network Providers
-  async getNetworkProviders(countryCode?: string, activeOnly: boolean = true): Promise<NetworkProvider[]> {
-    const params = new URLSearchParams();
-    if (countryCode) params.append('country_code', countryCode);
-    if (activeOnly !== undefined) params.append('active_only', activeOnly.toString());
-    
-    const response = await this.client.get<NetworkProvider[]>(`/api/v1/network-providers/?${params}`);
-    return response.data;
-  }
-
-  async createNetworkProvider(data: NetworkProviderCreate): Promise<NetworkProvider> {
-    const response = await this.client.post<NetworkProvider>("/api/v1/network-providers/", data);
-    return response.data;
-  }
-
-  async getNetworkProvider(networkProviderId: string): Promise<NetworkProvider> {
-    const response = await this.client.get<NetworkProvider>(`/api/v1/network-providers/${networkProviderId}`);
-    return response.data;
-  }
-
-  async updateNetworkProvider(networkProviderId: string, data: NetworkProviderUpdate): Promise<NetworkProvider> {
-    const response = await this.client.put<NetworkProvider>(`/api/v1/network-providers/${networkProviderId}`, data);
-    return response.data;
-  }
-
-  // Card Types
-  async getCardTypes(countryCode?: string, activeOnly: boolean = true): Promise<CardType[]> {
-    const params = new URLSearchParams();
-    if (countryCode) params.append('country_code', countryCode);
-    if (activeOnly !== undefined) params.append('active_only', activeOnly.toString());
-    
-    const response = await this.client.get<CardType[]>(`/api/v1/card-types/?${params}`);
-    return response.data;
-  }
-
-  async createCardType(data: CardTypeCreate): Promise<CardType> {
-    const response = await this.client.post<CardType>("/api/v1/card-types/", data);
-    return response.data;
-  }
-
-  async getCardType(cardTypeId: string): Promise<CardType> {
-    const response = await this.client.get<CardType>(`/api/v1/card-types/${cardTypeId}`);
-    return response.data;
-  }
-
-  async updateCardType(cardTypeId: string, data: CardTypeUpdate): Promise<CardType> {
-    const response = await this.client.put<CardType>(`/api/v1/card-types/${cardTypeId}`, data);
-    return response.data;
-  }
-
 }
 
 // Export singleton instance

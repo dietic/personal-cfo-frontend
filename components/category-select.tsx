@@ -1,8 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Check, ChevronsUpDown, Search } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -17,8 +14,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useCategories } from "@/lib/hooks";
-import { Category } from "@/lib/types";
+import { useCategories, useCategoryColors } from "@/lib/hooks";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { useState } from "react";
 
 interface CategorySelectProps {
   value?: string;
@@ -35,6 +34,7 @@ export function CategorySelect({
 }: CategorySelectProps) {
   const [open, setOpen] = useState(false);
   const { data: categories, isLoading } = useCategories();
+  const { getCategoryColor } = useCategoryColors();
 
   const selectedCategory = categories?.find((cat) => cat.name === value);
 
@@ -50,6 +50,12 @@ export function CategorySelect({
         >
           {selectedCategory ? (
             <span className="flex items-center gap-2">
+              <div
+                className="w-3 h-3 rounded-full"
+                style={{
+                  backgroundColor: getCategoryColor(selectedCategory.name),
+                }}
+              />
               <span className="truncate">{selectedCategory.name}</span>
             </span>
           ) : (
@@ -75,7 +81,13 @@ export function CategorySelect({
                     setOpen(false);
                   }}
                 >
-                  <div className="flex flex-col gap-1 flex-1">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{
+                        backgroundColor: getCategoryColor(category.name),
+                      }}
+                    />
                     <span className="font-medium">{category.name}</span>
                   </div>
                   <Check

@@ -12,7 +12,10 @@ interface CreditCardProps {
     name: string;
     type: string;
     lastFour: string;
+    balance?: number; // Made optional since backend doesn't provide it directly
+    limit?: number;
     dueDate?: string;
+    utilization?: number;
     alerts: Array<{ type: string; message: string }>;
     network?: "visa" | "mastercard" | "amex" | "discover";
     color?: string;
@@ -30,55 +33,23 @@ interface CreditCardProps {
 export function CreditCard({ card, className }: CreditCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
 
-  // Get card styling - either custom CSS gradient or Tailwind classes
+  // Default gradient based on card network
   const getCardGradient = () => {
-    // If we have a custom color (CSS gradient), use it
-    if (card.color && card.color.startsWith('linear-gradient')) {
-      return { 
-        background: card.color,
-        className: ''
-      };
-    }
-    
-    // If we have a Tailwind gradient class, use it
-    if (card.color) {
-      return {
-        background: '',
-        className: card.color
-      };
-    }
+    if (card.color) return card.color;
 
-    // Default gradients based on network
     switch (card.network) {
       case "visa":
-        return {
-          background: '',
-          className: "from-blue-600 to-blue-900 dark:from-blue-500 dark:to-blue-800"
-        };
+        return "from-blue-600 to-blue-900 dark:from-blue-500 dark:to-blue-800";
       case "mastercard":
-        return {
-          background: '',
-          className: "from-orange-500 to-red-600 dark:from-orange-400 dark:to-red-500"
-        };
+        return "from-orange-500 to-red-600 dark:from-orange-400 dark:to-red-500";
       case "amex":
-        return {
-          background: '',
-          className: "from-emerald-500 to-teal-700 dark:from-emerald-400 dark:to-teal-600"
-        };
+        return "from-emerald-500 to-teal-700 dark:from-emerald-400 dark:to-teal-600";
       case "discover":
-        return {
-          background: '',
-          className: "from-amber-500 to-orange-600 dark:from-amber-400 dark:to-orange-500"
-        };
+        return "from-amber-500 to-orange-600 dark:from-amber-400 dark:to-orange-500";
       default:
-        return {
-          background: '',
-          className: "from-slate-700 to-slate-900 dark:from-slate-600 dark:to-slate-800"
-        };
+        return "from-slate-700 to-slate-900 dark:from-slate-600 dark:to-slate-800";
     }
   };
-
-  const cardStyle = getCardGradient();
 
   // Format card number with spaces
   const formatCardNumber = () => {
@@ -105,20 +76,14 @@ export function CreditCard({ card, className }: CreditCardProps) {
           className={cn(
             "absolute w-full h-full backface-hidden rounded-xl p-5 shadow-lg",
             "bg-gradient-to-br text-white",
-            cardStyle.className
+            getCardGradient()
           )}
-          style={cardStyle.background ? { background: cardStyle.background } : {}}
         >
           <div className="flex flex-col h-full justify-between">
             <div className="flex justify-between items-start">
               <div className="flex flex-col">
                 <span className="text-xs opacity-80">{card.type}</span>
                 <span className="font-bold text-lg">{card.name}</span>
-                {card.bankProvider && (
-                  <span className="text-xs opacity-70 mt-1">
-                    {card.bankProvider.short_name || card.bankProvider.name}
-                  </span>
-                )}
               </div>
 
               {card.alerts.length > 0 && (
@@ -172,16 +137,51 @@ export function CreditCard({ card, className }: CreditCardProps) {
           className={cn(
             "absolute w-full h-full backface-hidden rounded-xl p-5 shadow-lg rotate-y-180",
             "bg-gradient-to-br text-white",
-            cardStyle.className
+            getCardGradient()
           )}
-          style={cardStyle.background ? { background: cardStyle.background } : {}}
         >
           <div className="flex flex-col h-full justify-between">
             <div className="w-full h-10 bg-black/30 -mx-5 mt-4"></div>
 
             <div className="space-y-3">
+              <div className="flex justify-between text-sm">
+                <span>Balance</span>
+                <span className="font-medium">
+                  ${(card.balance || 0).toLocaleString()}
+                </span>
+              </div>
+
+              {card.limit && (
+                <div className="flex justify-between text-sm">
+                  <span>Limit</span>
+                  <span className="font-medium">
+                    ${card.limit.toLocaleString()}
+                  </span>
+                </div>
+              )}
+
+              {card.utilization !== undefined && (
+                <div>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span>Utilization</span>
+                    <span>{card.utilization}%</span>
+                  </div>
+                  <Progress
+                    value={card.utilization}
+                    className="h-2 bg-white/20"
+                    indicatorClassName={`${
+                      card.utilization > 70
+                        ? "bg-red-400"
+                        : card.utilization > 30
+                        ? "bg-amber-400"
+                        : "bg-green-400"
+                    }`}
+                  />
+                </div>
+              )}
+
               {card.dueDate && (
-                <div className="flex items-center gap-1 text-xs">
+                <div className="flex items-center gap-1 text-xs mt-1">
                   <Calendar className="h-3 w-3" />
                   <span>Due: {card.dueDate}</span>
                 </div>

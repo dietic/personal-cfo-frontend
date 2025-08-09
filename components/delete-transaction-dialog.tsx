@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,7 +13,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useDeleteTransaction } from "@/lib/hooks";
 import { Transaction } from "@/lib/types";
-import { toast } from "sonner";
+import { useState } from "react";
 
 interface DeleteTransactionDialogProps {
   transaction: Transaction;
@@ -46,8 +44,12 @@ export function DeleteTransactionDialog({
         <AlertDialogHeader>
           <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this transaction from "
-            {transaction.merchant}"? This action cannot be undone.
+            Are you sure you want to delete this transaction "
+            {transaction.description &&
+            transaction.description !== transaction.merchant
+              ? transaction.description
+              : transaction.merchant}
+            "? This action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="text-sm text-muted-foreground">

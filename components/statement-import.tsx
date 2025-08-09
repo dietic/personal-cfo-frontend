@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
-import { useDropzone } from "react-dropzone";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -9,9 +9,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -19,8 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -30,68 +36,61 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Upload,
-  FileText,
-  Check,
-  X,
-  AlertCircle,
-  Download,
-  Eye,
-  RefreshCw,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Loader2,
-  Brain,
-  Tag,
-  TrendingUp,
-} from "lucide-react";
-import {
   useCards,
-  useStatements,
-  useUploadStatement,
-  useUploadStatementSimple,
-  useProcessStatement,
-  useStatementStatus,
-  useExtractTransactions,
   useCategorizeTransactions,
+  useCheckPDFAccessibility,
+  useExtractTransactions,
+  useProcessStatement,
+  useStatements,
+  useStatementStatus,
+  useUploadStatementAsync,
 } from "@/lib/hooks";
-import { useQueryClient } from "@tanstack/react-query";
 import {
-  Statement,
-  ExtractionRequest,
   CategorizationRequest,
+  ExtractionRequest,
+  Statement,
 } from "@/lib/types";
-import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  AlertCircle,
+  Brain,
+  Eye,
+  FileText,
+  Loader2,
+  Lock,
+  RefreshCw,
+  Tag,
+  TrendingUp,
+  Unlock,
+  Upload,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
+import { useDropzone } from "react-dropzone";
+import { toast } from "sonner";
 
 export function StatementImport() {
+  const router = useRouter();
   const [selectedCard, setSelectedCard] = useState<string>("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedStatement, setSelectedStatement] = useState<Statement | null>(
-    null
-  );
   const [processingStatement, setProcessingStatement] = useState<string | null>(
     null
   );
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
+  const [passwordFile, setPasswordFile] = useState<File | null>(null);
+  const [password, setPassword] = useState("");
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
   const queryClient = useQueryClient();
   const { data: cards } = useCards();
   const { data: statements, refetch: refetchStatements } = useStatements();
-  const uploadMutation = useUploadStatement();
-  const uploadSimpleMutation = useUploadStatementSimple();
+  const uploadAsyncMutation = useUploadStatementAsync();
   const processMutation = useProcessStatement();
   const extractMutation = useExtractTransactions();
   const categorizeMutation = useCategorizeTransactions();
+  const checkPDFMutation = useCheckPDFAccessibility();
 
   // Status polling for processing statements
   const { data: statusData } = useStatementStatus(
@@ -111,7 +110,7 @@ export function StatementImport() {
       if (isComplete) {
         setProcessingStatement(null);
         refetchStatements();
-        
+
         // Invalidate transactions cache to refresh the transactions list
         queryClient.invalidateQueries({ queryKey: ["transactions"] });
         queryClient.invalidateQueries({ queryKey: ["analytics"] });
@@ -151,31 +150,83 @@ export function StatementImport() {
 
       try {
         setIsUploading(true);
+        setUploadProgress(10);
+
+        // First, check if PDF needs password
+        console.log(
+          "🔍 Checking PDF accessibility for file:",
+          file.name,
+          "Size:",
+          file.size
+        );
+
+        let pdfStatus;
+        try {
+          pdfStatus = await checkPDFMutation.mutateAsync(file);
+          console.log("✅ PDF Status received:", pdfStatus);
+        } catch (checkError) {
+          console.error("❌ PDF check failed:", checkError);
+          // If PDF check fails, assume it's not password protected and continue
+          console.log("⚠️ PDF check failed, assuming not password protected");
+          pdfStatus = { accessible: true, encrypted: false, pages: 0 };
+        }
+
         setUploadProgress(20);
 
-        console.log("Using simplified upload endpoint with card:", selectedCard);
+        if (pdfStatus.encrypted && !pdfStatus.accessible) {
+          // PDF is password protected - show password dialog
+          console.log("🔒 PDF is password protected, showing password dialog");
+          console.log("📄 PDF Status:", pdfStatus);
+          setPasswordFile(file);
+          setShowPasswordDialog(true);
+          setIsUploading(false);
+          setUploadProgress(0);
+          return;
+        }
 
-        // Use the API client method with card selection
-        const result = await uploadSimpleMutation.mutateAsync({ 
-          file, 
-          cardId: selectedCard 
+        console.log("📖 PDF is accessible, proceeding with async upload...");
+        console.log("📄 PDF Status:", pdfStatus);
+        setUploadProgress(30);
+
+        // Use the async upload method for unprotected PDFs
+        const result = await uploadAsyncMutation.mutateAsync({
+          file,
+          cardId: selectedCard,
         });
-        console.log("✅ Simplified upload successful, result:", result);
+        console.log("✅ Async upload successful, result:", result);
 
-        setUploadProgress(80);
+        setUploadProgress(50);
+
+        // Start polling for processing status
+        setProcessingStatement(result.id);
 
         setUploadProgress(100);
 
         // Refresh statements list
         await refetchStatements();
 
+        // Show success message and redirect to statements page
         toast.success(
-          `Statement processed successfully! ${result.filename} has been imported.`
+          `Statement "${result.filename}" is being processed in the background. You'll be notified when it's complete.`
         );
+
+        // Redirect to statements page immediately
+        router.push("/statements");
       } catch (error: any) {
         console.error("Upload error:", error);
 
         let errorMessage = "Failed to process statement";
+
+        // Handle specific error cases
+        if (error.response?.status === 423) {
+          // PDF is password protected but we missed it somehow
+          setPasswordFile(file);
+          setShowPasswordDialog(true);
+          setIsUploading(false);
+          setUploadProgress(0);
+          return;
+        }
+
         if (error.message) {
           errorMessage = error.message;
         }
@@ -186,11 +237,67 @@ export function StatementImport() {
         setTimeout(() => setUploadProgress(0), 2000);
       }
     },
-    [selectedCard, uploadSimpleMutation, refetchStatements]
+    [selectedCard, uploadAsyncMutation, checkPDFMutation, refetchStatements]
   );
 
+  const handlePasswordSubmit = async () => {
+    if (!passwordFile || !password.trim() || !selectedCard) {
+      toast.error("Please provide all required information");
+      return;
+    }
+
+    try {
+      setIsUnlocking(true);
+
+      console.log("Attempting to unlock and process PDF with password...");
+      const result = await uploadAsyncMutation.mutateAsync({
+        file: passwordFile,
+        cardId: selectedCard,
+        password: password.trim(),
+      });
+
+      console.log("✅ PDF uploaded and processing started");
+
+      // Start polling for processing status
+      setProcessingStatement(result.id);
+
+      // Close dialog and reset state
+      setShowPasswordDialog(false);
+      setPasswordFile(null);
+      setPassword("");
+
+      // Refresh statements list
+      await refetchStatements();
+
+      // Show success message and redirect to statements page
+      toast.success(
+        `Statement "${result.filename}" is being processed in the background. You'll be notified when it's complete.`
+      );
+
+      // Redirect to statements page immediately
+      router.push("/statements");
+    } catch (error: any) {
+      console.error("Unlock error:", error);
+      let errorMessage = "Failed to unlock PDF";
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      toast.error(errorMessage);
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  const handlePasswordCancel = () => {
+    setShowPasswordDialog(false);
+    setPasswordFile(null);
+    setPassword("");
+  };
+
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
+    onDrop: (files) => {
+      void onDrop(files);
+    },
     accept: {
       "application/pdf": [".pdf"],
     },
@@ -403,7 +510,7 @@ export function StatementImport() {
               <SelectContent>
                 {cards?.map((card) => (
                   <SelectItem key={card.id} value={card.id}>
-                    {card.card_name} ({card.card_type})
+                    {card.card_name} ({card.bank_provider?.name || "Unknown"})
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -536,7 +643,10 @@ export function StatementImport() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 flex-shrink-0" />
-                          <span className="font-medium truncate min-w-0 max-w-[180px]" title={statement.filename}>
+                          <span
+                            className="font-medium truncate min-w-0 max-w-[180px]"
+                            title={statement.filename}
+                          >
                             {statement.filename}
                           </span>
                         </div>
@@ -650,8 +760,8 @@ export function StatementImport() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => {
-                                  setSelectedStatement(statement);
                                   // Insights functionality temporarily disabled
+                                  // setSelectedStatement(statement);
                                 }}
                                 className="flex items-center gap-1"
                               >
@@ -663,7 +773,10 @@ export function StatementImport() {
                             </DialogTrigger>
                             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                               <DialogHeader>
-                                <DialogTitle className="truncate" title={`Statement Details - ${statement.filename}`}>
+                                <DialogTitle
+                                  className="truncate"
+                                  title={`Statement Details - ${statement.filename}`}
+                                >
                                   Statement Details - {statement.filename}
                                 </DialogTitle>
                                 <DialogDescription>
@@ -778,6 +891,72 @@ export function StatementImport() {
           )}
         </CardContent>
       </Card>
+
+      {/* Password Dialog for Protected PDFs */}
+      <Dialog open={showPasswordDialog} onOpenChange={setShowPasswordDialog}>
+        <DialogContent className="sm:max-w-lg md:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-5 w-5" />
+              PDF Password Required
+            </DialogTitle>
+            <DialogDescription>
+              This PDF is password protected. Please enter the password to
+              unlock and process it.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="pdf-password">Password</Label>
+              <Input
+                id="pdf-password"
+                type="password"
+                placeholder="Enter PDF password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handlePasswordSubmit();
+                  }
+                }}
+              />
+            </div>
+
+            {passwordFile && (
+              <div className="text-sm text-muted-foreground">
+                File: {passwordFile.name}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={handlePasswordCancel}
+                disabled={isUnlocking}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePasswordSubmit}
+                disabled={!password.trim() || isUnlocking}
+              >
+                {isUnlocking ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Unlocking...
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="mr-2 h-4 w-4" />
+                    Unlock & Upload
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

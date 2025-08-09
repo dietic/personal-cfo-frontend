@@ -1,15 +1,22 @@
 // API Types based on the backend OpenAPI specification
 
+// Reusable alias for numeric-or-string inputs used across forms
+export type NumStr = number | string;
+
 export interface User {
   email: string;
   id: string;
   first_name?: string;
   last_name?: string;
+  // Optional display name decoded from JWT or composed in UI
+  name?: string;
   phone_number?: string;
   profile_picture_url?: string;
   preferred_currency: string;
   timezone: string;
   is_active: boolean;
+  // Admin flag (RBAC)
+  is_admin: boolean;
   created_at: string;
   updated_at?: string;
 }
@@ -65,30 +72,22 @@ export interface Card {
   user_id: string;
   card_name: string;
   payment_due_date?: string | null;
-  network_provider_id?: string | null;  // Reference to NetworkProvider
-  bank_provider_id?: string | null;     // Reference to BankProvider
-  card_type_id?: string | null;         // Reference to CardType
+  bank_provider_id?: string | null; // Reference to BankProvider
   // Full related entity details from API
-  network_provider?: NetworkProviderSimple | null;
   bank_provider?: BankProviderSimple | null;
-  card_type?: CardTypeSimple | null;
   created_at: string;
 }
 
 export interface CardCreate {
   card_name: string;
   payment_due_date?: string | null;
-  network_provider_id?: string | null;
   bank_provider_id?: string | null;
-  card_type_id?: string | null;
 }
 
 export interface CardUpdate {
   card_name?: string | null;
   payment_due_date?: string | null;
-  network_provider_id?: string | null;
   bank_provider_id?: string | null;
-  card_type_id?: string | null;
 }
 
 export interface Transaction {
@@ -107,7 +106,7 @@ export interface Transaction {
 
 export interface TransactionCreate {
   merchant: string;
-  amount: number | string;
+  amount: NumStr;
   currency?: string;
   category?: string | null;
   transaction_date: string;
@@ -118,7 +117,7 @@ export interface TransactionCreate {
 
 export interface TransactionUpdate {
   merchant?: string | null;
-  amount?: number | string | null;
+  amount?: NumStr | null;
   category?: string | null;
   transaction_date?: string | null;
   tags?: string[] | null;
@@ -137,14 +136,14 @@ export interface Budget {
 
 export interface BudgetCreate {
   category: string;
-  limit_amount: number | string;
+  limit_amount: NumStr;
   currency: string;
   month: string;
 }
 
 export interface BudgetUpdate {
   category?: string | null;
-  limit_amount?: number | string | null;
+  limit_amount?: NumStr | null;
   currency?: string | null;
   month?: string | null;
 }
@@ -169,7 +168,7 @@ export interface RecurringService {
 
 export interface RecurringServiceCreate {
   name: string;
-  amount: number | string;
+  amount: NumStr;
   due_date: string;
   category?: string | null;
   reminder_days?: number | null;
@@ -177,7 +176,7 @@ export interface RecurringServiceCreate {
 
 export interface RecurringServiceUpdate {
   name?: string | null;
-  amount?: number | string | null;
+  amount?: NumStr | null;
   due_date?: string | null;
   category?: string | null;
   reminder_days?: number | null;
@@ -389,94 +388,44 @@ export interface BankProviderSimple {
   name: string;
   short_name?: string | null;
   country: string;
-  is_popular: boolean;  // Added for sorting popular banks first
-  color_primary?: string | null;  // Added for card theming
-  color_secondary?: string | null;  // Added for card theming
+  is_popular: boolean; // Added for sorting popular banks first
+  color_primary?: string | null; // Added for card theming
+  color_secondary?: string | null; // Added for card theming
   display_name?: string; // Computed property
 }
 
-// Network Provider interfaces (like Visa, Mastercard)
-export interface NetworkProvider {
+export interface ExcludedKeywordItem {
   id: string;
-  name: string;
-  short_name?: string | null;
-  country: string;
+  keyword: string;
+  created_at?: string;
+}
+
+export interface ExcludedKeywordListResponse {
+  items: ExcludedKeywordItem[];
+}
+
+// Admin types
+export interface AdminUsersParams {
+  q?: string;
+  limit?: number; // default 25
+  offset?: number;
+  sort?: string; // default created_at
+  order?: "asc" | "desc"; // default desc
+}
+
+export interface ToggleUserActiveResponse {
+  id: string;
   is_active: boolean;
-  color_primary?: string | null;
-  color_secondary?: string | null;
-  logo_url?: string | null;
 }
 
-export interface NetworkProviderSimple {
-  id: string;
-  name: string;
-  short_name?: string | null;
-  country: string;
-  color_primary?: string | null;
-  color_secondary?: string | null;
+export interface SignupStatsPoint {
+  day: string; // ISO date YYYY-MM-DD
+  count: number;
 }
 
-export interface NetworkProviderCreate {
-  name: string;
-  short_name?: string | null;
-  country?: string;
-  is_active?: boolean;
-  color_primary?: string | null;
-  color_secondary?: string | null;
-  logo_url?: string | null;
-}
-
-export interface NetworkProviderUpdate {
-  name?: string | null;
-  short_name?: string | null;
-  country?: string | null;
-  is_active?: boolean | null;
-  color_primary?: string | null;
-  color_secondary?: string | null;
-  logo_url?: string | null;
-}
-
-// Card Type interfaces (Credit Card, Debit Card, etc.)
-export interface CardType {
-  id: string;
-  name: string;
-  short_name?: string | null;
-  country: string;
-  is_active: boolean;
-  description?: string | null;
-  typical_interest_rate?: string | null;
-  color_primary?: string | null;
-  color_secondary?: string | null;
-}
-
-export interface CardTypeSimple {
-  id: string;
-  name: string;
-  short_name?: string | null;
-  country: string;
-  description?: string | null;
-  color_primary?: string | null;
-  color_secondary?: string | null;
-}
-
-export interface CardTypeCreate {
-  name: string;
-  short_name?: string | null;
-  country?: string;
-  is_active?: boolean;
-  description?: string | null;
-  typical_interest_rate?: string | null;
-  color_primary?: string | null;
-  color_secondary?: string | null;
-}
-
-export interface CardTypeUpdate {
-  name?: string | null;
-  short_name?: string | null;
-  country?: string | null;
-  is_active?: boolean | null;
-  description?: string | null;
-  typical_interest_rate?: string | null;
-  color_primary?: string | null;
-  color_secondary?: string | null;
+export interface SignupStatsResponse {
+  start: string;
+  end: string;
+  tz: string;
+  data: SignupStatsPoint[];
 }

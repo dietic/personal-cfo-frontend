@@ -11,9 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth-context";
+import { useRouter } from "next/navigation";
 
 export function UserNav() {
   const { user, logout } = useAuth();
@@ -56,8 +55,19 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem 
-            className="cursor-pointer" 
+          {user.is_admin && (
+            <DropdownMenuItem
+              className="cursor-pointer"
+              onSelect={(e) => {
+                e.preventDefault();
+                router.push("/admin");
+              }}
+            >
+              Admin
+            </DropdownMenuItem>
+          )}
+          <DropdownMenuItem
+            className="cursor-pointer"
             onSelect={(e) => {
               e.preventDefault();
               handleProfileClick();
@@ -65,7 +75,7 @@ export function UserNav() {
           >
             Profile
           </DropdownMenuItem>
-          <DropdownMenuItem 
+          <DropdownMenuItem
             className="cursor-pointer"
             onSelect={(e) => {
               e.preventDefault();

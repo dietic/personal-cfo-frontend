@@ -1,10 +1,12 @@
-import type React from "react";
+import { DashboardLayout } from "@/components/dashboard-layout";
+import { PageFade } from "@/components/page-fade";
+import { Providers } from "@/components/providers";
+import RouteTransition from "@/components/route-transition";
+import { Toaster } from "@/components/ui/sonner";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import type React from "react";
 import "./globals.css";
-import { Providers } from "@/components/providers";
-import { DashboardLayout } from "@/components/dashboard-layout";
-import { Toaster } from "@/components/ui/sonner";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,7 +26,10 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <Providers>
-          <DashboardLayout>{children}</DashboardLayout>
+          <RouteTransition />
+          <DashboardLayout>
+            <PageFade>{children}</PageFade>
+          </DashboardLayout>
           <Toaster />
         </Providers>
       </body>

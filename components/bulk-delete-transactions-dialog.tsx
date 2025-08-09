@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,7 +70,11 @@ export function BulkDeleteTransactionsDialog({
             <ul className="list-disc pl-4 space-y-1">
               {transactions.slice(0, 5).map((transaction, index) => (
                 <li key={transaction.id} className="text-xs">
-                  {transaction.merchant} - ${transaction.amount}
+                  {transaction.description &&
+                  transaction.description !== transaction.merchant
+                    ? transaction.description
+                    : transaction.merchant}{" "}
+                  - ${transaction.amount}
                 </li>
               ))}
               {transactions.length > 5 && (

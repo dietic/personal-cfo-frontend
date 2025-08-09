@@ -1,23 +1,11 @@
 "use client";
 
-import type React from "react";
-import { useEffect } from "react";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarProvider,
-  SidebarTrigger,
-} from "@/components/ui/sidebar";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
+import RouteLoader from "@/components/route-loader";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
-import { UserNav } from "@/components/user-nav";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,25 +14,41 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
-  LayoutDashboard,
-  CreditCard,
-  Receipt,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
+import { UserNav } from "@/components/user-nav";
+import { useAuth } from "@/lib/auth-context";
+import {
   BarChart3,
-  PiggyBank,
-  Settings,
-  LogOut,
-  User,
-  Sparkles,
   CalendarClock,
-  Loader2,
+  CreditCard,
   FileText,
+  LayoutDashboard,
+  Loader2,
+  LogOut,
+  PiggyBank,
+  Receipt,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  User,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth-context";
+import type React from "react";
+import { useEffect } from "react";
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
+export function DashboardLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, isLoading, user, logout } = useAuth();
@@ -55,11 +59,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   // Public routes that don't require authentication
   const publicRoutes = [
+    "/",
     "/login",
     "/signup",
     "/forgot-password",
     "/terms",
     "/privacy",
+    "/landing",
+    "/forbidden",
   ];
   const isPublicRoute = publicRoutes.includes(pathname);
 
@@ -99,8 +106,8 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  const menuItems = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/" },
+  const baseMenuItems = [
+    { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
     { title: "Cards", icon: CreditCard, href: "/cards" },
     { title: "Transactions", icon: Receipt, href: "/transactions" },
     { title: "Statements", icon: FileText, href: "/statements" },
@@ -109,6 +116,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
     { title: "Budget", icon: PiggyBank, href: "/budget" },
     { title: "Settings", icon: Settings, href: "/settings" },
   ];
+
+  // No hook here to avoid changing hooks order with early returns above
+  const menuItems = user?.is_admin
+    ? [...baseMenuItems, { title: "Admin", icon: ShieldCheck, href: "/admin" }]
+    : baseMenuItems;
 
   return (
     <SidebarProvider>
@@ -220,7 +232,10 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               <UserNav />
             </div>
           </header>
-          <main className="flex-1 overflow-auto p-6">{children}</main>
+          <main className="relative flex-1 overflow-auto p-6">
+            <RouteLoader variant="content" />
+            {children}
+          </main>
         </div>
       </div>
     </SidebarProvider>

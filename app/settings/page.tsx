@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/page-header";
 import {
   Card,
@@ -12,15 +12,31 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Tag, Settings, Key, Palette } from "lucide-react";
+import { Bell, Tag, Key, Palette, Ban } from "lucide-react";
 import { SimpleCategoriesManagement } from "@/components/simple-categories-management";
 import { KeywordManagement } from "@/components/keyword-management";
 import { useBrandedCards, useSettings } from "@/lib/settings-context";
+import { useSearchParams, useRouter } from "next/navigation";
+import { ExcludedKeywordsManagement } from "@/components/excluded-keywords-management";
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState("display");
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const paramTab = (searchParams.get("tab") as string) || "display";
+  const [activeTab, setActiveTab] = useState(paramTab);
   const { updateSetting } = useSettings();
   const brandedCards = useBrandedCards();
+
+  useEffect(() => {
+    // Keep URL in sync when tab changes
+    const current = searchParams.get("tab");
+    if (activeTab !== current) {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", activeTab);
+      router.replace(url.toString());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   return (
     <div className="flex flex-col gap-6">
@@ -34,7 +50,7 @@ export default function SettingsPage() {
         onValueChange={setActiveTab}
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger
             value="display"
             className="flex items-center gap-2"
@@ -56,6 +72,10 @@ export default function SettingsPage() {
           <TabsTrigger value="keywords" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
             Keywords
+          </TabsTrigger>
+          <TabsTrigger value="excluded" className="flex items-center gap-2">
+            <Ban className="h-4 w-4" />
+            Excluded keywords
           </TabsTrigger>
         </TabsList>
 
@@ -79,7 +99,7 @@ export default function SettingsPage() {
                       Show authentic bank colors on your cards instead of generic styling
                     </p>
                   </div>
-                  <Switch 
+                  <Switch
                     checked={brandedCards}
                     onCheckedChange={(checked) => updateSetting('brandedCards', checked)}
                   />
@@ -134,6 +154,10 @@ export default function SettingsPage() {
 
         <TabsContent value="keywords" className="space-y-6">
           <KeywordManagement />
+        </TabsContent>
+
+        <TabsContent value="excluded" className="space-y-6">
+          <ExcludedKeywordsManagement />
         </TabsContent>
       </Tabs>
     </div>

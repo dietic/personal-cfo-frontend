@@ -1,5 +1,10 @@
 "use client";
 
+import { AddCardDialog } from "@/components/add-card-dialog";
+import { CreditCard } from "@/components/credit-card";
+import { DeleteCardDialog } from "@/components/delete-card-dialog";
+import { EditCardDialog } from "@/components/edit-card-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,92 +13,75 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  CreditCardIcon,
-  MoreHorizontal,
-  Edit,
-  Trash2,
-  Plus,
-} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { CreditCard } from "@/components/credit-card";
-import { useCards } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card as BackendCard } from "@/lib/types";
-import { AddCardDialog } from "@/components/add-card-dialog";
-import { EditCardDialog } from "@/components/edit-card-dialog";
-import { DeleteCardDialog } from "@/components/delete-card-dialog";
-import { useRouter } from "next/navigation";
+import { useCards } from "@/lib/hooks";
 import { useBrandedCards } from "@/lib/settings-context";
+import { Card as BackendCard } from "@/lib/types";
+import {
+  CreditCardIcon,
+  Edit,
+  MoreHorizontal,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useRouter } from "next/navigation";
 
 // Transform backend card to frontend card format with conditional bank provider colors
 function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
   // Generate theme-aware Tailwind classes for bank colors - respecting user's branded cards preference
   const getCardGradient = () => {
     const bankProvider = backendCard.bank_provider;
-    
+
     // If branded cards are disabled, always use the generic gradient
     if (!useBrandedColors) {
       return "from-slate-600 to-slate-800 dark:from-slate-500 dark:to-slate-700"; // Generic gradient that adapts to theme
     }
-    
+
     // If branded cards are enabled, use authentic bank colors with theme support
     if (bankProvider?.color_primary && bankProvider?.color_secondary) {
       // Map bank colors to Tailwind classes that support light/dark themes
       const bankColorMap: Record<string, string> = {
         // BCP: Deep blue to orange
-        "bcp": "from-blue-900 to-orange-600 dark:from-blue-800 dark:to-orange-500",
+        bcp: "from-blue-900 to-orange-600 dark:from-blue-800 dark:to-orange-500",
         // Interbank: Green gradient
-        "interbank": "from-green-700 to-green-500 dark:from-green-600 dark:to-green-400", 
+        interbank:
+          "from-green-700 to-green-500 dark:from-green-600 dark:to-green-400",
         // BBVA: Blue gradient
-        "bbva continental": "from-blue-800 to-blue-600 dark:from-blue-700 dark:to-blue-500",
+        "bbva continental":
+          "from-blue-800 to-blue-600 dark:from-blue-700 dark:to-blue-500",
         // Scotiabank: Red gradient
-        "scotiabank": "from-red-700 to-red-500 dark:from-red-600 dark:to-red-400",
+        scotiabank: "from-red-700 to-red-500 dark:from-red-600 dark:to-red-400",
         // Diners: Navy to light blue
-        "diners": "from-blue-900 to-blue-500 dark:from-blue-800 dark:to-blue-400",
+        diners: "from-blue-900 to-blue-500 dark:from-blue-800 dark:to-blue-400",
       };
-      
-      const bankKey = bankProvider.short_name?.toLowerCase() || '';
+
+      const bankKey = bankProvider.short_name?.toLowerCase() || "";
       if (bankColorMap[bankKey]) {
         return bankColorMap[bankKey];
       }
     }
-    
-    // Fallback to network-based colors if no bank provider
-    const networkName = backendCard.network_provider?.name?.toLowerCase();
-    switch (networkName) {
-      case "visa":
-        return "linear-gradient(135deg, #1a365d 0%, #2d5a87 100%)"; // Visa blue gradient
-      case "mastercard":
-        return "linear-gradient(135deg, #eb5424 0%, #f2994a 100%)"; // Mastercard orange gradient
-      case "american express":
-        return "linear-gradient(135deg, #006fcf 0%, #003d82 100%)"; // Amex blue gradient
-      case "discover":
-        return "linear-gradient(135deg, #ff6900 0%, #fcb900 100%)"; // Discover orange gradient
-      default:
-        return "linear-gradient(135deg, #374151 0%, #1f2937 100%)"; // Default gray gradient
-    }
+
+    // Fallback to default color scheme
+    return "linear-gradient(135deg, #374151 0%, #1f2937 100%)"; // Default gray gradient
   };
 
   return {
     id: backendCard.id,
     name: backendCard.card_name,
-    type: backendCard.card_type?.name || "Credit Card", // Extract the name from the object
+    type: "Credit Card", // Simplified since we removed card types
     lastFour: "****", // Simple identifier, not critical for expense tracking
+    balance: 0, // Backend doesn't provide balance directly - would need to calculate from transactions
+    limit: 5000, // Default limit - could be added to backend later
     dueDate: backendCard.payment_due_date || undefined,
+    utilization: 0, // Would need to calculate from transactions
     alerts: [], // For future alerts implementation
-    network:
-      (backendCard.network_provider?.name?.toLowerCase() as
-        | "visa"
-        | "mastercard"
-        | "amex"
-        | "discover") || "visa",
+    network: "visa" as const, // Default network since we removed network providers
     color: getCardGradient(),
     bankProvider: backendCard.bank_provider, // Pass bank provider data
   };
@@ -104,7 +92,8 @@ export function CardsList() {
   const router = useRouter();
   const brandedCards = useBrandedCards(); // Get the user's branded cards preference
 
-  const cards = backendCards?.map(card => transformCard(card, brandedCards)) || [];
+  const cards =
+    backendCards?.map((card) => transformCard(card, brandedCards)) || [];
 
   // Handle navigation to transactions with card filter
   const handleViewTransactions = (cardId: string, cardName: string) => {
@@ -164,13 +153,13 @@ export function CardsList() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-[repeat(auto-fit,minmax(350px,400px))] gap-6 justify-center">
       {cards.map((card) => {
         // Find the original backend card for the dialogs
         const backendCard = backendCards?.find((bc) => bc.id === card.id);
 
         return (
-          <Card key={card.id} className="overflow-hidden">
+          <Card key={card.id} className="overflow-hidden w-full">
             <CardHeader className="flex flex-row items-start justify-between">
               <div>
                 <CardTitle className="flex items-center gap-2">
@@ -218,10 +207,12 @@ export function CardsList() {
               <CreditCard card={card} />
             </CardContent>
             <CardFooter>
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full"
-                onClick={() => handleViewTransactions(card.id.toString(), card.name)}
+                onClick={() =>
+                  handleViewTransactions(card.id.toString(), card.name)
+                }
               >
                 View Transactions
               </Button>

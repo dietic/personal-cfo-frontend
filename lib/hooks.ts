@@ -1,46 +1,39 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import {
-  User,
-  UserProfileUpdate,
-  Card,
-  CardCreate,
-  CardUpdate,
-  BankProvider,
-  BankProviderSimple,
-  Category,
-  CategoryCreate,
-  CategoryUpdate,
-  Transaction,
-  TransactionCreate,
-  TransactionUpdate,
-  TransactionFilters,
-  Budget,
+  AdminUsersParams,
+  AnalyticsFilters,
   BudgetCreate,
   BudgetUpdate,
-  RecurringService,
-  RecurringServiceCreate,
-  RecurringServiceUpdate,
-  Statement,
-  ExtractionRequest,
+  CardCreate,
+  CardUpdate,
   CategorizationRequest,
-  AnalyticsFilters,
-  TrendsFilters,
   CategorizeTransactionParams,
-  DetectAnomaliesParams,
+  CategoryCreate,
   CategoryKeywordCreate,
   CategoryKeywordUpdate,
   CategoryKeywordsBulkCreate,
-  CategoryKeywordResponse,
-  NetworkProvider,
-  NetworkProviderCreate,
-  NetworkProviderUpdate,
-  CardType,
-  CardTypeCreate,
-  CardTypeUpdate,
+  CategoryUpdate,
+  DetectAnomaliesParams,
+  ExtractionRequest,
+  RecurringServiceCreate,
+  RecurringServiceUpdate,
+  SignupStatsResponse,
+  ToggleUserActiveResponse,
+  TransactionCreate,
+  TransactionFilters,
+  TransactionUpdate,
+  TrendsFilters,
+  User,
+  UserProfileUpdate,
 } from "@/lib/types";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type QueryKey,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
 
 // Query Keys
@@ -48,7 +41,7 @@ export const queryKeys = {
   userProfile: ["user", "profile"] as const,
   cards: ["cards"] as const,
   card: (id: string) => ["cards", id] as const,
-  bankProviders: (country?: string, popularOnly?: boolean) => 
+  bankProviders: (country?: string, popularOnly?: boolean) =>
     ["bank-providers", country, popularOnly] as const,
   bankProvider: (id: string) => ["bank-providers", id] as const,
   categories: ["categories"] as const,
@@ -75,6 +68,11 @@ export const queryKeys = {
     yearComparison: ["analytics", "comparison"] as const,
     insights: ["analytics", "insights"] as const,
   },
+  admin: {
+    users: (params?: AdminUsersParams) => ["admin", "users", params] as const,
+    signupStats: (start?: string, end?: string, tz: string = "America/Lima") =>
+      ["admin", "signup-stats", { start, end, tz }] as const,
+  },
 };
 
 // User Profile Hooks
@@ -95,7 +93,8 @@ export function useUpdateUserProfile() {
       toast.success("Profile updated successfully");
     },
     onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to update profile";
+      const message =
+        error.response?.data?.detail || "Failed to update profile";
       toast.error(message);
     },
   });
@@ -174,9 +173,9 @@ export function useBankProviders(country?: string, popularOnly?: boolean) {
     queryFn: () => {
       // Build query parameters
       const params = new URLSearchParams();
-      if (country) params.append('country', country);
-      if (popularOnly) params.append('popular_only', 'true');
-      
+      if (country) params.append("country", country);
+      if (popularOnly) params.append("popular_only", "true");
+
       return apiClient.getBankProviders(params.toString());
     },
     staleTime: 1000 * 60 * 30, // 30 minutes - bank data doesn't change often
@@ -479,6 +478,54 @@ export function useDeleteStatement() {
   });
 }
 
+// NEW: Bulk delete statements
+export function useDeleteStatementsBulk() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (statementIds: string[]) => {
+      let successCount = 0;
+      let transactionsDeleted = 0;
+      const failedIds: string[] = [];
+      const successIds: string[] = [];
+
+      for (const id of statementIds) {
+        try {
+          const res = await apiClient.deleteStatement(id);
+          successCount += 1;
+          transactionsDeleted += res.transactions_deleted || 0;
+          successIds.push(id);
+        } catch (_err) {
+          failedIds.push(id);
+        }
+      }
+
+      const failureCount = failedIds.length;
+      return { successCount, failureCount, transactionsDeleted, total: statementIds.length, failedIds, successIds };
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+
+      if (result.successCount > 0) {
+        toast.success(
+          `Deleted ${result.successCount} statement(s). Removed ${result.transactionsDeleted} transactions.`
+        );
+      }
+      if (result.failureCount > 0) {
+        toast.warning(
+          `${result.failureCount} of ${result.total} statement(s) failed to delete.`
+        );
+      }
+    },
+    onError: (error: any) => {
+      const message = error.response?.data?.detail || "Failed to delete statements";
+      toast.error(message);
+    },
+  });
+}
+
 export function useUploadStatement() {
   const queryClient = useQueryClient();
 
@@ -501,7 +548,15 @@ export function useUploadStatementSimple() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ file, cardId }: { file: File; cardId: string }) => apiClient.uploadStatementSimple(file, cardId),
+    mutationFn: ({
+      file,
+      cardId,
+      password,
+    }: {
+      file: File;
+      cardId: string;
+      password?: string;
+    }) => apiClient.uploadStatementSimple(file, cardId, password),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
@@ -511,6 +566,69 @@ export function useUploadStatementSimple() {
     onError: (error: any) => {
       const message =
         error.response?.data?.detail || "Failed to process statement";
+      toast.error(message);
+    },
+  });
+}
+
+// NEW: Async upload hook - returns immediately, processes in background
+export function useUploadStatementAsync() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      file,
+      cardId,
+      password,
+    }: {
+      file: File;
+      cardId: string;
+      password?: string;
+    }) => apiClient.uploadStatementAsync(file, cardId, password),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to upload statement";
+      toast.error(message);
+    },
+  });
+}
+
+export function useCheckPDFAccessibility() {
+  return useMutation({
+    mutationFn: (file: File) => apiClient.checkPDFAccessibility(file),
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to check PDF accessibility";
+      toast.error(message);
+    },
+  });
+}
+
+export function useUnlockAndUploadPDF() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      file,
+      password,
+      cardId,
+    }: {
+      file: File;
+      password: string;
+      cardId: string;
+    }) => apiClient.unlockAndUploadPDF(file, password, cardId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.statements });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+      toast.success("PDF unlocked and processed successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || "Failed to unlock and process PDF";
       toast.error(message);
     },
   });
@@ -617,7 +735,9 @@ export function useRecategorizeTransactions() {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
       const totalProcessed = data.transactions_categorized + data.uncategorized;
-      toast.success(`Recategorized ${data.transactions_categorized} of ${totalProcessed} transactions`);
+      toast.success(
+        `Recategorized ${data.transactions_categorized} of ${totalProcessed} transactions`
+      );
     },
     onError: (error: any) => {
       const message =
@@ -732,6 +852,33 @@ export function useCategory(categoryId: string) {
     queryFn: () => apiClient.getCategory(categoryId),
     enabled: !!categoryId,
   });
+}
+
+// Custom hook to get category color mapping
+export function useCategoryColors() {
+  const { data: categories } = useCategories();
+
+  const getCategoryColor = (categoryName?: string | null) => {
+    if (!categoryName || !categories) return "#64748b"; // Default color
+
+    const category = categories.find((cat) => cat.name === categoryName);
+    return category?.color || "#64748b"; // Default color if not found
+  };
+
+  const getCategoryBadgeStyle = (categoryName?: string | null) => {
+    const color = getCategoryColor(categoryName);
+    return {
+      backgroundColor: color + "20", // 20% opacity
+      color: color,
+      borderColor: color + "40", // 40% opacity
+    };
+  };
+
+  return {
+    getCategoryColor,
+    getCategoryBadgeStyle,
+    categories,
+  };
 }
 
 // Currencies Hooks
@@ -916,84 +1063,59 @@ export function useSeedDefaultKeywords() {
   });
 }
 
-// Network Providers hooks
-export function useNetworkProviders(countryCode?: string, activeOnly: boolean = true) {
+// Admin Hooks
+export function useAdminUsers(params?: AdminUsersParams) {
   return useQuery({
-    queryKey: ["network-providers", countryCode, activeOnly],
-    queryFn: () => apiClient.getNetworkProviders(countryCode, activeOnly),
+    queryKey: queryKeys.admin.users(params),
+    queryFn: () => apiClient.adminListUsers(params ?? {}),
   });
 }
 
-export function useCreateNetworkProvider() {
+export function useToggleUserActive() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: NetworkProviderCreate) => apiClient.createNetworkProvider(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["network-providers"] });
-      toast.success("Network provider created successfully");
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
+      apiClient.adminToggleUserActive(userId, isActive),
+    onMutate: async ({ userId, isActive }) => {
+      await queryClient.cancelQueries({ queryKey: ["admin", "users"] });
+      const prev = queryClient.getQueriesData<User[]>({
+        queryKey: ["admin", "users"],
+      });
+      // Optimistic update across all cached admin user lists
+      prev.forEach(([key, users]) => {
+        if (!users) return;
+        const updated = users.map((u) =>
+          u.id === userId ? { ...u, is_active: isActive } : u
+        );
+        queryClient.setQueryData<User[]>(key, updated);
+      });
+      return { prev } as { prev: Array<[QueryKey, User[] | undefined]> };
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to create network provider";
-      toast.error(message);
+    onError: (_err, _vars, context) => {
+      // Rollback
+      const prev = context as { prev: Array<[QueryKey, User[] | undefined]> };
+      prev?.prev?.forEach(([key, data]) => {
+        if (data) queryClient.setQueryData<User[]>(key, data);
+      });
+      toast.error("Failed to update user status");
     },
-  });
-}
-
-export function useUpdateNetworkProvider() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ networkProviderId, data }: { networkProviderId: string; data: NetworkProviderUpdate }) =>
-      apiClient.updateNetworkProvider(networkProviderId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["network-providers"] });
-      toast.success("Network provider updated successfully");
+    onSuccess: (_data: ToggleUserActiveResponse) => {
+      toast.success("User status updated");
     },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to update network provider";
-      toast.error(message);
-    },
-  });
-}
-
-// Card Types hooks
-export function useCardTypes(countryCode?: string, activeOnly: boolean = true) {
-  return useQuery({
-    queryKey: ["card-types", countryCode, activeOnly],
-    queryFn: () => apiClient.getCardTypes(countryCode, activeOnly),
-  });
-}
-
-export function useCreateCardType() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (data: CardTypeCreate) => apiClient.createCardType(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["card-types"] });
-      toast.success("Card type created successfully");
-    },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to create card type";
-      toast.error(message);
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
     },
   });
 }
 
-export function useUpdateCardType() {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ cardTypeId, data }: { cardTypeId: string; data: CardTypeUpdate }) =>
-      apiClient.updateCardType(cardTypeId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["card-types"] });
-      toast.success("Card type updated successfully");
-    },
-    onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to update card type";
-      toast.error(message);
-    },
+export function useAdminSignupStats(
+  start?: string,
+  end?: string,
+  tz: string = "America/Lima"
+) {
+  return useQuery<SignupStatsResponse>({
+    queryKey: queryKeys.admin.signupStats(start, end, tz),
+    queryFn: () => apiClient.adminSignupStats(start, end, tz),
   });
 }
