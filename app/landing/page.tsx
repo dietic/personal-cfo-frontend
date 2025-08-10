@@ -163,7 +163,7 @@ export default function LandingPage() {
               },
               {
                 title: "Auto-Categorization",
-                desc: "AI-powered keyword detection automatically sorts your transactions into custom categories.",
+                desc: 'Deterministic, user-defined keyword rules categorize transactions. Include/exclude rules supported; unmatched stay "Uncategorized".',
                 emoji: "⚡",
               },
               {
