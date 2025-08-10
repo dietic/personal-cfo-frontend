@@ -68,9 +68,6 @@ export default function LandingRoot() {
         </div>
 
         <div className="relative z-10 mx-auto max-w-4xl text-center">
-          <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-xs text-slate-600 backdrop-blur dark:border-white/10 dark:bg-white/5 dark:text-white/80">
-            <span>✨ Trusted by 50,000+ users</span>
-          </div>
           <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-6xl">
             <span className="block">Take Control of Your</span>
             <span className="block bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent dark:from-sky-400 dark:to-blue-500">
@@ -303,69 +300,6 @@ export default function LandingRoot() {
             >
               See all features →
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials */}
-      <section
-        id="reviews"
-        className="bg-background pb-20 text-foreground dark:bg-[#0E1528] dark:text-white"
-      >
-        <div className="mx-auto max-w-6xl px-6">
-          <div className="mb-10 text-center">
-            <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg:white/10 dark:text-white/80">
-              Testimonials
-            </span>
-            <h2 className="mt-4 text-3xl font-extrabold sm:text-4xl">
-              Loved by Thousands of Users
-            </h2>
-          </div>
-
-          <div className="grid gap-6 md:grid-cols-3">
-            {[
-              {
-                name: "Sarah Martinez",
-                role: "Small Business Owner",
-                quote:
-                  "FinanceCFO transformed how I manage my money. The automatic categorization saves me hours every month!",
-                initials: "SM",
-              },
-              {
-                name: "Michael Johnson",
-                role: "Software Engineer",
-                quote:
-                  "The budgeting features are incredible. I've saved over $2,000 this year just by tracking my spending better.",
-                initials: "MJ",
-              },
-              {
-                name: "Emily Chen",
-                role: "Marketing Manager",
-                quote:
-                  "Finally, a financial app that actually understands my needs. The alerts have saved me from overdraft fees multiple times.",
-                initials: "EC",
-              },
-            ].map((t) => (
-              <figure
-                key={t.name}
-                className="reveal-up rounded-xl border border-slate-200 bg-white p-6 shadow-sm dark:border-white/10 dark:bg-black/20"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold dark:bg:white/10">
-                    {t.initials}
-                  </div>
-                  <div>
-                    <div className="font-medium">{t.name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      {t.role}
-                    </div>
-                  </div>
-                </div>
-                <blockquote className="mt-4 text-sm text-muted-foreground">
-                  “{t.quote}”
-                </blockquote>
-              </figure>
-            ))}
           </div>
         </div>
       </section>
