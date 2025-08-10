@@ -105,7 +105,9 @@ export default function LandingPage() {
               className="inline-flex items-center rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:translate-y-[-1px] hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
             >
               <span>Get Started Free</span>
-              <span aria-hidden className="ml-2">↗</span>
+              <span aria-hidden className="ml-2">
+                ↗
+              </span>
             </Link>
             <Link
               href="#pricing"
@@ -133,15 +135,22 @@ export default function LandingPage() {
       </section>
 
       {/* Features */}
-      <section id="features" className="bg-background py-20 text-foreground dark:bg-[#0E1528] dark:text-white">
+      <section
+        id="features"
+        className="bg-background py-20 text-foreground dark:bg-[#0E1528] dark:text-white"
+      >
         <div className="mx-auto max-w-5xl px-6">
           <div className="mb-10 text-center">
             <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-white/10 dark:text-white/80">
               Features
             </span>
-            <h2 className="mt-4 text-3xl font-extrabold sm:text-4xl">Everything You Need to Master Your Money</h2>
+            <h2 className="mt-4 text-3xl font-extrabold sm:text-4xl">
+              Everything You Need to Master Your Money
+            </h2>
             <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
-              From automatic transaction categorization to advanced budgeting, FinanceCFO gives you the tools to make informed financial decisions.
+              From automatic transaction categorization to advanced budgeting,
+              FinanceCFO gives you the tools to make informed financial
+              decisions.
             </p>
           </div>
 
@@ -194,7 +203,10 @@ export default function LandingPage() {
       </section>
 
       {/* Pricing */}
-      <section id="pricing" className="bg-background py-20 text-foreground dark:bg-[#0E1528] dark:text-white">
+      <section
+        id="pricing"
+        className="bg-background py-20 text-foreground dark:bg-[#0E1528] dark:text-white"
+      >
         <div className="mx-auto max-w-6xl px-6">
           <div className="mb-10 text-center">
             <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-white/10 dark:text-white/80">
