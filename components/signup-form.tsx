@@ -13,11 +13,10 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { apiClient } from "@/lib/api-client";
 import { clearPendingVerification } from "@/lib/auth-constants";
 import { useAuth } from "@/lib/auth-context";
-import { CheckCircle, Eye, EyeOff, Github, Lock, Mail } from "lucide-react";
+import { CheckCircle, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
@@ -322,27 +321,6 @@ export function SignupForm() {
                 disabled={isLoading || !agreeTerms}
               >
                 {isLoading ? "Creating account..." : "Create Account"}
-              </Button>
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">
-                    Or continue with
-                  </span>
-                </div>
-              </div>
-
-              <Button
-                variant="outline"
-                type="button"
-                className="w-full"
-                disabled
-              >
-                <Github className="mr-2 h-4 w-4" />
-                GitHub (Coming Soon)
               </Button>
             </CardContent>
             <CardFooter className="flex justify-center">
