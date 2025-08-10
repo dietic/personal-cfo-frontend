@@ -75,6 +75,9 @@ export interface Card {
   bank_provider_id?: string | null; // Reference to BankProvider
   // Full related entity details from API
   bank_provider?: BankProviderSimple | null;
+  // Optional metadata
+  card_type?: string | null;
+  network_provider?: string | null;
   created_at: string;
 }
 
@@ -88,6 +91,8 @@ export interface CardUpdate {
   card_name?: string | null;
   payment_due_date?: string | null;
   bank_provider_id?: string | null;
+  card_type?: string | null;
+  network_provider?: string | null;
 }
 
 export interface Transaction {

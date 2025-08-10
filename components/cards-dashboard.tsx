@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCards } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { useBrandedCards } from "@/lib/settings-context";
 import { Card as BackendCard } from "@/lib/types";
 import { CreditCardIcon, Plus } from "lucide-react";
@@ -74,6 +75,7 @@ function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
 export function CardsDashboard() {
   const { data: backendCards, isLoading, error } = useCards();
   const useBrandedColors = useBrandedCards(); // Get the user preference
+  const { t } = useI18n();
 
   // Transform cards with the user's color preference
   const cards =
@@ -85,17 +87,15 @@ export function CardsDashboard() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <CreditCardIcon className="h-5 w-5 text-primary" />
-            Cards Overview
+            {t("cards.overview.title")}
           </CardTitle>
-          <CardDescription>
-            Manage your cards and track balances
-          </CardDescription>
+          <CardDescription>{t("cards.overview.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Failed to load cards</p>
+            <p className="text-muted-foreground">{t("cards.loadFailed")}</p>
             <Button variant="outline" onClick={() => window.location.reload()}>
-              Try again
+              {t("cards.retry")}
             </Button>
           </div>
         </CardContent>
@@ -110,17 +110,15 @@ export function CardsDashboard() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <CreditCardIcon className="h-5 w-5 text-primary" />
-              Cards Overview
+              {t("cards.overview.title")}
             </CardTitle>
-            <CardDescription>
-              Manage your cards and track balances
-            </CardDescription>
+            <CardDescription>{t("cards.overview.description")}</CardDescription>
           </div>
           {cards && cards.length > 0 && (
             <AddCardDialog>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Card
+                {t("cards.addCard")}
               </Button>
             </AddCardDialog>
           )}
@@ -143,11 +141,11 @@ export function CardsDashboard() {
           </div>
         ) : (
           <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">No cards found</p>
+            <p className="text-muted-foreground mb-4">{t("cards.noCards")}</p>
             <AddCardDialog>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Card
+                {t("cards.addCard")}
               </Button>
             </AddCardDialog>
           </div>

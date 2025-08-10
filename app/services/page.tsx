@@ -1,11 +1,18 @@
-import { PageHeader } from "@/components/page-header"
-import { RecurringServices } from "@/components/recurring-services"
+import { RecurringServices } from "@/components/recurring-services";
+import { tServer } from "@/lib/i18n-server";
+import type { Metadata } from "next";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: `${tServer("recurring.page.title")} - PersonalCFO`,
+    description: tServer("recurring.page.description"),
+  };
+}
 
 export default function ServicesPage() {
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Recurring Services" description="Manage your monthly service payments and subscriptions" />
       <RecurringServices />
     </div>
-  )
+  );
 }

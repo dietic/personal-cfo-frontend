@@ -11,6 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useDeleteTransactionsBulk } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { Transaction } from "@/lib/types";
 
 interface BulkDeleteTransactionsDialogProps {
@@ -27,6 +28,7 @@ export function BulkDeleteTransactionsDialog({
   onSuccess,
 }: BulkDeleteTransactionsDialogProps) {
   const deleteMutation = useDeleteTransactionsBulk();
+  const { t } = useI18n();
 
   const handleDelete = async () => {
     try {
@@ -49,23 +51,27 @@ export function BulkDeleteTransactionsDialog({
     <AlertDialog open={open} onOpenChange={onOpenChange}>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Multiple Transactions</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("transactions.bulkDelete.title")}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete {transactions.length} selected
-            transaction{transactions.length > 1 ? "s" : ""}? This action cannot
-            be undone.
+            {t("transactions.bulkDelete.description", {
+              count: String(transactions.length),
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="text-sm text-muted-foreground space-y-2">
           <p>
-            <strong>Total transactions:</strong> {transactions.length}
+            <strong>{t("transactions.bulkDelete.totalTransactions")}:</strong>{" "}
+            {transactions.length}
           </p>
           <p>
-            <strong>Total amount:</strong> ${totalAmount.toFixed(2)}
+            <strong>{t("transactions.bulkDelete.totalAmount")}:</strong> $
+            {totalAmount.toFixed(2)}
           </p>
           <div className="max-h-32 overflow-y-auto">
             <p>
-              <strong>Transactions:</strong>
+              <strong>{t("transactions.bulkDelete.listLabel")}:</strong>
             </p>
             <ul className="list-disc pl-4 space-y-1">
               {transactions.slice(0, 5).map((transaction, index) => (
@@ -79,24 +85,26 @@ export function BulkDeleteTransactionsDialog({
               ))}
               {transactions.length > 5 && (
                 <li className="text-xs italic">
-                  ... and {transactions.length - 5} more
+                  {t("transactions.bulkDelete.more", {
+                    count: String(transactions.length - 5),
+                  })}
                 </li>
               )}
             </ul>
           </div>
         </div>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
             {deleteMutation.isPending
-              ? "Deleting..."
-              : `Delete ${transactions.length} Transaction${
-                  transactions.length > 1 ? "s" : ""
-                }`}
+              ? t("transactions.bulkDelete.deleting")
+              : t("transactions.bulkDelete.confirm", {
+                  count: String(transactions.length),
+                })}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

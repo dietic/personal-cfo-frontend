@@ -14,12 +14,14 @@ import {
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useI18n } from "@/lib/i18n";
 import { useBrandedCards, useSettings } from "@/lib/settings-context";
 import { Ban, Bell, Key, Palette, Tag } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 
 function SettingsPageContent() {
+  const { t } = useI18n();
   const searchParams = useSearchParams();
   const router = useRouter();
   const paramTab = (searchParams.get("tab") as string) || "display";
@@ -41,8 +43,8 @@ function SettingsPageContent() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        title="Settings"
-        description="Manage your account preferences and categorization settings"
+        title={t("settings.page.title")}
+        description={t("settings.page.description")}
       />
 
       <Tabs
@@ -53,26 +55,26 @@ function SettingsPageContent() {
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="display" className="flex items-center gap-2">
             <Palette className="h-4 w-4" />
-            Display
+            {t("settings.tabs.display")}
           </TabsTrigger>
           <TabsTrigger
             value="notifications"
             className="flex items-center gap-2"
           >
             <Bell className="h-4 w-4" />
-            Notifications
+            {t("settings.tabs.notifications")}
           </TabsTrigger>
           <TabsTrigger value="categories" className="flex items-center gap-2">
             <Tag className="h-4 w-4" />
-            Categories
+            {t("settings.tabs.categories")}
           </TabsTrigger>
           <TabsTrigger value="keywords" className="flex items-center gap-2">
             <Key className="h-4 w-4" />
-            Keywords
+            {t("settings.tabs.keywords")}
           </TabsTrigger>
           <TabsTrigger value="excluded" className="flex items-center gap-2">
             <Ban className="h-4 w-4" />
-            Excluded keywords
+            {t("settings.tabs.excluded")}
           </TabsTrigger>
         </TabsList>
 
@@ -81,20 +83,19 @@ function SettingsPageContent() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Palette className="h-5 w-5" />
-                Display Preferences
+                {t("settings.display.title")}
               </CardTitle>
               <CardDescription>
-                Customize how your cards and data are displayed
+                {t("settings.display.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Branded Cards</Label>
+                    <Label>{t("settings.display.brandedCards.label")}</Label>
                     <p className="text-sm text-muted-foreground">
-                      Show authentic bank colors on your cards instead of
-                      generic styling
+                      {t("settings.display.brandedCards.help")}
                     </p>
                   </div>
                   <Switch
@@ -114,19 +115,21 @@ function SettingsPageContent() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Bell className="h-5 w-5" />
-                Notification Preferences
+                {t("settings.notifications.title")}
               </CardTitle>
               <CardDescription>
-                Choose what notifications you want to receive
+                {t("settings.notifications.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Budget Alerts</Label>
+                    <Label>
+                      {t("settings.notifications.budgetAlerts.label")}
+                    </Label>
                     <p className="text-sm text-muted-foreground">
-                      Get notified when you're close to your budget limits
+                      {t("settings.notifications.budgetAlerts.help")}
                     </p>
                   </div>
                   <Switch defaultChecked />
@@ -134,9 +137,11 @@ function SettingsPageContent() {
 
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Payment Reminders</Label>
+                    <Label>
+                      {t("settings.notifications.paymentReminders.label")}
+                    </Label>
                     <p className="text-sm text-muted-foreground">
-                      Receive reminders for upcoming card payments
+                      {t("settings.notifications.paymentReminders.help")}
                     </p>
                   </div>
                   <Switch defaultChecked />
@@ -165,11 +170,12 @@ function SettingsPageContent() {
 }
 
 export default function SettingsPage() {
+  const { t } = useI18n();
   return (
     <Suspense
       fallback={
         <div className="p-4 text-sm text-muted-foreground">
-          Loading settings…
+          {t("settings.loading")}
         </div>
       }
     >

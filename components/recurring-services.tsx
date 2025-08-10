@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { CategorySelect } from "@/components/category-select";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,8 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -19,35 +19,25 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
+import { formatDate, formatMoney } from "@/lib/format";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  useCreateRecurringService,
+  useDeleteRecurringService,
+  useRecurringServices,
+  useUpdateRecurringService,
+} from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
+import { RecurringService } from "@/lib/types";
 import {
-  Plus,
-  Edit2,
-  Trash2,
+  AlertCircle,
   Calendar,
   DollarSign,
-  AlertCircle,
+  Edit2,
+  Plus,
+  Trash2,
 } from "lucide-react";
-import {
-  useRecurringServices,
-  useCreateRecurringService,
-  useUpdateRecurringService,
-  useDeleteRecurringService,
-} from "@/lib/hooks";
-import { CategorySelect } from "@/components/category-select";
-import {
-  RecurringService,
-  RecurringServiceCreate,
-  RecurringServiceUpdate,
-} from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
-import { format } from "date-fns";
+import { useState } from "react";
 
 interface RecurringServiceFormProps {
   service?: RecurringService;
@@ -56,6 +46,7 @@ interface RecurringServiceFormProps {
 
 function RecurringServiceForm({ service, onClose }: RecurringServiceFormProps) {
   const { toast } = useToast();
+  const { t, locale } = useI18n();
   const [formData, setFormData] = useState({
     name: service?.name || "",
     amount: service?.amount?.toString() || "",
@@ -81,18 +72,17 @@ function RecurringServiceForm({ service, onClose }: RecurringServiceFormProps) {
     try {
       if (service) {
         await updateMutation.mutateAsync({ serviceId: service.id, data });
-        toast({ title: "Service updated successfully" });
+        toast({ title: t("recurring.updatedSuccessfully") });
       } else {
         await createMutation.mutateAsync(data);
-        toast({ title: "Service created successfully" });
+        toast({ title: t("recurring.createdSuccessfully") });
       }
       onClose();
     } catch (error) {
       toast({
-        title: "Error",
         description: service
-          ? "Failed to update service"
-          : "Failed to create service",
+          ? t("recurring.updateFailed")
+          : t("recurring.createFailed"),
         variant: "destructive",
       });
     }
@@ -101,7 +91,7 @@ function RecurringServiceForm({ service, onClose }: RecurringServiceFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="name">Service Name</Label>
+        <Label htmlFor="name">{t("recurring.form.name")}</Label>
         <Input
           id="name"
           value={formData.name}
@@ -111,7 +101,7 @@ function RecurringServiceForm({ service, onClose }: RecurringServiceFormProps) {
       </div>
 
       <div>
-        <Label htmlFor="amount">Amount</Label>
+        <Label htmlFor="amount">{t("recurring.form.amount")}</Label>
         <Input
           id="amount"
           type="number"
@@ -123,7 +113,7 @@ function RecurringServiceForm({ service, onClose }: RecurringServiceFormProps) {
       </div>
 
       <div>
-        <Label htmlFor="due_date">Due Date</Label>
+        <Label htmlFor="due_date">{t("recurring.form.dueDate")}</Label>
         <Input
           id="due_date"
           type="date"
@@ -136,18 +126,20 @@ function RecurringServiceForm({ service, onClose }: RecurringServiceFormProps) {
       </div>
 
       <div>
-        <Label htmlFor="category">Category</Label>
+        <Label htmlFor="category">{t("recurring.form.category")}</Label>
         <CategorySelect
           value={formData.category || ""}
           onValueChange={(value) =>
             setFormData({ ...formData, category: value })
           }
-          placeholder="Select category..."
+          placeholder={t("recurring.form.categoryPlaceholder")}
         />
       </div>
 
       <div>
-        <Label htmlFor="reminder_days">Reminder Days</Label>
+        <Label htmlFor="reminder_days">
+          {t("recurring.form.reminderDays")}
+        </Label>
         <Input
           id="reminder_days"
           type="number"
@@ -158,19 +150,21 @@ function RecurringServiceForm({ service, onClose }: RecurringServiceFormProps) {
               reminder_days: parseInt(e.target.value) || 3,
             })
           }
-          placeholder="3"
+          placeholder={t("recurring.form.reminderDaysPlaceholder")}
         />
       </div>
 
       <div className="flex justify-end space-x-2">
         <Button type="button" variant="outline" onClick={onClose}>
-          Cancel
+          {t("common.cancel")}
         </Button>
         <Button
           type="submit"
           disabled={createMutation.isPending || updateMutation.isPending}
         >
-          {service ? "Update" : "Create"} Service
+          {service
+            ? t("recurring.form.submitUpdate")
+            : t("recurring.form.submitCreate")}
         </Button>
       </div>
     </form>
@@ -181,6 +175,7 @@ export function RecurringServices() {
   const { data: services, isLoading, error } = useRecurringServices();
   const deleteMutation = useDeleteRecurringService();
   const { toast } = useToast();
+  const { t, locale } = useI18n();
   const [editingService, setEditingService] = useState<RecurringService | null>(
     null
   );
@@ -188,14 +183,13 @@ export function RecurringServices() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this service?")) {
+    if (confirm(t("recurring.delete.confirmDescription"))) {
       try {
         await deleteMutation.mutateAsync(id);
-        toast({ title: "Service deleted successfully" });
+        toast({ title: t("recurring.deletedSuccessfully") });
       } catch (error) {
         toast({
-          title: "Error",
-          description: "Failed to delete service",
+          description: t("recurring.deleteFailed"),
           variant: "destructive",
         });
       }
@@ -215,16 +209,18 @@ export function RecurringServices() {
     );
 
     if (daysUntil < 0) {
-      return <Badge variant="destructive">Overdue</Badge>;
+      return (
+        <Badge variant="destructive">{t("recurring.status.overdue")}</Badge>
+      );
     } else if (daysUntil <= 3) {
       return (
         <Badge variant="outline" className="border-orange-500 text-orange-600">
-          Due Soon
+          {t("recurring.status.dueSoon")}
         </Badge>
       );
     }
 
-    return <Badge variant="default">Upcoming</Badge>;
+    return <Badge variant="default">{t("recurring.status.upcoming")}</Badge>;
   };
 
   if (error) {
@@ -233,7 +229,7 @@ export function RecurringServices() {
         <CardContent className="flex items-center justify-center py-8">
           <div className="flex items-center text-red-600">
             <AlertCircle className="h-4 w-4 mr-2" />
-            Failed to load recurring services
+            {t("recurring.loadFailed")}
           </div>
         </CardContent>
       </Card>
@@ -247,25 +243,23 @@ export function RecurringServices() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Calendar className="h-5 w-5" />
-              Recurring Services
+              {t("recurring.page.title")}
             </CardTitle>
-            <CardDescription>
-              Manage your subscription and recurring payment services
-            </CardDescription>
+            <CardDescription>{t("recurring.page.description")}</CardDescription>
           </div>
           <Dialog
             open={isCreateDialogOpen}
             onOpenChange={setIsCreateDialogOpen}
           >
             <DialogTrigger asChild>
-              <Button>
+              <Button aria-label={t("recurring.addService")}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Service
+                {t("recurring.addService")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Add New Recurring Service</DialogTitle>
+                <DialogTitle>{t("recurring.addDialog.title")}</DialogTitle>
               </DialogHeader>
               <RecurringServiceForm
                 onClose={() => setIsCreateDialogOpen(false)}
@@ -276,7 +270,7 @@ export function RecurringServices() {
       </CardHeader>
       <CardContent>
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-4" aria-busy>
             {[...Array(3)].map((_, i) => (
               <div key={i} className="border rounded-lg p-4 animate-pulse">
                 <div className="flex items-center justify-between">
@@ -300,14 +294,19 @@ export function RecurringServices() {
                       {getStatusBadge(service)}
                     </div>
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />$
-                        {parseFloat(service.amount).toFixed(2)}
+                      <div
+                        className="flex items-center gap-1"
+                        aria-label={t("recurring.form.amount")}
+                      >
+                        <DollarSign className="h-3 w-3" />
+                        {formatMoney(Number(service.amount), "USD", locale)}
                       </div>
                       {service.category && <span>• {service.category}</span>}
                       <span>
-                        • Due:{" "}
-                        {format(new Date(service.due_date), "MMM d, yyyy")}
+                        • {t("recurring.form.dueDate")}{" "}
+                        {formatDate(service.due_date, locale, {
+                          dateStyle: "medium",
+                        })}
                       </span>
                     </div>
                   </div>
@@ -316,6 +315,7 @@ export function RecurringServices() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(service)}
+                      aria-label={t("recurring.editDialog.title")}
                     >
                       <Edit2 className="h-3 w-3" />
                     </Button>
@@ -324,6 +324,7 @@ export function RecurringServices() {
                       size="sm"
                       onClick={() => handleDelete(service.id)}
                       disabled={deleteMutation.isPending}
+                      aria-label={t("recurring.delete.confirmTitle")}
                     >
                       <Trash2 className="h-3 w-3" />
                     </Button>
@@ -334,11 +335,12 @@ export function RecurringServices() {
           </div>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
-            <Calendar className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>No recurring services found</p>
-            <p className="text-sm">
-              Add your first recurring service to get started
-            </p>
+            <Calendar
+              className="h-12 w-12 mx-auto mb-4 opacity-50"
+              aria-hidden="true"
+            />
+            <p>{t("recurring.empty.title")}</p>
+            <p className="text-sm">{t("recurring.empty.subtitle")}</p>
           </div>
         )}
       </CardContent>
@@ -346,7 +348,7 @@ export function RecurringServices() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Recurring Service</DialogTitle>
+            <DialogTitle>{t("recurring.editDialog.title")}</DialogTitle>
           </DialogHeader>
           <RecurringServiceForm
             service={editingService || undefined}

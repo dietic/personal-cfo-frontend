@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { apiClient } from "@/lib/api-client";
 import { clearPendingVerification } from "@/lib/auth-constants";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n";
 import { CheckCircle, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -24,6 +25,7 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export function SignupForm() {
+  const { t } = useI18n();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -85,7 +87,7 @@ export function SignupForm() {
         const targetEmail = pendingEmail || email;
         // If we have the password (fresh signup), try a silent auto-login first
         if (password && password.trim().length > 0) {
-          toast.success("Account verified");
+          toast.success(t("signup.verified"));
           try {
             await login(
               { email: targetEmail, password },
@@ -93,39 +95,37 @@ export function SignupForm() {
             );
           } catch {
             // If auto-login fails for any reason, avoid an extra error toast
-            toast.message("Account verified. Please sign in.");
+            toast.message(t("signup.verifiedPleaseSignIn"));
             router.push(`/login?email=${encodeURIComponent(targetEmail)}`);
           }
         } else {
           // No local password available (e.g., came from login -> OTP). Ask user to sign in.
-          toast.success("Account verified. Please sign in.");
+          toast.success(t("signup.verifiedPleaseSignIn"));
           router.push(`/login?email=${encodeURIComponent(targetEmail)}`);
         }
       } catch (error: any) {
-        setError(error.message || "Invalid or expired code");
+        setError(error.message || t("signup.errors.invalidOrExpiredCode"));
       }
       return;
     }
 
     if (!email || !password || !confirmPassword) {
-      setError("Please fill in all fields");
+      setError(t("signup.errors.fillAll"));
       return;
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords don't match");
+      setError(t("signup.errors.mismatch"));
       return;
     }
 
     if (passwordStrength < 3) {
-      setError(
-        "Password must be at least 8 characters and contain uppercase, lowercase, and numbers"
-      );
+      setError(t("signup.errors.weak"));
       return;
     }
 
     if (!agreeTerms) {
-      setError("Please accept the terms of service and privacy policy");
+      setError(t("signup.errors.acceptTerms"));
       return;
     }
 
@@ -147,7 +147,7 @@ export function SignupForm() {
         });
       }, 1000);
     } catch (error: any) {
-      setError(error.message || "Failed to create account. Please try again.");
+      setError(error.message || t("auth.registrationFailed"));
     }
   };
 
@@ -157,9 +157,9 @@ export function SignupForm() {
       await apiClient.resendOTP({ email: pendingEmail || email });
       setResendCooldown(30);
     } catch (e: any) {
-      const msg = e.message || "Failed to resend code";
+      const msg = e.message || t("signup.resendCode");
       if (msg.toLowerCase().includes("already verified")) {
-        setError("Your account is already verified. Please sign in.");
+        setError(t("signup.accountAlreadyVerified"));
       } else {
         setError(msg);
       }
@@ -173,10 +173,10 @@ export function SignupForm() {
           <>
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl text-center">
-                Create Account
+                {t("signup.title")}
               </CardTitle>
               <CardDescription className="text-center">
-                Enter your details to create your PersonalCFO account
+                {t("signup.subtitle")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -187,13 +187,13 @@ export function SignupForm() {
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email">{t("signup.email")}</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
-                    placeholder="name@example.com"
+                    placeholder={t("signup.emailPlaceholder")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="pl-10"
@@ -203,7 +203,7 @@ export function SignupForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t("signup.password")}</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -247,19 +247,21 @@ export function SignupForm() {
                       ))}
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Password strength:{" "}
+                      {t("signup.passwordStrengthLabel")}: {""}
                       {passwordStrength < 3
-                        ? "Weak"
+                        ? t("signup.passwordStrengthWeak")
                         : passwordStrength < 4
-                        ? "Medium"
-                        : "Strong"}
+                        ? t("signup.passwordStrengthMedium")
+                        : t("signup.passwordStrengthStrong")}
                     </p>
                   </div>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">
+                  {t("signup.confirmPassword")}
+                </Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -301,16 +303,16 @@ export function SignupForm() {
                   htmlFor="terms"
                   className="text-sm text-muted-foreground leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
                 >
-                  I agree to the{" "}
+                  {t("signup.termsPrefix")}{" "}
                   <Link href="/terms" className="text-primary hover:underline">
-                    Terms of Service
+                    {t("signup.termsOfService")}
                   </Link>{" "}
-                  and{" "}
+                  {t("signup.and")}{" "}
                   <Link
                     href="/privacy"
                     className="text-primary hover:underline"
                   >
-                    Privacy Policy
+                    {t("signup.privacyPolicy")}
                   </Link>
                 </label>
               </div>
@@ -320,17 +322,17 @@ export function SignupForm() {
                 className="w-full"
                 disabled={isLoading || !agreeTerms}
               >
-                {isLoading ? "Creating account..." : "Create Account"}
+                {isLoading ? t("signup.creating") : t("signup.create")}
               </Button>
             </CardContent>
             <CardFooter className="flex justify-center">
               <p className="text-sm text-muted-foreground">
-                Already have an account?{" "}
+                {t("signup.alreadyHave")}{" "}
                 <Link
                   href="/login"
                   className="text-primary hover:underline font-medium"
                 >
-                  Sign in
+                  {t("signup.signIn")}
                 </Link>
               </p>
             </CardFooter>
@@ -339,11 +341,10 @@ export function SignupForm() {
           <>
             <CardHeader className="space-y-1">
               <CardTitle className="text-2xl text-center">
-                Verify your email
+                {t("signup.verifyTitle")}
               </CardTitle>
               <CardDescription className="text-center">
-                We sent a 6-digit code to {pendingEmail}. Enter it below to
-                activate your account.
+                {t("signup.verifySubtitle", { email: pendingEmail })}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -353,14 +354,14 @@ export function SignupForm() {
                 </Alert>
               )}
               <div className="space-y-2">
-                <Label htmlFor="otp">Verification Code</Label>
+                <Label htmlFor="otp">{t("signup.verificationCode")}</Label>
                 <div className="relative">
                   <Input
                     id="otp"
                     inputMode="numeric"
                     pattern="[0-9]*"
                     maxLength={6}
-                    placeholder="Enter 6-digit code"
+                    placeholder={t("signup.verificationPlaceholder")}
                     value={otp}
                     onChange={(e) =>
                       setOtp(e.target.value.replace(/[^0-9]/g, ""))
@@ -371,7 +372,7 @@ export function SignupForm() {
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Code expires in 10 minutes.
+                  {t("signup.codeExpires")}
                 </p>
               </div>
               <Button
@@ -379,7 +380,7 @@ export function SignupForm() {
                 className="w-full"
                 disabled={isLoading || otp.length !== 6}
               >
-                Verify and continue
+                {t("signup.verifyAndContinue")}
               </Button>
               <Button
                 type="button"
@@ -389,8 +390,8 @@ export function SignupForm() {
                 disabled={resendCooldown > 0}
               >
                 {resendCooldown > 0
-                  ? `Resend code in ${resendCooldown}s`
-                  : "Resend code"}
+                  ? t("signup.resendIn", { seconds: resendCooldown })
+                  : t("signup.resendCode")}
               </Button>
             </CardContent>
           </>

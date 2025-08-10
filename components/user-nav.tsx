@@ -12,19 +12,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n";
 import { useRouter } from "next/navigation";
 
 export function UserNav() {
   const { user, logout } = useAuth();
   const router = useRouter();
+  const { t } = useI18n();
 
   const handleProfileClick = () => {
-    console.log("Profile clicked, navigating to /profile");
     router.push("/profile");
   };
 
   const handleSettingsClick = () => {
-    console.log("Settings clicked, navigating to /settings");
     router.push("/settings");
   };
 
@@ -46,7 +46,7 @@ export function UserNav() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
             <p className="text-sm font-medium leading-none">
-              {user.email?.split("@")[0] || "User"}
+              {user.email?.split("@")[0] || t("userNav.user")}
             </p>
             <p className="text-xs leading-none text-muted-foreground">
               {user.email}
@@ -63,7 +63,7 @@ export function UserNav() {
                 router.push("/admin");
               }}
             >
-              Admin
+              {t("userNav.admin")}
             </DropdownMenuItem>
           )}
           <DropdownMenuItem
@@ -73,7 +73,7 @@ export function UserNav() {
               handleProfileClick();
             }}
           >
-            Profile
+            {t("userNav.profile")}
           </DropdownMenuItem>
           <DropdownMenuItem
             className="cursor-pointer"
@@ -82,12 +82,12 @@ export function UserNav() {
               handleSettingsClick();
             }}
           >
-            Settings
+            {t("userNav.settings")}
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout} className="text-destructive">
-          Log out
+          {t("userNav.logout")}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

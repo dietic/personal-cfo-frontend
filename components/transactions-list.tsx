@@ -56,15 +56,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { formatDate as formatDateIntl, formatMoney } from "@/lib/format";
 import {
   useCards,
   useCategoryColors,
   useTransactions,
   useUpdateTransaction,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import type { TransactionFilters } from "@/lib/types";
 import { Transaction } from "@/lib/types";
-import { format, parseISO } from "date-fns";
 import {
   MessageSquare,
   MoreHorizontal,
@@ -96,6 +97,7 @@ export function TransactionsList({
   const [editingDescription, setEditingDescription] = useState("");
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
   const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
+  const { t, locale } = useI18n();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -115,14 +117,20 @@ export function TransactionsList({
 
   // Create a map of card IDs to card names for display
   const cardMap =
-    cards?.reduce((acc, card) => {
-      acc[card.id] = card.card_name;
-      return acc;
-    }, {} as Record<string, string>) || {};
+    cards?.reduce(
+      (
+        acc: Record<string, string>,
+        card: { id: string; card_name: string }
+      ) => {
+        acc[card.id] = card.card_name;
+        return acc;
+      },
+      {} as Record<string, string>
+    ) || {};
 
   // Filter transactions based on search query and currency
   const filteredTransactions =
-    transactions?.filter((transaction) => {
+    transactions?.filter((transaction: Transaction) => {
       // Search filter
       const matchesSearch =
         transaction.merchant
@@ -169,22 +177,6 @@ export function TransactionsList({
     setItemsPerPage(parseInt(value));
   };
 
-  const formatAmount = (amount: string, currency: string) => {
-    const formattedAmount = parseFloat(amount).toFixed(2);
-    // Display currency symbol or code based on currency
-    const currencySymbol =
-      currency === "USD" ? "$" : currency === "PEN" ? "S/" : currency + " ";
-    return `${currencySymbol}${formattedAmount}`;
-  };
-
-  const formatDate = (dateString: string) => {
-    try {
-      return format(parseISO(dateString), "MMM dd, yyyy");
-    } catch {
-      return dateString;
-    }
-  };
-
   const getInitials = (merchant: string) => {
     return merchant
       .split(" ")
@@ -197,10 +189,10 @@ export function TransactionsList({
   // Multi-select functionality
   const handleSelectTransaction = (transactionId: string, checked: boolean) => {
     if (checked) {
-      setSelectedTransactions((prev) => [...prev, transactionId]);
+      setSelectedTransactions((prev: string[]) => [...prev, transactionId]);
     } else {
-      setSelectedTransactions((prev) =>
-        prev.filter((id) => id !== transactionId)
+      setSelectedTransactions((prev: string[]) =>
+        prev.filter((id: string) => id !== transactionId)
       );
     }
   };
@@ -208,22 +200,26 @@ export function TransactionsList({
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
       // Select all transactions on the current page
-      const currentPageIds = paginatedTransactions.map((t) => t.id);
-      setSelectedTransactions((prev) => [
-        ...prev.filter((id) => !currentPageIds.includes(id)), // Keep selections from other pages
+      const currentPageIds = paginatedTransactions.map(
+        (t: Transaction) => t.id
+      );
+      setSelectedTransactions((prev: string[]) => [
+        ...prev.filter((id: string) => !currentPageIds.includes(id)), // Keep selections from other pages
         ...currentPageIds, // Add all from current page
       ]);
     } else {
       // Deselect all transactions on the current page
-      const currentPageIds = paginatedTransactions.map((t) => t.id);
-      setSelectedTransactions((prev) =>
-        prev.filter((id) => !currentPageIds.includes(id))
+      const currentPageIds = paginatedTransactions.map(
+        (t: Transaction) => t.id
+      );
+      setSelectedTransactions((prev: string[]) =>
+        prev.filter((id: string) => !currentPageIds.includes(id))
       );
     }
   };
 
   const getSelectedTransactions = () => {
-    return filteredTransactions.filter((t) =>
+    return filteredTransactions.filter((t: Transaction) =>
       selectedTransactions.includes(t.id)
     );
   };
@@ -285,16 +281,16 @@ export function TransactionsList({
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>
-            Track and categorize your recent spending
-          </CardDescription>
+          <CardTitle>{t("transactions.recent.title")}</CardTitle>
+          <CardDescription>{t("transactions.recent.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Failed to load transactions</p>
+            <p className="text-muted-foreground">
+              {t("transactions.loadFailed")}
+            </p>
             <Button variant="outline" onClick={() => window.location.reload()}>
-              Try again
+              {t("common.retry")}
             </Button>
           </div>
         </CardContent>
@@ -308,9 +304,9 @@ export function TransactionsList({
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <CardTitle>All Transactions</CardTitle>
+              <CardTitle>{t("transactions.all.title")}</CardTitle>
               <CardDescription>
-                View and manage your transaction history
+                {t("transactions.all.subtitle")}
               </CardDescription>
             </div>
             <Skeleton className="h-10 w-full md:w-64" />
@@ -339,13 +335,13 @@ export function TransactionsList({
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <CardTitle>All Transactions</CardTitle>
+            <CardTitle>{t("transactions.all.title")}</CardTitle>
             <CardDescription>
               {totalItems === 0
-                ? "No transactions found"
-                : `Showing ${totalItems} transaction${
-                    totalItems === 1 ? "" : "s"
-                  }`}
+                ? t("transactions.empty")
+                : t("transactions.header.showing", {
+                    count: String(totalItems),
+                  })}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -357,12 +353,14 @@ export function TransactionsList({
                 className="flex items-center gap-2"
               >
                 <Trash2 className="h-4 w-4" />
-                Delete Selected ({selectedTransactions.length})
+                {t("transactions.bulkDelete.selected", {
+                  count: String(selectedTransactions.length),
+                })}
               </Button>
             )}
             <div className="flex items-center gap-2">
               <span className="text-sm text-muted-foreground">
-                Items per page:
+                {t("transactions.itemsPerPage")}:
               </span>
               <Select
                 value={itemsPerPage.toString()}
@@ -382,7 +380,7 @@ export function TransactionsList({
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search transactions..."
+                placeholder={t("transactions.searchPlaceholder")}
                 className="pl-8"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -394,7 +392,7 @@ export function TransactionsList({
       <CardContent>
         {filteredTransactions.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">No transactions found</p>
+            <p className="text-muted-foreground">{t("transactions.empty")}</p>
           </div>
         ) : (
           <>
@@ -411,15 +409,17 @@ export function TransactionsList({
                           )
                         }
                         onCheckedChange={handleSelectAll}
-                        aria-label="Select all transactions on this page"
+                        aria-label={t("transactions.aria.selectAllPage")}
                       />
                     </TableHead>
-                    <TableHead>Merchant</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Card</TableHead>
-                    <TableHead>Currency</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead>{t("transactions.table.merchant")}</TableHead>
+                    <TableHead>{t("transactions.table.date")}</TableHead>
+                    <TableHead>{t("transactions.table.category")}</TableHead>
+                    <TableHead>{t("transactions.table.card")}</TableHead>
+                    <TableHead>{t("transactions.table.currency")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("transactions.table.amount")}
+                    </TableHead>
                     <TableHead className="w-[80px]"></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -437,7 +437,9 @@ export function TransactionsList({
                               checked as boolean
                             )
                           }
-                          aria-label={`Select transaction from ${transaction.merchant}`}
+                          aria-label={t("transactions.aria.selectTransaction", {
+                            merchant: transaction.merchant,
+                          })}
                         />
                       </TableCell>
                       <TableCell>
@@ -466,7 +468,7 @@ export function TransactionsList({
                         </div>
                       </TableCell>
                       <TableCell>
-                        {formatDate(transaction.transaction_date)}
+                        {formatDateIntl(transaction.transaction_date, locale)}
                       </TableCell>
                       <TableCell>
                         {transaction.category ? (
@@ -478,12 +480,13 @@ export function TransactionsList({
                           </Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">
-                            Sin categoría
+                            {t("transactions.uncategorized")}
                           </span>
                         )}
                       </TableCell>
                       <TableCell>
-                        {cardMap[transaction.card_id] || "Unknown Card"}
+                        {cardMap[transaction.card_id] ||
+                          t("transactions.unknownCard")}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline" className="text-xs">
@@ -492,14 +495,20 @@ export function TransactionsList({
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         -
-                        {formatAmount(transaction.amount, transaction.currency)}
+                        {formatMoney(
+                          parseFloat(transaction.amount),
+                          transaction.currency as any,
+                          locale
+                        )}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="icon">
                               <MoreHorizontal className="h-4 w-4" />
-                              <span className="sr-only">Actions</span>
+                              <span className="sr-only">
+                                {t("common.actions")}
+                              </span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
@@ -516,39 +525,60 @@ export function TransactionsList({
                                   className="flex items-center gap-2"
                                 >
                                   <Tag className="h-4 w-4" />
-                                  Edit Category
+                                  {t("transactions.editCategory")}
                                 </DropdownMenuItem>
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Edit Category</DialogTitle>
+                                  <DialogTitle>
+                                    {t("transactions.editCategoryTitle")}
+                                  </DialogTitle>
                                   <DialogDescription>
-                                    Select a category for this transaction from
-                                    the dropdown below.
+                                    {t("transactions.editCategoryDesc")}
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
                                   <div className="grid gap-2">
-                                    <Label htmlFor="category">Category</Label>
+                                    <Label htmlFor="category">
+                                      {t("transactions.categoryLabel")}
+                                    </Label>
                                     <CategorySelect
                                       value={editingCategory}
                                       onValueChange={setEditingCategory}
-                                      placeholder="Search and select a category..."
+                                      placeholder={t(
+                                        "transactions.searchCategoryPlaceholder"
+                                      )}
                                     />
                                   </div>
                                   {editingTransaction && (
                                     <div className="text-sm text-muted-foreground">
                                       <p>
-                                        <strong>Transaction:</strong>{" "}
+                                        <strong>
+                                          {t(
+                                            "transactions.info.transactionLabel"
+                                          )}
+                                          :
+                                        </strong>{" "}
                                         {editingTransaction.merchant}
                                       </p>
                                       <p>
-                                        <strong>Amount:</strong> $
-                                        {editingTransaction.amount}
+                                        <strong>
+                                          {t("transactions.info.amountLabel")}:
+                                        </strong>{" "}
+                                        {formatMoney(
+                                          parseFloat(editingTransaction.amount),
+                                          editingTransaction.currency as any,
+                                          locale
+                                        )}
                                       </p>
                                       <p>
-                                        <strong>Current Category:</strong>{" "}
-                                        {editingTransaction.category || "None"}
+                                        <strong>
+                                          {t(
+                                            "transactions.info.currentCategoryLabel"
+                                          )}
+                                          :
+                                        </strong>{" "}
+                                        {editingTransaction.category || "—"}
                                       </p>
                                     </div>
                                   )}
@@ -558,7 +588,7 @@ export function TransactionsList({
                                     variant="outline"
                                     onClick={() => setCategoryDialogOpen(false)}
                                   >
-                                    Cancel
+                                    {t("common.cancel")}
                                   </Button>
                                   <Button
                                     type="submit"
@@ -568,8 +598,8 @@ export function TransactionsList({
                                     }
                                   >
                                     {updateTransactionMutation.isPending
-                                      ? "Saving..."
-                                      : "Save Changes"}
+                                      ? t("common.saving")
+                                      : t("common.saveChanges")}
                                   </Button>
                                 </DialogFooter>
                               </DialogContent>
@@ -588,21 +618,22 @@ export function TransactionsList({
                                   className="flex items-center gap-2"
                                 >
                                   <MessageSquare className="h-4 w-4" />
-                                  Edit Description
+                                  {t("transactions.editDescription")}
                                 </DropdownMenuItem>
                               </DialogTrigger>
                               <DialogContent>
                                 <DialogHeader>
-                                  <DialogTitle>Edit Description</DialogTitle>
+                                  <DialogTitle>
+                                    {t("transactions.editDescriptionTitle")}
+                                  </DialogTitle>
                                   <DialogDescription>
-                                    Add or edit the description for this
-                                    transaction.
+                                    {t("transactions.editDescriptionDesc")}
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
                                   <div className="grid gap-2">
                                     <Label htmlFor="description">
-                                      Description
+                                      {t("transactions.descriptionLabel")}
                                     </Label>
                                     <Textarea
                                       id="description"
@@ -610,19 +641,32 @@ export function TransactionsList({
                                       onChange={(e) =>
                                         setEditingDescription(e.target.value)
                                       }
-                                      placeholder="Add your description here..."
+                                      placeholder={t(
+                                        "transactions.descriptionPlaceholder"
+                                      )}
                                       rows={3}
                                     />
                                   </div>
                                   {editingTransaction && (
                                     <div className="text-sm text-muted-foreground">
                                       <p>
-                                        <strong>Transaction:</strong>{" "}
+                                        <strong>
+                                          {t(
+                                            "transactions.info.transactionLabel"
+                                          )}
+                                          :
+                                        </strong>{" "}
                                         {editingTransaction.merchant}
                                       </p>
                                       <p>
-                                        <strong>Amount:</strong> $
-                                        {editingTransaction.amount}
+                                        <strong>
+                                          {t("transactions.info.amountLabel")}:
+                                        </strong>{" "}
+                                        {formatMoney(
+                                          parseFloat(editingTransaction.amount),
+                                          editingTransaction.currency as any,
+                                          locale
+                                        )}
                                       </p>
                                     </div>
                                   )}
@@ -634,7 +678,7 @@ export function TransactionsList({
                                       setDescriptionDialogOpen(false)
                                     }
                                   >
-                                    Cancel
+                                    {t("common.cancel")}
                                   </Button>
                                   <Button
                                     type="submit"
@@ -644,8 +688,8 @@ export function TransactionsList({
                                     }
                                   >
                                     {updateTransactionMutation.isPending
-                                      ? "Saving..."
-                                      : "Save Description"}
+                                      ? t("common.saving")
+                                      : t("transactions.saveDescription")}
                                   </Button>
                                 </DialogFooter>
                               </DialogContent>
@@ -659,7 +703,7 @@ export function TransactionsList({
                                 className="flex items-center gap-2 font-medium text-red-600 dark:text-red-400 hover:text-red-600 focus:text-red-600 dark:hover:text-red-300 hover:bg-red-500/10 focus:bg-red-500/10"
                               >
                                 <Trash2 className="h-4 w-4" />
-                                Delete Transaction
+                                {t("transactions.delete")}
                               </DropdownMenuItem>
                             </DeleteTransactionDialog>
                           </DropdownMenuContent>
@@ -675,8 +719,11 @@ export function TransactionsList({
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-2 py-4">
                 <div className="text-sm text-muted-foreground">
-                  Showing {startIndex + 1} to {Math.min(endIndex, totalItems)}{" "}
-                  of {totalItems} transactions
+                  {t("transactions.pagination.range", {
+                    from: String(startIndex + 1),
+                    to: String(Math.min(endIndex, totalItems)),
+                    total: String(totalItems),
+                  })}
                 </div>
                 <Pagination>
                   <PaginationContent>

@@ -1,26 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +11,26 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -41,21 +40,22 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
-  Plus,
-  Edit3,
-  Trash2,
-  Tag,
-  AlertCircle,
-  CheckCircle,
-  Info,
-} from "lucide-react";
-import {
   useCategories,
   useCreateCategory,
-  useUpdateCategory,
   useDeleteCategory,
+  useUpdateCategory,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { Category, CategoryCreate, CategoryUpdate } from "@/lib/types";
+import {
+  AlertCircle,
+  CheckCircle,
+  Edit3,
+  Plus,
+  Tag,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 const DEFAULT_COLORS = [
@@ -72,6 +72,7 @@ const DEFAULT_COLORS = [
 ];
 
 export function CategoriesManagement() {
+  const { t } = useI18n();
   const { data: categories, isLoading, error } = useCategories();
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
@@ -89,7 +90,7 @@ export function CategoriesManagement() {
 
   const handleCreateCategory = async () => {
     if (!formData.name.trim()) {
-      toast.error("Category name is required");
+      toast.error(t("category.errors.nameRequired"));
       return;
     }
 
@@ -97,7 +98,7 @@ export function CategoriesManagement() {
       await createMutation.mutateAsync(formData);
       setShowCreateDialog(false);
       resetForm();
-      toast.success("Category created successfully!");
+      // Success toast handled by hook
     } catch (error) {
       // Error is handled by the mutation
     }
@@ -105,7 +106,7 @@ export function CategoriesManagement() {
 
   const handleUpdateCategory = async () => {
     if (!editingCategory || !formData.name.trim()) {
-      toast.error("Category name is required");
+      toast.error(t("category.errors.nameRequired"));
       return;
     }
 
@@ -116,7 +117,7 @@ export function CategoriesManagement() {
       });
       setEditingCategory(null);
       resetForm();
-      toast.success("Category updated successfully!");
+      // Success toast handled by hook
     } catch (error) {
       // Error is handled by the mutation
     }
@@ -125,7 +126,7 @@ export function CategoriesManagement() {
   const handleDeleteCategory = async (categoryId: string) => {
     try {
       await deleteMutation.mutateAsync(categoryId);
-      toast.success("Category deleted successfully!");
+      // Success toast handled by hook
     } catch (error) {
       // Error is handled by the mutation
     }
@@ -157,7 +158,7 @@ export function CategoriesManagement() {
   const removeKeyword = (keyword: string) => {
     setFormData({
       ...formData,
-      keywords: formData.keywords?.filter((k) => k !== keyword) || [],
+      keywords: formData.keywords?.filter((k: string) => k !== keyword) || [],
     });
   };
 
@@ -180,13 +181,13 @@ export function CategoriesManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            Categories Management
+            {t("categories.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin w-6 h-6 border border-current border-t-transparent rounded-full" />
-            <span className="ml-2">Loading categories...</span>
+            <span className="ml-2">{t("categories.loading")}</span>
           </div>
         </CardContent>
       </Card>
@@ -199,21 +200,19 @@ export function CategoriesManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            Categories Management
+            {t("categories.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col items-center justify-center py-8 space-y-4">
             <AlertCircle className="h-12 w-12 text-destructive" />
             <div className="text-center space-y-2">
-              <h3 className="font-semibold">Unable to Load Categories</h3>
+              <h3 className="font-semibold">{t("categories.error.title")}</h3>
               <p className="text-sm text-muted-foreground">
-                There's an issue with the categories service. This might be a
-                temporary problem.
+                {t("categories.error.line1")}
               </p>
               <p className="text-sm text-muted-foreground">
-                For now, you can still upload statements, but automatic
-                categorization may not work properly.
+                {t("categories.error.line2")}
               </p>
             </div>
             <div className="flex gap-2">
@@ -221,18 +220,15 @@ export function CategoriesManagement() {
                 variant="outline"
                 onClick={() => window.location.reload()}
               >
-                Refresh Page
+                {t("categories.error.refresh")}
               </Button>
               <Button
                 variant="outline"
                 onClick={() => {
-                  // For demo purposes, show some mock categories
-                  toast.info(
-                    "This feature is temporarily unavailable. Please try again later."
-                  );
+                  toast.info(t("categories.error.reportInfo"));
                 }}
               >
-                Report Issue
+                {t("categories.error.report")}
               </Button>
             </div>
           </div>
@@ -247,36 +243,36 @@ export function CategoriesManagement() {
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            Categories Management
+            {t("categories.title")}
           </div>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Category
+                {t("categories.create.cta")}
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Create New Category</DialogTitle>
+                <DialogTitle>{t("categories.create.title")}</DialogTitle>
                 <DialogDescription>
-                  Add a new category for organizing your transactions
+                  {t("categories.create.description")}
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Category Name</Label>
+                  <Label htmlFor="name">{t("categories.form.name")}</Label>
                   <Input
                     id="name"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
-                    placeholder="e.g., Food & Dining"
+                    placeholder={t("categories.form.placeholder")}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Color</Label>
+                  <Label>{t("categories.form.color")}</Label>
                   <div className="flex gap-2 flex-wrap">
                     {DEFAULT_COLORS.map((color) => (
                       <button
@@ -294,12 +290,12 @@ export function CategoriesManagement() {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Keywords (Optional)</Label>
+                  <Label>{t("categories.form.keywords")}</Label>
                   <div className="flex gap-2">
                     <Input
                       value={keywordInput}
                       onChange={(e) => setKeywordInput(e.target.value)}
-                      placeholder="Add keyword"
+                      placeholder={t("categories.form.keywordPlaceholder")}
                       onKeyPress={(e) => e.key === "Enter" && addKeyword()}
                     />
                     <Button
@@ -307,7 +303,7 @@ export function CategoriesManagement() {
                       onClick={addKeyword}
                       variant="outline"
                     >
-                      Add
+                      {t("categories.form.add")}
                     </Button>
                   </div>
                   {formData.keywords && formData.keywords.length > 0 && (
@@ -337,22 +333,21 @@ export function CategoriesManagement() {
                   variant="outline"
                   onClick={() => setShowCreateDialog(false)}
                 >
-                  Cancel
+                  {t("common.cancel")}
                 </Button>
                 <Button
                   onClick={handleCreateCategory}
                   disabled={createMutation.isPending}
                 >
-                  {createMutation.isPending ? "Creating..." : "Create Category"}
+                  {createMutation.isPending
+                    ? t("categories.creating")
+                    : t("categories.create.submit")}
                 </Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
         </CardTitle>
-        <CardDescription>
-          Manage categories for organizing your transactions. You need at least
-          5 categories to upload statements.
-        </CardDescription>
+        <CardDescription>{t("categories.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Status Banner */}
@@ -371,11 +366,11 @@ export function CategoriesManagement() {
           <div className="flex-1">
             <span className="font-medium">
               {isRequirementMet
-                ? "Ready to upload statements!"
-                : "More categories needed"}
+                ? t("categories.status.ready")
+                : t("categories.status.moreNeeded")}
             </span>
             <span className="ml-2">
-              You have {categoriesCount} of 5 required categories.
+              {t("categories.status.count", { count: String(categoriesCount) })}
             </span>
           </div>
         </div>
@@ -385,11 +380,11 @@ export function CategoriesManagement() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Color</TableHead>
-                <TableHead>Keywords</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
+                <TableHead>{t("categories.table.name")}</TableHead>
+                <TableHead>{t("categories.table.color")}</TableHead>
+                <TableHead>{t("categories.table.keywords")}</TableHead>
+                <TableHead>{t("categories.table.status")}</TableHead>
+                <TableHead>{t("categories.table.actions")}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -421,13 +416,14 @@ export function CategoriesManagement() {
                         ))}
                         {category.keywords.length > 3 && (
                           <Badge variant="outline" className="text-xs">
-                            +{category.keywords.length - 3} more
+                            +{category.keywords.length - 3}{" "}
+                            {t("categories.more")}
                           </Badge>
                         )}
                       </div>
                     ) : (
                       <span className="text-sm text-muted-foreground">
-                        No keywords
+                        {t("categories.noKeywords")}
                       </span>
                     )}
                   </TableCell>
@@ -435,7 +431,9 @@ export function CategoriesManagement() {
                     <Badge
                       variant={category.is_active ? "default" : "secondary"}
                     >
-                      {category.is_active ? "Active" : "Inactive"}
+                      {category.is_active
+                        ? t("categories.badge.active")
+                        : t("categories.badge.inactive")}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -457,14 +455,18 @@ export function CategoriesManagement() {
                         </DialogTrigger>
                         <DialogContent>
                           <DialogHeader>
-                            <DialogTitle>Edit Category</DialogTitle>
+                            <DialogTitle>
+                              {t("categories.edit.title")}
+                            </DialogTitle>
                             <DialogDescription>
-                              Update category information
+                              {t("categories.edit.description")}
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4">
                             <div className="space-y-2">
-                              <Label htmlFor="edit-name">Category Name</Label>
+                              <Label htmlFor="edit-name">
+                                {t("categories.form.name")}
+                              </Label>
                               <Input
                                 id="edit-name"
                                 value={formData.name}
@@ -477,7 +479,7 @@ export function CategoriesManagement() {
                               />
                             </div>
                             <div className="space-y-2">
-                              <Label>Color</Label>
+                              <Label>{t("categories.form.color")}</Label>
                               <div className="flex gap-2 flex-wrap">
                                 {DEFAULT_COLORS.map((color) => (
                                   <button
@@ -497,14 +499,16 @@ export function CategoriesManagement() {
                               </div>
                             </div>
                             <div className="space-y-2">
-                              <Label>Keywords</Label>
+                              <Label>{t("categories.form.keywords")}</Label>
                               <div className="flex gap-2">
                                 <Input
                                   value={keywordInput}
                                   onChange={(e) =>
                                     setKeywordInput(e.target.value)
                                   }
-                                  placeholder="Add keyword"
+                                  placeholder={t(
+                                    "categories.form.keywordPlaceholder"
+                                  )}
                                   onKeyPress={(e) =>
                                     e.key === "Enter" && addKeyword()
                                   }
@@ -514,7 +518,7 @@ export function CategoriesManagement() {
                                   onClick={addKeyword}
                                   variant="outline"
                                 >
-                                  Add
+                                  {t("categories.form.add")}
                                 </Button>
                               </div>
                               {formData.keywords &&
@@ -545,15 +549,15 @@ export function CategoriesManagement() {
                               variant="outline"
                               onClick={() => setEditingCategory(null)}
                             >
-                              Cancel
+                              {t("common.cancel")}
                             </Button>
                             <Button
                               onClick={handleUpdateCategory}
                               disabled={updateMutation.isPending}
                             >
                               {updateMutation.isPending
-                                ? "Updating..."
-                                : "Update Category"}
+                                ? t("categories.updating")
+                                : t("categories.edit.submit")}
                             </Button>
                           </DialogFooter>
                         </DialogContent>
@@ -567,22 +571,27 @@ export function CategoriesManagement() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Delete Category</AlertDialogTitle>
+                            <AlertDialogTitle>
+                              {t("categories.delete.title")}
+                            </AlertDialogTitle>
                             <AlertDialogDescription>
-                              Are you sure you want to delete "{category.name}"?
-                              This action cannot be undone.
+                              {t("categories.delete.description", {
+                                name: category.name,
+                              })}
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel>
+                              {t("common.cancel")}
+                            </AlertDialogCancel>
                             <AlertDialogAction
                               onClick={() => handleDeleteCategory(category.id)}
                               className="bg-red-600 hover:bg-red-700"
                               disabled={deleteMutation.isPending}
                             >
                               {deleteMutation.isPending
-                                ? "Deleting..."
-                                : "Delete"}
+                                ? t("categories.deleting")
+                                : t("categories.delete.confirm")}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
@@ -596,13 +605,15 @@ export function CategoriesManagement() {
         ) : (
           <div className="text-center py-8">
             <Tag className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-lg font-medium mb-2">No categories yet</h3>
+            <h3 className="text-lg font-medium mb-2">
+              {t("categories.empty.title")}
+            </h3>
             <p className="text-sm text-muted-foreground mb-4">
-              Create your first category to start organizing transactions
+              {t("categories.empty.description")}
             </p>
             <Button onClick={() => setShowCreateDialog(true)}>
               <Plus className="h-4 w-4 mr-2" />
-              Create First Category
+              {t("categories.empty.cta")}
             </Button>
           </div>
         )}

@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { formatDate, formatMoney } from "@/lib/format";
+import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 import { AlertTriangle, Calendar } from "lucide-react";
+import { useState } from "react";
 
 interface CreditCardProps {
   card: {
@@ -32,6 +34,7 @@ interface CreditCardProps {
 
 export function CreditCard({ card, className }: CreditCardProps) {
   const [isFlipped, setIsFlipped] = useState(false);
+  const { t } = useI18n();
 
   // Default gradient based on card network
   const getCardGradient = () => {
@@ -145,17 +148,17 @@ export function CreditCard({ card, className }: CreditCardProps) {
 
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
-                <span>Balance</span>
+                <span>{t("creditCard.balance")}</span>
                 <span className="font-medium">
-                  ${(card.balance || 0).toLocaleString()}
+                  {formatMoney(card.balance || 0, "PEN")}
                 </span>
               </div>
 
-              {card.limit && (
+              {card.limit !== undefined && (
                 <div className="flex justify-between text-sm">
-                  <span>Limit</span>
+                  <span>{t("creditCard.limit")}</span>
                   <span className="font-medium">
-                    ${card.limit.toLocaleString()}
+                    {formatMoney(card.limit || 0, "PEN")}
                   </span>
                 </div>
               )}
@@ -163,7 +166,7 @@ export function CreditCard({ card, className }: CreditCardProps) {
               {card.utilization !== undefined && (
                 <div>
                   <div className="flex justify-between text-xs mb-1">
-                    <span>Utilization</span>
+                    <span>{t("creditCard.utilization")}</span>
                     <span>{card.utilization}%</span>
                   </div>
                   <Progress
@@ -183,7 +186,9 @@ export function CreditCard({ card, className }: CreditCardProps) {
               {card.dueDate && (
                 <div className="flex items-center gap-1 text-xs mt-1">
                   <Calendar className="h-3 w-3" />
-                  <span>Due: {card.dueDate}</span>
+                  <span>
+                    {t("creditCard.due")}: {formatDate(card.dueDate)}
+                  </span>
                 </div>
               )}
             </div>

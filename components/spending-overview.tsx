@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import ExchangeRateNote from "@/components/exchange-rate-note";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,31 +9,45 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { convertAmount, type SupportedCurrency } from "@/lib/exchange-rates";
+import { formatMoney } from "@/lib/format";
 import {
-  LineChart,
+  useAnalyticsDashboard,
+  useExchangeRate,
+  useSpendingTrends,
+  useTransactions,
+} from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
+import { Transaction } from "@/lib/types";
+import {
+  addDays,
+  format,
+  parseISO,
+  startOfMonth,
+  startOfYear,
+  subMonths,
+} from "date-fns";
+import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
   Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
-  BarChart,
-  Bar,
   XAxis,
   YAxis,
-  CartesianGrid,
 } from "recharts";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { useAnalyticsDashboard, useSpendingTrends, useTransactions } from "@/lib/hooks";
-import { Transaction } from "@/lib/types";
-import { format, parseISO, startOfYear, addDays, isWithinInterval, startOfMonth, subMonths, isAfter } from "date-fns";
-import { useExchangeRate } from "@/lib/hooks";
-import { convertAmount, getCurrencySymbol, type SupportedCurrency } from "@/lib/exchange-rates";
-import ExchangeRateNote from "@/components/exchange-rate-note";
 
 export function SpendingOverview() {
+  const { t } = useI18n();
   const [activeTab, setActiveTab] = useState("monthly");
-  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>("PEN");
-  
+  const [selectedCurrency, setSelectedCurrency] =
+    useState<SupportedCurrency>("PEN");
+
   const { data: rate } = useExchangeRate();
   const { data: analytics, isLoading, error } = useAnalyticsDashboard();
   const {
@@ -40,7 +55,7 @@ export function SpendingOverview() {
     isLoading: trendsLoading,
     error: trendsError,
   } = useSpendingTrends({ months: 12 });
-  
+
   // Fetch all transactions for computing monthly and weekly with conversion
   const { data: allTransactions } = useTransactions({});
 
@@ -48,9 +63,14 @@ export function SpendingOverview() {
   const processMonthlyData = useMemo(() => {
     if (!allTransactions || allTransactions.length === 0) {
       // Fallback: map trendsData without conversion (best effort)
-      if (!trendsData) return [] as Array<{ month: string; amount: number; fullMonth: string }>;
-      return trendsData
-        .map((item) => {
+      if (!trendsData)
+        return [] as Array<{
+          month: string;
+          amount: number;
+          fullMonth: string;
+        }>;
+      return (trendsData as Array<{ month: string; amount: string }>)
+        .map((item: { month: string; amount: string }) => {
           const date = parseISO(item.month + "-01");
           const monthName = format(date, "MMM yyyy");
           return {
@@ -59,7 +79,9 @@ export function SpendingOverview() {
             fullMonth: item.month,
           };
         })
-        .sort((a, b) => a.fullMonth.localeCompare(b.fullMonth));
+        .sort((a: { fullMonth: string }, b: { fullMonth: string }) =>
+          a.fullMonth.localeCompare(b.fullMonth)
+        );
     }
 
     // Build last 12 months keys
@@ -70,7 +92,9 @@ export function SpendingOverview() {
       months.push(format(d, "yyyy-MM"));
     }
 
-    const sums: Record<string, number> = Object.fromEntries(months.map((m) => [m, 0]));
+    const sums: Record<string, number> = Object.fromEntries(
+      months.map((m) => [m, 0])
+    );
 
     for (const tx of allTransactions) {
       const d = parseISO(tx.transaction_date);
@@ -78,7 +102,9 @@ export function SpendingOverview() {
       if (!sums.hasOwnProperty(key)) continue; // outside last 12 months
       const raw = Math.abs(parseFloat(tx.amount));
       const ccy = (tx.currency as SupportedCurrency) || "PEN";
-      const converted = rate ? convertAmount(raw, ccy, selectedCurrency, rate) : raw;
+      const converted = rate
+        ? convertAmount(raw, ccy, selectedCurrency, rate)
+        : raw;
       sums[key] += converted;
     }
 
@@ -103,28 +129,39 @@ export function SpendingOverview() {
     const currentYear = new Date().getFullYear();
     const yearStart = startOfYear(new Date(currentYear, 0, 1));
     const today = new Date();
-    const daysSinceYearStart = Math.floor((today.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
+    const daysSinceYearStart = Math.floor(
+      (today.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24)
+    );
     const currentWeekNumber = Math.floor(daysSinceYearStart / 7) + 1;
 
-    const weeks: Array<{ week: string; amount: number; weekNumber: number }> = [];
+    const weeks: Array<{ week: string; amount: number; weekNumber: number }> =
+      [];
     for (let i = 3; i >= 0; i--) {
       const weekNumber = currentWeekNumber - i;
       if (weekNumber < 1) continue;
       const weekStart = addDays(yearStart, (weekNumber - 1) * 7);
       const weekEnd = addDays(weekStart, 6);
 
-      const weekSpending = allTransactions.reduce((sum: number, tx: Transaction) => {
-        const txDate = parseISO(tx.transaction_date);
-        const isInWeek = isWithinInterval(txDate, { start: weekStart, end: weekEnd });
-        if (!isInWeek) return sum;
-        const raw = Math.abs(parseFloat(tx.amount));
-        const ccy = (tx.currency as SupportedCurrency) || "PEN";
-        const converted = rate ? convertAmount(raw, ccy, selectedCurrency, rate) : raw;
-        return sum + converted;
-      }, 0);
+      const weekSpending = allTransactions.reduce(
+        (sum: number, tx: Transaction) => {
+          const txDate = parseISO(tx.transaction_date);
+          const isInWeek = txDate >= weekStart && txDate <= weekEnd;
+          if (!isInWeek) return sum;
+          const raw = Math.abs(parseFloat(tx.amount));
+          const ccy = (tx.currency as SupportedCurrency) || "PEN";
+          const converted = rate
+            ? convertAmount(raw, ccy, selectedCurrency, rate)
+            : raw;
+          return sum + converted;
+        },
+        0
+      );
 
       weeks.push({
-        week: `W${weekNumber} (${format(weekStart, "MMM d")}-${format(weekEnd, "d")})`,
+        week: `W${weekNumber} (${format(weekStart, "MMM d")}-${format(
+          weekEnd,
+          "d"
+        )})`,
         amount: Math.round(weekSpending * 100) / 100,
         weekNumber,
       });
@@ -133,21 +170,21 @@ export function SpendingOverview() {
     return weeks;
   }, [allTransactions, selectedCurrency, rate]);
 
-  const symbol = getCurrencySymbol(selectedCurrency);
-
   // Loading and error handling for monthly view
   if (activeTab === "monthly") {
     if (trendsError) {
       return (
         <Card>
           <CardHeader>
-            <CardTitle>Spending Overview</CardTitle>
-            <CardDescription>Your monthly spending trends</CardDescription>
+            <CardTitle>{t("dashboard.spendingOverview.title")}</CardTitle>
+            <CardDescription>
+              {t("dashboard.spendingOverview.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
               <p className="text-muted-foreground">
-                Failed to load monthly spending data
+                {t("dashboard.spendingOverview.loadFailedMonthly")}
               </p>
             </div>
           </CardContent>
@@ -159,8 +196,10 @@ export function SpendingOverview() {
       return (
         <Card>
           <CardHeader>
-            <CardTitle>Spending Overview</CardTitle>
-            <CardDescription>Your monthly spending trends</CardDescription>
+            <CardTitle>{t("dashboard.spendingOverview.title")}</CardTitle>
+            <CardDescription>
+              {t("dashboard.spendingOverview.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -176,19 +215,21 @@ export function SpendingOverview() {
     }
   }
 
-  // Loading and error handling for weekly view  
+  // Loading and error handling for weekly view
   if (activeTab === "weekly") {
     if (error) {
       return (
         <Card>
           <CardHeader>
-            <CardTitle>Spending Overview</CardTitle>
-            <CardDescription>Your weekly spending trends</CardDescription>
+            <CardTitle>{t("dashboard.spendingOverview.title")}</CardTitle>
+            <CardDescription>
+              {t("dashboard.spendingOverview.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-center py-8">
               <p className="text-muted-foreground">
-                Failed to load weekly spending data
+                {t("dashboard.spendingOverview.loadFailedWeekly")}
               </p>
             </div>
           </CardContent>
@@ -200,8 +241,10 @@ export function SpendingOverview() {
       return (
         <Card>
           <CardHeader>
-            <CardTitle>Spending Overview</CardTitle>
-            <CardDescription>Your weekly spending trends</CardDescription>
+            <CardTitle>{t("dashboard.spendingOverview.title")}</CardTitle>
+            <CardDescription>
+              {t("dashboard.spendingOverview.description")}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
@@ -228,7 +271,7 @@ export function SpendingOverview() {
       return (
         <div className="h-[300px] flex items-center justify-center">
           <p className="text-muted-foreground">
-            No monthly spending data available
+            {t("dashboard.spendingOverview.noDataMonthly")}
           </p>
         </div>
       );
@@ -237,7 +280,9 @@ export function SpendingOverview() {
     if (activeTab === "weekly" && processWeeklyData.length === 0) {
       return (
         <div className="h-[300px] flex items-center justify-center">
-          <p className="text-muted-foreground">No weekly spending data available</p>
+          <p className="text-muted-foreground">
+            {t("dashboard.spendingOverview.noDataWeekly")}
+          </p>
         </div>
       );
     }
@@ -261,12 +306,14 @@ export function SpendingOverview() {
               />
               <YAxis
                 fontSize={11}
-                tickFormatter={(value) => `${symbol}${Number(value).toLocaleString()}`}
+                tickFormatter={(value) =>
+                  formatMoney(Number(value), selectedCurrency)
+                }
               />
               <Tooltip
                 formatter={(value) => [
-                  `${symbol}${Number(value).toLocaleString()}`,
-                  "Spent",
+                  formatMoney(Number(value), selectedCurrency),
+                  t("dashboard.spendingOverview.tooltip.spent"),
                 ]}
                 labelStyle={{ color: "#000" }}
               />
@@ -301,12 +348,14 @@ export function SpendingOverview() {
               />
               <YAxis
                 fontSize={11}
-                tickFormatter={(value) => `${symbol}${Number(value).toLocaleString()}`}
+                tickFormatter={(value) =>
+                  formatMoney(Number(value), selectedCurrency)
+                }
               />
               <Tooltip
                 formatter={(value) => [
-                  `${symbol}${Number(value).toLocaleString()}`,
-                  "Spent",
+                  formatMoney(Number(value), selectedCurrency),
+                  t("dashboard.spendingOverview.tooltip.spent"),
                 ]}
                 labelStyle={{ color: "#000" }}
               />
@@ -327,7 +376,9 @@ export function SpendingOverview() {
     // Fallback (should not be reached with new tab structure)
     return (
       <div className="h-[300px] flex items-center justify-center">
-        <p className="text-muted-foreground">No data available</p>
+        <p className="text-muted-foreground">
+          {t("dashboard.spendingOverview.noDataMonthly")}
+        </p>
       </div>
     );
   };
@@ -335,9 +386,9 @@ export function SpendingOverview() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Spending Overview</CardTitle>
+        <CardTitle>{t("dashboard.spendingOverview.title")}</CardTitle>
         <CardDescription>
-          Your monthly trends and weekly spending patterns
+          {t("dashboard.spendingOverview.description")}
         </CardDescription>
         <ExchangeRateNote />
       </CardHeader>
@@ -345,10 +396,14 @@ export function SpendingOverview() {
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <div className="flex items-center justify-between mb-4">
             <TabsList className="grid w-fit grid-cols-2">
-              <TabsTrigger value="monthly">Monthly</TabsTrigger>
-              <TabsTrigger value="weekly">Weekly</TabsTrigger>
+              <TabsTrigger value="monthly">
+                {t("dashboard.spendingOverview.tabs.monthly")}
+              </TabsTrigger>
+              <TabsTrigger value="weekly">
+                {t("dashboard.spendingOverview.tabs.weekly")}
+              </TabsTrigger>
             </TabsList>
-            
+
             {/* Currency toggle for both views */}
             <div className="flex items-center space-x-2">
               <Button
@@ -367,7 +422,7 @@ export function SpendingOverview() {
               </Button>
             </div>
           </div>
-          
+
           <TabsContent value="monthly" className="space-y-4">
             {renderChart()}
           </TabsContent>

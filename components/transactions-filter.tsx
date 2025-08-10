@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Popover,
   PopoverContent,
@@ -17,11 +17,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { CalendarIcon, X } from "lucide-react";
-import { format, parseISO } from "date-fns";
 import { useCards, useCategories, useCurrencies } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import type { TransactionFilters } from "@/lib/types";
+import { format, parseISO } from "date-fns";
+import { CalendarIcon, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface TransactionsFilterProps {
   onFiltersChange: (filters: TransactionFilters, currency?: string) => void;
@@ -32,12 +33,13 @@ export function TransactionsFilter({
   onFiltersChange,
   initialFilters = {}, // Default to empty object
 }: TransactionsFilterProps) {
+  const { t } = useI18n();
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [category, setCategory] = useState<string | undefined>(undefined);
   const [card, setCard] = useState<string | undefined>(undefined);
   const [currency, setCurrency] = useState<string | undefined>(undefined);
-  
+
   // Use ref to track if we've initialized to prevent repeated initialization
   const initializedRef = useRef(false);
 
@@ -117,7 +119,9 @@ export function TransactionsFilter({
                   className="w-full justify-start text-left font-normal"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {startDate ? format(startDate, "MMM d") : "Start date"}
+                  {startDate
+                    ? format(startDate, "MMM d")
+                    : t("transactions.filter.startDate")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -138,7 +142,9 @@ export function TransactionsFilter({
                   className="w-full justify-start text-left font-normal"
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {endDate ? format(endDate, "MMM d") : "End date"}
+                  {endDate
+                    ? format(endDate, "MMM d")
+                    : t("transactions.filter.endDate")}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0">
@@ -153,7 +159,7 @@ export function TransactionsFilter({
 
             <Select value={category} onValueChange={setCategory}>
               <SelectTrigger>
-                <SelectValue placeholder="Category" />
+                <SelectValue placeholder={t("transactions.filter.category")} />
               </SelectTrigger>
               <SelectContent>
                 {categories?.map((cat) => (
@@ -166,7 +172,7 @@ export function TransactionsFilter({
 
             <Select value={card} onValueChange={setCard}>
               <SelectTrigger>
-                <SelectValue placeholder="Card" />
+                <SelectValue placeholder={t("transactions.filter.card")} />
               </SelectTrigger>
               <SelectContent>
                 {cards?.map((c) => (
@@ -179,7 +185,7 @@ export function TransactionsFilter({
 
             <Select value={currency} onValueChange={setCurrency}>
               <SelectTrigger>
-                <SelectValue placeholder="Currency" />
+                <SelectValue placeholder={t("transactions.filter.currency")} />
               </SelectTrigger>
               <SelectContent>
                 {(currencies || []).map((c) => (
@@ -199,7 +205,7 @@ export function TransactionsFilter({
               className="shrink-0"
             >
               <X className="mr-2 h-4 w-4" />
-              Clear Filters
+              {t("transactions.filter.clear")}
             </Button>
           )}
         </div>
@@ -210,7 +216,8 @@ export function TransactionsFilter({
             <div className="flex flex-wrap gap-2">
               {startDate && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Start: {format(startDate, "PP")}
+                  {t("transactions.filter.badge.start")}:{" "}
+                  {format(startDate, "PP")}
                   <X
                     className="h-3 w-3 ml-1 cursor-pointer"
                     onClick={() => setStartDate(undefined)}
@@ -219,7 +226,7 @@ export function TransactionsFilter({
               )}
               {endDate && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  End: {format(endDate, "PP")}
+                  {t("transactions.filter.badge.end")}: {format(endDate, "PP")}
                   <X
                     className="h-3 w-3 ml-1 cursor-pointer"
                     onClick={() => setEndDate(undefined)}
@@ -228,7 +235,7 @@ export function TransactionsFilter({
               )}
               {category && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Category:{" "}
+                  {t("transactions.filter.badge.category")}:{" "}
                   {categories?.find((c) => c.name === category)?.name ||
                     category}
                   <X
@@ -239,7 +246,8 @@ export function TransactionsFilter({
               )}
               {card && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Card: {cards?.find((c) => c.id === card)?.card_name || card}
+                  {t("transactions.filter.badge.card")}:{" "}
+                  {cards?.find((c) => c.id === card)?.card_name || card}
                   <X
                     className="h-3 w-3 ml-1 cursor-pointer"
                     onClick={() => setCard(undefined)}
@@ -248,7 +256,7 @@ export function TransactionsFilter({
               )}
               {currency && (
                 <Badge variant="secondary" className="flex items-center gap-1">
-                  Currency: {currency}
+                  {t("transactions.filter.badge.currency")}: {currency}
                   <X
                     className="h-3 w-3 ml-1 cursor-pointer"
                     onClick={() => setCurrency(undefined)}

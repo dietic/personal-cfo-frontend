@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCards } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { useBrandedCards } from "@/lib/settings-context";
 import { Card as BackendCard } from "@/lib/types";
 import {
@@ -91,6 +92,7 @@ export function CardsList() {
   const { data: backendCards, isLoading, error } = useCards();
   const router = useRouter();
   const brandedCards = useBrandedCards(); // Get the user's branded cards preference
+  const { t } = useI18n();
 
   const cards =
     backendCards?.map((card) => transformCard(card, brandedCards)) || [];
@@ -110,9 +112,11 @@ export function CardsList() {
       <Card>
         <CardContent className="py-8">
           <div className="text-center">
-            <p className="text-muted-foreground mb-4">Failed to load cards</p>
+            <p className="text-muted-foreground mb-4">
+              {t("cards.loadFailed")}
+            </p>
             <Button variant="outline" onClick={() => window.location.reload()}>
-              Try again
+              {t("cards.retry")}
             </Button>
           </div>
         </CardContent>
@@ -136,14 +140,14 @@ export function CardsList() {
         <CardContent className="py-8">
           <div className="text-center">
             <CreditCardIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No cards found</h3>
+            <h3 className="text-lg font-semibold mb-2">{t("cards.noCards")}</h3>
             <p className="text-muted-foreground mb-4">
-              Get started by adding your first card
+              {t("cards.getStarted")}
             </p>
             <AddCardDialog>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
-                Add Card
+                {t("cards.addCard")}
               </Button>
             </AddCardDialog>
           </div>
@@ -174,7 +178,7 @@ export function CardsList() {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon">
                     <MoreHorizontal className="h-4 w-4" />
-                    <span className="sr-only">Card options</span>
+                    <span className="sr-only">{t("cards.options")}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
@@ -185,7 +189,7 @@ export function CardsList() {
                         onSelect={(e) => e.preventDefault()}
                       >
                         <Edit className="h-4 w-4" />
-                        Edit Card
+                        {t("card.edit.title")}
                       </DropdownMenuItem>
                     </EditCardDialog>
                   )}
@@ -196,7 +200,7 @@ export function CardsList() {
                         onSelect={(e) => e.preventDefault()}
                       >
                         <Trash2 className="h-4 w-4" />
-                        Delete Card
+                        {t("deleteCard.title")}
                       </DropdownMenuItem>
                     </DeleteCardDialog>
                   )}
@@ -214,7 +218,7 @@ export function CardsList() {
                   handleViewTransactions(card.id.toString(), card.name)
                 }
               >
-                View Transactions
+                {t("cards.viewTransactions")}
               </Button>
             </CardFooter>
           </Card>

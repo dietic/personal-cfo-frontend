@@ -1,5 +1,6 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -7,21 +8,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Button } from "@/components/ui/button";
-import { useCategorySpending } from "@/lib/hooks";
+import { convertAmount, type SupportedCurrency } from "@/lib/exchange-rates";
+import { formatMoney } from "@/lib/format";
+import { useCategorySpending, useExchangeRate } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import type { AnalyticsFilters } from "@/lib/types";
-import { useState, useMemo } from "react";
-import { useExchangeRate } from "@/lib/hooks";
-import { convertAmount, getCurrencySymbol, type SupportedCurrency } from "@/lib/exchange-rates";
+import { useMemo, useState } from "react";
+import {
+  Cell,
+  Legend,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
 
 // Colors for pie chart segments
 const COLORS = [
@@ -42,6 +43,7 @@ interface SpendingByCategoryProps {
 }
 
 export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
+  const { t } = useI18n();
   const [currency, setCurrency] = useState<SupportedCurrency>("PEN");
   const { data: rate } = useExchangeRate();
   const { data: categoryData, isLoading, error } = useCategorySpending(filters);
@@ -49,28 +51,35 @@ export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
   const data = useMemo(() => {
     if (!categoryData) return [] as Array<{ name: string; amount: number }>;
     return categoryData
-      .map((item) => {
+      .map((item: { category: string; amount: string; currency: string }) => {
         const raw = Math.abs(parseFloat(item.amount));
         const amt = rate
-          ? convertAmount(raw, (item.currency as SupportedCurrency) || "PEN", currency, rate)
+          ? convertAmount(
+              raw,
+              (item.currency as SupportedCurrency) || "PEN",
+              currency,
+              rate
+            )
           : raw; // no rate yet, show raw
         return {
-          name: item.category || "Other",
+          name: item.category || t("common.other"),
           amount: Math.round(amt * 100) / 100,
         };
       })
-      .sort((a, b) => b.amount - a.amount);
-  }, [categoryData, rate, currency]);
+      .sort(
+        (a: { amount: number }, b: { amount: number }) => b.amount - a.amount
+      );
+  }, [categoryData, rate, currency, t]);
 
-  const symbol = getCurrencySymbol(currency);
+  // currency symbol handled by formatMoney
 
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Spending by Category</CardTitle>
+          <CardTitle>{t("analytics.spendingByCategory.title")}</CardTitle>
           <CardDescription>
-            Your spending breakdown for the selected period
+            {t("analytics.spendingByCategory.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -84,14 +93,14 @@ export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Spending by Category</CardTitle>
+          <CardTitle>{t("analytics.spendingByCategory.title")}</CardTitle>
           <CardDescription>
-            Your spending breakdown for the selected period
+            {t("analytics.spendingByCategory.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-            Failed to load category spending data
+            {t("analytics.spendingByCategory.loadFailed")}
           </div>
         </CardContent>
       </Card>
@@ -102,14 +111,14 @@ export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Spending by Category</CardTitle>
+          <CardTitle>{t("analytics.spendingByCategory.title")}</CardTitle>
           <CardDescription>
-            Your spending breakdown for the selected period
+            {t("analytics.spendingByCategory.description")}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[400px] flex items-center justify-center text-muted-foreground">
-            No transactions found for the selected date range
+            {t("analytics.spendingByCategory.empty")}
           </div>
         </CardContent>
       </Card>
@@ -121,15 +130,11 @@ export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Spending by Category</CardTitle>
+            <CardTitle>{t("analytics.spendingByCategory.title")}</CardTitle>
             <CardDescription>
-              Your spending breakdown for the selected period
+              {t("analytics.spendingByCategory.description")}
             </CardDescription>
-            {rate?.usingFixedFallback && (
-              <div className="text-xs text-muted-foreground mt-1">
-                Using fallback rate S/ 3.50 per $1
-              </div>
-            )}
+            {/* Single EXR note is shown at page level */}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -162,17 +167,19 @@ export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
                 fill="#8884d8"
                 dataKey="amount"
               >
-                {data.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                  />
-                ))}
+                {data.map(
+                  (entry: { name: string; amount: number }, index: number) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                    />
+                  )
+                )}
               </Pie>
               <Tooltip
-                formatter={(value) => [
-                  `${symbol}${Number(value).toFixed(2)}`,
-                  "Amount",
+                formatter={(value: number | string) => [
+                  formatMoney(Number(value), currency),
+                  t("analytics.tooltip.amount"),
                 ]}
               />
               <Legend />

@@ -11,12 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatMoney, formatDate as intlFormatDate } from "@/lib/format";
 import { useCards, useCategoryColors, useTransactions } from "@/lib/hooks";
-import { format, parseISO } from "date-fns";
+import { useI18n } from "@/lib/i18n";
+import { parseISO } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
 export function RecentTransactions() {
+  const { t, locale } = useI18n();
   const { data: transactions, isLoading, error } = useTransactions();
   const { data: cards } = useCards();
   const { getCategoryBadgeStyle } = useCategoryColors();
@@ -33,7 +36,7 @@ export function RecentTransactions() {
 
   const formatDate = (dateString: string) => {
     try {
-      return format(parseISO(dateString), "MMM dd, yyyy");
+      return intlFormatDate(parseISO(dateString), locale);
     } catch {
       return dateString;
     }
@@ -52,12 +55,14 @@ export function RecentTransactions() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>Your latest spending activity</CardDescription>
+          <CardTitle>{t("transactions.recent.title")}</CardTitle>
+          <CardDescription>{t("transactions.recent.subtitle")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Failed to load transactions</p>
+            <p className="text-muted-foreground">
+              {t("transactions.loadFailed")}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -69,8 +74,10 @@ export function RecentTransactions() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Recent Transactions</CardTitle>
-            <CardDescription>Your latest spending activity</CardDescription>
+            <CardTitle>{t("transactions.recent.title")}</CardTitle>
+            <CardDescription>
+              {t("transactions.recent.subtitle")}
+            </CardDescription>
           </div>
           <Skeleton className="h-9 w-20" />
         </CardHeader>
@@ -101,12 +108,12 @@ export function RecentTransactions() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Recent Transactions</CardTitle>
-          <CardDescription>Your latest spending activity</CardDescription>
+          <CardTitle>{t("transactions.recent.title")}</CardTitle>
+          <CardDescription>{t("transactions.recent.subtitle")}</CardDescription>
         </div>
         <Button variant="outline" size="sm" asChild>
           <Link href="/transactions">
-            View All
+            {t("transactions.all.title")}
             <ChevronRight className="ml-1 h-4 w-4" />
           </Link>
         </Button>
@@ -114,7 +121,7 @@ export function RecentTransactions() {
       <CardContent>
         {recentTransactions.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">No transactions found</p>
+            <p className="text-muted-foreground">{t("transactions.empty")}</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -148,7 +155,8 @@ export function RecentTransactions() {
                       <span>{formatDate(transaction.transaction_date)}</span>
                       <span>•</span>
                       <span>
-                        {cardMap[transaction.card_id] || "Unknown Card"}
+                        {cardMap[transaction.card_id] ||
+                          t("transactions.unknownCard")}
                       </span>
                     </div>
                   </div>
@@ -158,17 +166,16 @@ export function RecentTransactions() {
                     variant="secondary"
                     style={getCategoryBadgeStyle(transaction.category)}
                   >
-                    {transaction.category || "Uncategorized"}
+                    {transaction.category || t("transactions.uncategorized")}
                   </Badge>
                   <div className="text-right">
                     <span className="font-medium">
                       -
-                      {transaction.currency === "USD"
-                        ? "$"
-                        : transaction.currency === "PEN"
-                        ? "S/"
-                        : transaction.currency + " "}
-                      {parseFloat(transaction.amount).toFixed(2)}
+                      {formatMoney(
+                        Number(transaction.amount),
+                        transaction.currency as any,
+                        locale
+                      )}
                     </span>
                     <div className="text-xs text-muted-foreground">
                       {transaction.currency}

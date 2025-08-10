@@ -45,6 +45,7 @@ import {
   useStatementStatus,
   useUploadStatementAsync,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import {
   CategorizationRequest,
   ExtractionRequest,
@@ -66,12 +67,13 @@ import {
   Upload,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useDropzone } from "react-dropzone";
 import { toast } from "sonner";
 
 export function StatementImport() {
   const router = useRouter();
+  const { t } = useI18n();
   const [selectedCard, setSelectedCard] = useState<string>("");
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
@@ -116,13 +118,13 @@ export function StatementImport() {
         queryClient.invalidateQueries({ queryKey: ["analytics"] });
 
         if (statusData.status === "completed") {
-          toast.success("Statement processing completed successfully!");
+          toast.success(t("import.toast.processingCompleted"));
         } else if (statusData.status === "failed") {
-          toast.error("Statement processing failed. Please try again.");
+          toast.error(t("import.toast.processingFailed"));
         }
       }
     }
-  }, [statusData, processingStatement, refetchStatements, queryClient]);
+  }, [statusData, processingStatement, refetchStatements, queryClient, t]);
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
@@ -132,19 +134,19 @@ export function StatementImport() {
 
       // Validate file type
       if (!file.name.toLowerCase().endsWith(".pdf")) {
-        toast.error("Please upload a PDF file");
+        toast.error(t("import.errors.pdfOnly"));
         return;
       }
 
       // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
-        toast.error("File size must be less than 10MB");
+        toast.error(t("import.errors.maxSize"));
         return;
       }
 
       // Card selection is required for bank type detection
       if (!selectedCard) {
-        toast.error("Please select a card first");
+        toast.error(t("import.errors.selectCardFirst"));
         return;
       }
 
@@ -152,31 +154,17 @@ export function StatementImport() {
         setIsUploading(true);
         setUploadProgress(10);
 
-        // First, check if PDF needs password
-        console.log(
-          "🔍 Checking PDF accessibility for file:",
-          file.name,
-          "Size:",
-          file.size
-        );
-
         let pdfStatus;
         try {
           pdfStatus = await checkPDFMutation.mutateAsync(file);
-          console.log("✅ PDF Status received:", pdfStatus);
-        } catch (checkError) {
-          console.error("❌ PDF check failed:", checkError);
+        } catch {
           // If PDF check fails, assume it's not password protected and continue
-          console.log("⚠️ PDF check failed, assuming not password protected");
-          pdfStatus = { accessible: true, encrypted: false, pages: 0 };
+          pdfStatus = { accessible: true, encrypted: false, pages: 0 } as any;
         }
 
         setUploadProgress(20);
 
         if (pdfStatus.encrypted && !pdfStatus.accessible) {
-          // PDF is password protected - show password dialog
-          console.log("🔒 PDF is password protected, showing password dialog");
-          console.log("📄 PDF Status:", pdfStatus);
           setPasswordFile(file);
           setShowPasswordDialog(true);
           setIsUploading(false);
@@ -184,8 +172,6 @@ export function StatementImport() {
           return;
         }
 
-        console.log("📖 PDF is accessible, proceeding with async upload...");
-        console.log("📄 PDF Status:", pdfStatus);
         setUploadProgress(30);
 
         // Use the async upload method for unprotected PDFs
@@ -193,7 +179,6 @@ export function StatementImport() {
           file,
           cardId: selectedCard,
         });
-        console.log("✅ Async upload successful, result:", result);
 
         setUploadProgress(50);
 
@@ -207,17 +192,13 @@ export function StatementImport() {
 
         // Show success message and redirect to statements page
         toast.success(
-          `Statement "${result.filename}" is being processed in the background. You'll be notified when it's complete.`
+          t("import.toast.processingStarted", { filename: result.filename })
         );
 
         // Redirect to statements page immediately
         router.push("/statements");
       } catch (error: any) {
-        console.error("Upload error:", error);
-
-        let errorMessage = "Failed to process statement";
-
-        // Handle specific error cases
+        let errorMessage = t("import.errors.failedToProcess");
         if (error.response?.status === 423) {
           // PDF is password protected but we missed it somehow
           setPasswordFile(file);
@@ -226,37 +207,39 @@ export function StatementImport() {
           setUploadProgress(0);
           return;
         }
-
         if (error.message) {
           errorMessage = error.message;
         }
-
         toast.error(errorMessage);
       } finally {
         setIsUploading(false);
         setTimeout(() => setUploadProgress(0), 2000);
       }
     },
-    [selectedCard, uploadAsyncMutation, checkPDFMutation, refetchStatements]
+    [
+      selectedCard,
+      uploadAsyncMutation,
+      checkPDFMutation,
+      refetchStatements,
+      router,
+      t,
+    ]
   );
 
   const handlePasswordSubmit = async () => {
     if (!passwordFile || !password.trim() || !selectedCard) {
-      toast.error("Please provide all required information");
+      toast.error(t("import.errors.provideAll"));
       return;
     }
 
     try {
       setIsUnlocking(true);
 
-      console.log("Attempting to unlock and process PDF with password...");
       const result = await uploadAsyncMutation.mutateAsync({
         file: passwordFile,
         cardId: selectedCard,
         password: password.trim(),
       });
-
-      console.log("✅ PDF uploaded and processing started");
 
       // Start polling for processing status
       setProcessingStatement(result.id);
@@ -271,14 +254,13 @@ export function StatementImport() {
 
       // Show success message and redirect to statements page
       toast.success(
-        `Statement "${result.filename}" is being processed in the background. You'll be notified when it's complete.`
+        t("import.toast.processingStarted", { filename: result.filename })
       );
 
       // Redirect to statements page immediately
       router.push("/statements");
     } catch (error: any) {
-      console.error("Unlock error:", error);
-      let errorMessage = "Failed to unlock PDF";
+      let errorMessage = t("pdf.unlockFailed");
       if (error.message) {
         errorMessage = error.message;
       }
@@ -306,7 +288,7 @@ export function StatementImport() {
 
   const handleProcessStatement = async (statement: Statement) => {
     if (!selectedCard) {
-      toast.error("Please select a card first");
+      toast.error(t("import.errors.selectCardFirst"));
       return;
     }
 
@@ -317,21 +299,23 @@ export function StatementImport() {
       });
 
       toast.success(
-        `Statement processed! Found ${result.transactions_found} transactions, created ${result.transactions_created} new ones.`
+        t("import.toast.processedSummary", {
+          found: result.transactions_found,
+          created: result.transactions_created,
+        })
       );
 
       // Refresh statements list
       await refetchStatements();
     } catch (error) {
-      console.error("Process error:", error);
-      toast.error("Failed to process statement");
+      toast.error(t("import.errors.failedToProcess"));
     }
   };
 
   // New step-by-step processing handlers
   const handleExtractTransactions = async (statement: Statement) => {
     if (!selectedCard) {
-      toast.error("Please select a card first");
+      toast.error(t("import.errors.selectCardFirst"));
       return;
     }
 
@@ -350,15 +334,14 @@ export function StatementImport() {
       });
 
       // Status will be polled automatically
-    } catch (error) {
-      console.error("Extract error:", error);
+    } catch {
       setProcessingStatement(null);
     }
   };
 
   const handleCategorizeTransactions = async (statement: Statement) => {
     if (!selectedCard) {
-      toast.error("Please select a card first");
+      toast.error(t("import.errors.selectCardFirst"));
       return;
     }
 
@@ -376,48 +359,53 @@ export function StatementImport() {
       });
 
       // Status will be polled automatically
-    } catch (error) {
-      console.error("Categorize error:", error);
+    } catch {
       setProcessingStatement(null);
     }
   };
 
-  const handleRetryStep = async (statement: Statement, step: string) => {
-    // Retry functionality temporarily disabled
-    toast.info("Retry functionality will be available in a future update");
+  const handleRetryStep = async () => {
+    toast.info(t("import.retry.placeholder"));
   };
 
   const getStatusBadge = (statement: Statement) => {
     if (statement.is_processed) {
-      return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+      return (
+        <Badge className="bg-green-100 text-green-800">
+          {t("import.status.completed")}
+        </Badge>
+      );
     }
 
-    // Handle the new multi-step statuses
     if (statement.status === "processing") {
       return (
         <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
           <Loader2 className="h-3 w-3 animate-spin" />
-          Processing
+          {t("import.status.processing")}
         </Badge>
       );
     }
 
     if (statement.status === "failed") {
-      return <Badge variant="destructive">Failed</Badge>;
+      return <Badge variant="destructive">{t("import.status.failed")}</Badge>;
     }
 
     if (
       statement.extraction_status === "completed" &&
       statement.categorization_status === "pending"
     ) {
-      return <Badge className="bg-yellow-100 text-yellow-800">Extracted</Badge>;
+      return (
+        <Badge className="bg-yellow-100 text-yellow-800">
+          {t("import.status.extracted")}
+        </Badge>
+      );
     }
 
     if (statement.extraction_status === "processing") {
       return (
         <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
           <Loader2 className="h-3 w-3 animate-spin" />
-          Extracting
+          {t("import.status.extracting")}
         </Badge>
       );
     }
@@ -426,12 +414,12 @@ export function StatementImport() {
       return (
         <Badge className="bg-purple-100 text-purple-800 flex items-center gap-1">
           <Loader2 className="h-3 w-3 animate-spin" />
-          Categorizing
+          {t("import.status.categorizing")}
         </Badge>
       );
     }
 
-    return <Badge variant="secondary">Uploaded</Badge>;
+    return <Badge variant="secondary">{t("import.status.uploaded")}</Badge>;
   };
 
   const getProgressInfo = (statement: Statement) => {
@@ -439,39 +427,47 @@ export function StatementImport() {
       processingStatement === statement.id ? statusData : null;
 
     if (!currentStatus) {
-      if (statement.is_processed) return { percentage: 100, step: "Completed" };
+      if (statement.is_processed)
+        return { percentage: 100, step: t("import.status.completed") };
       if (
         statement.extraction_status === "completed" &&
         statement.categorization_status === "pending"
       ) {
-        return { percentage: 50, step: "Ready for Categorization" };
+        return {
+          percentage: 50,
+          step: t("import.info.readyForCategorization"),
+        };
       }
       if (statement.extraction_status === "pending")
-        return { percentage: 0, step: "Ready for Extraction" };
-      return { percentage: 25, step: "Uploaded" };
+        return { percentage: 0, step: t("import.info.readyForExtraction") };
+      return { percentage: 25, step: t("import.status.uploaded") };
     }
 
     return {
       percentage: currentStatus.progress_percentage || 0,
-      step: currentStatus.current_step || "Processing",
+      step: currentStatus.current_step || t("import.status.processing"),
     };
   };
 
   const getSimpleStatusBadge = (status: string) => {
     switch (status) {
       case "completed":
-        return <Badge className="bg-green-100 text-green-800">Completed</Badge>;
+        return (
+          <Badge className="bg-green-100 text-green-800">
+            {t("import.status.completed")}
+          </Badge>
+        );
       case "processing":
         return (
           <Badge className="bg-blue-100 text-blue-800 flex items-center gap-1">
             <Loader2 className="h-3 w-3 animate-spin" />
-            Processing
+            {t("import.status.processing")}
           </Badge>
         );
       case "failed":
-        return <Badge variant="destructive">Failed</Badge>;
+        return <Badge variant="destructive">{t("import.status.failed")}</Badge>;
       case "pending":
-        return <Badge variant="secondary">Pending</Badge>;
+        return <Badge variant="secondary">{t("import.status.pending")}</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
@@ -492,32 +488,29 @@ export function StatementImport() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Upload Statement
+            {t("import.upload.title")}
           </CardTitle>
-          <CardDescription>
-            Upload your bank statement in PDF format to automatically import
-            transactions
-          </CardDescription>
+          <CardDescription>{t("import.upload.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Card Selection */}
           <div className="space-y-2">
-            <Label htmlFor="card-select">Select Card *</Label>
+            <Label htmlFor="card-select">{t("import.selectCard")}</Label>
             <Select value={selectedCard} onValueChange={setSelectedCard}>
               <SelectTrigger>
-                <SelectValue placeholder="Choose a card for this statement" />
+                <SelectValue placeholder={t("import.selectCardPlaceholder")} />
               </SelectTrigger>
               <SelectContent>
                 {cards?.map((card) => (
                   <SelectItem key={card.id} value={card.id}>
-                    {card.card_name} ({card.bank_provider?.name || "Unknown"})
+                    {card.card_name} (
+                    {card.bank_provider?.name || t("common.unknown")})
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Card selection is required to properly categorize and track
-              transactions.
+              {t("import.cardHelp")}
             </p>
           </div>
 
@@ -533,14 +526,12 @@ export function StatementImport() {
             <input {...getInputProps()} />
             <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
             {isDragActive ? (
-              <p className="text-lg">Drop the PDF file here...</p>
+              <p className="text-lg">{t("import.drop.active")}</p>
             ) : (
               <div>
-                <p className="text-lg mb-2">
-                  Drag & drop a PDF file here, or click to select
-                </p>
+                <p className="text-lg mb-2">{t("import.drop.prompt")}</p>
                 <p className="text-sm text-muted-foreground">
-                  Supports PDF files up to 10MB
+                  {t("import.drop.supports")}
                 </p>
               </div>
             )}
@@ -550,7 +541,7 @@ export function StatementImport() {
           {isUploading && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>Uploading...</span>
+                <span>{t("import.progress.uploading")}</span>
                 <span>{uploadProgress}%</span>
               </div>
               <Progress value={uploadProgress} className="w-full" />
@@ -564,29 +555,28 @@ export function StatementImport() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5" />
-            PDF Format Requirements
+            {t("import.requirements.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-sm">
-            <p>Your PDF statement should be:</p>
+            <p>{t("import.requirements.text1")}</p>
             <ul className="list-disc list-inside space-y-1 ml-4">
               <li>
-                <strong>Text-based:</strong> Scanned images may not work
-                properly
+                <strong>{t("import.requirements.item.textBased")}:</strong>{" "}
+                {t("import.requirements.item.textBasedNote")}
               </li>
               <li>
-                <strong>Bank statement:</strong> Official statement from your
-                bank
+                <strong>{t("import.requirements.item.bankStatement")}:</strong>{" "}
+                {t("import.requirements.item.bankStatementNote")}
               </li>
               <li>
-                <strong>Recent:</strong> Statements from the last 12 months work
-                best
+                <strong>{t("import.requirements.item.recent")}:</strong>{" "}
+                {t("import.requirements.item.recentNote")}
               </li>
             </ul>
             <p className="mt-3 text-muted-foreground">
-              The system will automatically extract transaction data from the
-              PDF.
+              {t("import.requirements.footer")}
             </p>
           </div>
         </CardContent>
@@ -598,39 +588,35 @@ export function StatementImport() {
           <CardTitle className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Statement History
+              {t("import.history.title")}
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={() => refetchStatements()}
             >
-              Refresh
+              {t("import.history.refresh")}
             </Button>
           </CardTitle>
-          <CardDescription>
-            View and manage your uploaded statements. All statements are
-            associated with a card for proper transaction tracking and
-            analytics.
-          </CardDescription>
+          <CardDescription>{t("import.history.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           {!statements || statements.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-muted-foreground">
-                No statements uploaded yet
+                {t("import.history.empty")}
               </p>
             </div>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Filename</TableHead>
-                  <TableHead>Uploaded</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead>{t("import.table.filename")}</TableHead>
+                  <TableHead>{t("import.table.uploaded")}</TableHead>
+                  <TableHead>{t("import.table.status")}</TableHead>
+                  <TableHead>{t("import.table.progress")}</TableHead>
+                  <TableHead>{t("import.table.actions")}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -667,7 +653,6 @@ export function StatementImport() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          {/* Show different actions based on statement status */}
                           {statement.extraction_status === "pending" &&
                             !isProcessing && (
                               <Button
@@ -681,7 +666,7 @@ export function StatementImport() {
                                 className="flex items-center gap-1"
                               >
                                 <Brain className="h-3 w-3" />
-                                Extract
+                                {t("import.btn.extract")}
                               </Button>
                             )}
 
@@ -697,7 +682,7 @@ export function StatementImport() {
                                 className="flex items-center gap-1"
                               >
                                 <Tag className="h-3 w-3" />
-                                Categorize
+                                {t("import.btn.categorize")}
                               </Button>
                             )}
 
@@ -707,23 +692,15 @@ export function StatementImport() {
                               <Button
                                 size="sm"
                                 variant="outline"
-                                onClick={() =>
-                                  handleRetryStep(
-                                    statement,
-                                    statement.extraction_status === "failed"
-                                      ? "extract"
-                                      : "categorize"
-                                  )
-                                }
+                                onClick={() => handleRetryStep()}
                                 disabled={false}
                                 className="flex items-center gap-1"
                               >
                                 <RefreshCw className="h-3 w-3" />
-                                Retry
+                                {t("import.btn.retry")}
                               </Button>
                             )}
 
-                          {/* Legacy one-click process button */}
                           {!statement.is_processed &&
                             statement.status === "uploaded" &&
                             !isProcessing && (
@@ -739,7 +716,7 @@ export function StatementImport() {
                                 className="flex items-center gap-1"
                               >
                                 <TrendingUp className="h-3 w-3" />
-                                Process All
+                                {t("import.btn.processAll")}
                               </Button>
                             )}
 
@@ -750,7 +727,7 @@ export function StatementImport() {
                               className="flex items-center gap-1"
                             >
                               <Loader2 className="h-3 w-3 animate-spin" />
-                              Processing...
+                              {t("import.btn.processing")}
                             </Button>
                           )}
 
@@ -761,30 +738,33 @@ export function StatementImport() {
                                 size="sm"
                                 onClick={() => {
                                   // Insights functionality temporarily disabled
-                                  // setSelectedStatement(statement);
                                 }}
                                 className="flex items-center gap-1"
                               >
                                 <Eye className="h-3 w-3" />
                                 {statement.is_processed
-                                  ? "View Insights"
-                                  : "View Details"}
+                                  ? t("import.btn.viewInsights")
+                                  : t("import.btn.viewDetails")}
                               </Button>
                             </DialogTrigger>
                             <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                               <DialogHeader>
                                 <DialogTitle
                                   className="truncate"
-                                  title={`Statement Details - ${statement.filename}`}
+                                  title={t("import.dialog.titlePrefix", {
+                                    filename: statement.filename,
+                                  })}
                                 >
-                                  Statement Details - {statement.filename}
+                                  {t("import.dialog.titlePrefix", {
+                                    filename: statement.filename,
+                                  })}
                                 </DialogTitle>
                                 <DialogDescription>
-                                  Uploaded{" "}
-                                  {formatDistanceToNow(
-                                    parseISO(statement.created_at)
-                                  )}{" "}
-                                  ago
+                                  {t("import.dialog.uploadedAgo", {
+                                    ago: formatDistanceToNow(
+                                      parseISO(statement.created_at)
+                                    ),
+                                  })}
                                 </DialogDescription>
                               </DialogHeader>
 
@@ -793,7 +773,7 @@ export function StatementImport() {
                                 <div className="grid grid-cols-2 gap-4">
                                   <div>
                                     <Label className="text-sm font-medium">
-                                      Status
+                                      {t("import.dialog.status")}
                                     </Label>
                                     <div className="flex items-center gap-2 mt-1">
                                       {getStatusBadge(statement)}
@@ -804,7 +784,7 @@ export function StatementImport() {
                                   </div>
                                   <div>
                                     <Label className="text-sm font-medium">
-                                      Processing Progress
+                                      {t("import.dialog.processingProgress")}
                                     </Label>
                                     <div className="mt-1">
                                       <Progress
@@ -815,7 +795,7 @@ export function StatementImport() {
                                       />
                                       <span className="text-xs text-muted-foreground">
                                         {getProgressInfo(statement).percentage}%
-                                        complete -{" "}
+                                        &nbsp;-{" "}
                                         {getProgressInfo(statement).step}
                                       </span>
                                     </div>
@@ -826,7 +806,7 @@ export function StatementImport() {
                                 {statement.error_message && (
                                   <div className="space-y-2">
                                     <Label className="text-sm font-medium text-destructive">
-                                      Error Details
+                                      {t("import.dialog.errorDetails")}
                                     </Label>
                                     <div className="bg-destructive/10 border border-destructive/20 p-3 rounded-lg">
                                       <p className="text-sm text-destructive">
@@ -840,7 +820,7 @@ export function StatementImport() {
                                 <div className="grid grid-cols-2 gap-4 text-sm">
                                   <div>
                                     <Label className="text-sm font-medium">
-                                      Extraction Status
+                                      {t("import.dialog.extractionStatus")}
                                     </Label>
                                     <div className="flex items-center gap-2 mt-1">
                                       {getSimpleStatusBadge(
@@ -853,7 +833,7 @@ export function StatementImport() {
                                   </div>
                                   <div>
                                     <Label className="text-sm font-medium">
-                                      Categorization Status
+                                      {t("import.dialog.categorizationStatus")}
                                     </Label>
                                     <div className="flex items-center gap-2 mt-1">
                                       {getSimpleStatusBadge(
@@ -870,11 +850,12 @@ export function StatementImport() {
                                 {parseInt(statement.retry_count) > 0 && (
                                   <div>
                                     <Label className="text-sm font-medium">
-                                      Retry Count
+                                      {t("import.dialog.retryCount")}
                                     </Label>
                                     <p className="text-sm text-muted-foreground mt-1">
-                                      This statement has been retried{" "}
-                                      {statement.retry_count} time(s)
+                                      {t("import.dialog.retryTimes", {
+                                        count: statement.retry_count,
+                                      })}
                                     </p>
                                   </div>
                                 )}
@@ -898,24 +879,25 @@ export function StatementImport() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
-              PDF Password Required
+              {t("import.password.title")}
             </DialogTitle>
             <DialogDescription>
-              This PDF is password protected. Please enter the password to
-              unlock and process it.
+              {t("import.password.description")}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="pdf-password">Password</Label>
+              <Label htmlFor="pdf-password">{t("import.password.label")}</Label>
               <Input
                 id="pdf-password"
                 type="password"
-                placeholder="Enter PDF password"
+                placeholder={t("import.password.placeholder")}
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => {
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setPassword(e.target.value)
+                }
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                   if (e.key === "Enter") {
                     handlePasswordSubmit();
                   }
@@ -925,7 +907,7 @@ export function StatementImport() {
 
             {passwordFile && (
               <div className="text-sm text-muted-foreground">
-                File: {passwordFile.name}
+                {t("import.password.file")}: {passwordFile.name}
               </div>
             )}
 
@@ -935,7 +917,7 @@ export function StatementImport() {
                 onClick={handlePasswordCancel}
                 disabled={isUnlocking}
               >
-                Cancel
+                {t("import.password.cancel")}
               </Button>
               <Button
                 onClick={handlePasswordSubmit}
@@ -944,12 +926,12 @@ export function StatementImport() {
                 {isUnlocking ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Unlocking...
+                    {t("import.password.unlocking")}
                   </>
                 ) : (
                   <>
                     <Unlock className="mr-2 h-4 w-4" />
-                    Unlock & Upload
+                    {t("import.password.unlockUpload")}
                   </>
                 )}
               </Button>

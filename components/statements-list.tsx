@@ -44,6 +44,7 @@ import {
   useRecategorizeTransactions,
   useStatements,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { CategorizationRequest, Statement } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import {
@@ -56,10 +57,12 @@ import {
   Search,
   Trash2,
 } from "lucide-react";
+import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 export function StatementsList() {
+  const { t } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [bulkRecategorizing, setBulkRecategorizing] = useState(false);
   const [bulkProgress, setBulkProgress] = useState(0);
@@ -82,40 +85,42 @@ export function StatementsList() {
   const { data: cards } = useCards();
 
   // Derived helpers for selection
-  const filteredStatements =
-    statements?.filter(
-      (statement) =>
-        statement.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        statement.status?.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
+  const baseStatements: Statement[] = statements ?? [];
+  const filteredStatements: Statement[] = baseStatements.filter(
+    (statement: Statement) =>
+      statement.filename.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (statement.status?.toLowerCase() || "").includes(
+        searchQuery.toLowerCase()
+      )
+  );
 
   const allSelectedOnPage = useMemo(
     () =>
       filteredStatements.length > 0 &&
-      filteredStatements.every((s) => selectedIds.has(s.id)),
+      filteredStatements.every((s: Statement) => selectedIds.has(s.id)),
     [filteredStatements, selectedIds]
   );
   const someSelectedOnPage = useMemo(
     () =>
-      filteredStatements.some((s) => selectedIds.has(s.id)) &&
+      filteredStatements.some((s: Statement) => selectedIds.has(s.id)) &&
       !allSelectedOnPage,
     [filteredStatements, selectedIds, allSelectedOnPage]
   );
 
   const toggleSelectAll = (checked: boolean) => {
-    setSelectedIds((prev) => {
+    setSelectedIds((prev: Set<string>) => {
       const next = new Set(prev);
       if (checked) {
-        filteredStatements.forEach((s) => next.add(s.id));
+        filteredStatements.forEach((s: Statement) => next.add(s.id));
       } else {
-        filteredStatements.forEach((s) => next.delete(s.id));
+        filteredStatements.forEach((s: Statement) => next.delete(s.id));
       }
       return next;
     });
   };
 
   const toggleSelectOne = (id: string, checked: boolean) => {
-    setSelectedIds((prev) => {
+    setSelectedIds((prev: Set<string>) => {
       const next = new Set(prev);
       if (checked) next.add(id);
       else next.delete(id);
@@ -126,7 +131,7 @@ export function StatementsList() {
   // Auto-refresh when there are processing statements
   useEffect(() => {
     const hasProcessingStatements = statements?.some(
-      (statement) =>
+      (statement: Statement) =>
         statement.status === "processing" || statement.status === "uploaded"
     );
 
@@ -142,10 +147,11 @@ export function StatementsList() {
   // Clear selection if items disappear
   useEffect(() => {
     if (!statements) return;
-    setSelectedIds((prev) => {
+    setSelectedIds((prev: Set<string>) => {
       const next = new Set<string>();
       for (const id of prev) {
-        if (statements.find((s) => s.id === id)) next.add(id);
+        if ((statements as Statement[]).find((s: Statement) => s.id === id))
+          next.add(id);
       }
       return next;
     });
@@ -155,40 +161,47 @@ export function StatementsList() {
   useEffect(() => {
     if (statements) {
       const currentProcessingIds = new Set(
-        statements
-          .filter((s) => s.status === "processing" || s.status === "uploaded")
-          .map((s) => s.id)
+        (statements as Statement[])
+          .filter(
+            (s: Statement) =>
+              s.status === "processing" || s.status === "uploaded"
+          )
+          .map((s: Statement) => s.id)
       );
 
       // Check for newly completed statements
-      const completedStatements = statements.filter((statement) => {
-        const wasProcessing = previousProcessingIdsRef.current.has(
-          statement.id
-        );
-        const isNowCompleted = statement.status === "completed";
-        return wasProcessing && isNowCompleted;
-      });
+      const completedStatements = (statements as Statement[]).filter(
+        (statement: Statement) => {
+          const wasProcessing = previousProcessingIdsRef.current.has(
+            statement.id
+          );
+          const isNowCompleted = statement.status === "completed";
+          return wasProcessing && isNowCompleted;
+        }
+      );
 
       // Show notifications for completed statements
-      completedStatements.forEach((statement) => {
+      completedStatements.forEach((statement: Statement) => {
         toast.success(
-          `Statement "${statement.filename}" processing completed!`
+          t("statements.toast.completed", { filename: statement.filename })
         );
       });
 
       // Check for failed statements
-      const failedStatements = statements.filter((statement) => {
-        const wasProcessing = previousProcessingIdsRef.current.has(
-          statement.id
-        );
-        const isNowFailed =
-          statement.status === "failed" || statement.status === "error";
-        return wasProcessing && isNowFailed;
-      });
+      const failedStatements = (statements as Statement[]).filter(
+        (statement: Statement) => {
+          const wasProcessing = previousProcessingIdsRef.current.has(
+            statement.id
+          );
+          const isNowFailed =
+            statement.status === "failed" || statement.status === "error";
+          return wasProcessing && isNowFailed;
+        }
+      );
 
-      failedStatements.forEach((statement) => {
+      failedStatements.forEach((statement: Statement) => {
         toast.error(
-          `Statement "${statement.filename}" processing failed. Please try again.`
+          t("statements.toast.failed", { filename: statement.filename })
         );
       });
 
@@ -212,6 +225,7 @@ export function StatementsList() {
       // Refresh the statements list to show updated status
       await refetchStatements();
     } catch (error) {
+      // eslint-disable-next-line no-console
       console.error("Recategorize error:", error);
     }
   };
@@ -221,13 +235,13 @@ export function StatementsList() {
     if (!statements) return;
 
     // Filter statements that have been processed (any status - we'll recategorize all)
-    const eligibleStatements = statements.filter(
-      (statement) =>
+    const eligibleStatements = (statements as Statement[]).filter(
+      (statement: Statement) =>
         statement.status === "completed" || statement.status === "failed"
     );
 
     if (eligibleStatements.length === 0) {
-      toast.info("No statements available for recategorization");
+      toast.info(t("statements.noEligibleForRecategorization"));
       return;
     }
 
@@ -255,6 +269,7 @@ export function StatementsList() {
 
         successCount++;
       } catch (error) {
+        // eslint-disable-next-line no-console
         console.error(`Failed to recategorize ${statement.filename}:`, error);
         errorCount++;
       }
@@ -271,13 +286,22 @@ export function StatementsList() {
 
     // Show final result
     if (successCount > 0) {
-      toast.success(
-        `Bulk recategorization completed! ${successCount} statements processed successfully${
-          errorCount > 0 ? `, ${errorCount} failed` : ""
-        }`
-      );
+      if (errorCount > 0) {
+        toast.success(
+          t("statements.bulkRecategorization.completedWithFailures", {
+            success: successCount,
+            failed: errorCount,
+          })
+        );
+      } else {
+        toast.success(
+          t("statements.bulkRecategorization.completed", {
+            success: successCount,
+          })
+        );
+      }
     } else {
-      toast.error("Bulk recategorization failed for all statements");
+      toast.error(t("statements.bulkRecategorization.failedAll"));
     }
   };
 
@@ -289,7 +313,7 @@ export function StatementsList() {
     try {
       const res = await bulkDeleteMutation.mutateAsync(ids);
       // Remove only successfully deleted from selection
-      setSelectedIds((prev) => {
+      setSelectedIds((prev: Set<string>) => {
         const next = new Set(prev);
         res.successIds.forEach((sid: string) => next.delete(sid));
         return next;
@@ -331,11 +355,11 @@ export function StatementsList() {
       <div className="flex items-center gap-2">
         <Badge variant="secondary" className={getStatusColor(statement.status)}>
           {isProcessing && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
-          {statement.status || "Unknown"}
+          {statement.status || t("statements.status.unknown")}
         </Badge>
         {isProcessing && (
           <span className="text-xs text-muted-foreground">
-            Processing in background...
+            {t("statements.status.processingNote")}
           </span>
         )}
       </div>
@@ -344,7 +368,9 @@ export function StatementsList() {
 
   const getCardName = (cardId?: string | null) => {
     if (!cardId || !cards) return "-";
-    const card = cards.find((c) => c.id === cardId);
+    const card = (
+      cards as Array<{ id: string; card_name?: string | null }>
+    ).find((c: { id: string }) => c.id === cardId);
     return card?.card_name || "-";
   };
 
@@ -352,16 +378,16 @@ export function StatementsList() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Bank Statements</CardTitle>
-          <CardDescription>
-            Manage your uploaded bank statements
-          </CardDescription>
+          <CardTitle>{t("statements.page.title")}</CardTitle>
+          <CardDescription>{t("statements.page.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Failed to load statements</p>
+            <p className="text-muted-foreground">
+              {t("statements.loadFailed")}
+            </p>
             <Button variant="outline" onClick={() => window.location.reload()}>
-              Try again
+              {t("common.retry")}
             </Button>
           </div>
         </CardContent>
@@ -375,9 +401,9 @@ export function StatementsList() {
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
-              <CardTitle>Bank Statements</CardTitle>
+              <CardTitle>{t("statements.page.title")}</CardTitle>
               <CardDescription>
-                Manage your uploaded bank statements
+                {t("statements.page.description")}
               </CardDescription>
             </div>
             <Skeleton className="h-10 w-full md:w-64" />
@@ -409,9 +435,9 @@ export function StatementsList() {
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <CardTitle>Bank Statements</CardTitle>
+            <CardTitle>{t("statements.page.title")}</CardTitle>
             <CardDescription>
-              Manage your uploaded bank statements
+              {t("statements.page.description")}
             </CardDescription>
           </div>
           <div className="flex flex-col md:flex-row gap-2 md:items-center">
@@ -424,8 +450,10 @@ export function StatementsList() {
             >
               <Trash2 className="h-4 w-4" />
               {bulkDeleteMutation.isPending
-                ? "Deleting..."
-                : `Delete Selected (${selectedIds.size})`}
+                ? t("statements.deleting")
+                : t("statements.bulkDelete.selected", {
+                    count: selectedIds.size,
+                  })}
             </Button>
             <Button
               variant="outline"
@@ -438,16 +466,20 @@ export function StatementsList() {
                   bulkRecategorizing ? "animate-spin" : ""
                 }`}
               />
-              {bulkRecategorizing ? "Recategorizing..." : "Recategorize All"}
+              {bulkRecategorizing
+                ? t("statements.recategorizing")
+                : t("statements.recategorizeAll")}
             </Button>
             <div className="relative w-full md:w-64">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Search statements..."
+                placeholder={t("statements.searchPlaceholder")}
                 className="pl-8"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchQuery(e.target.value)
+                }
                 disabled={bulkRecategorizing}
               />
             </div>
@@ -459,7 +491,9 @@ export function StatementsList() {
           <div className="space-y-2 mt-4">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">
-                Processing: {currentProcessing}
+                {t("statements.bulkRecategorization.processing", {
+                  filename: currentProcessing,
+                })}
               </span>
               <span className="text-muted-foreground">
                 {Math.round(bulkProgress)}%
@@ -475,8 +509,8 @@ export function StatementsList() {
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground">
               {statements?.length === 0
-                ? "No statements uploaded yet"
-                : "No statements found"}
+                ? t("statements.empty.noneUploaded")
+                : t("statements.empty.noneFound")}
             </p>
           </div>
         ) : (
@@ -494,14 +528,14 @@ export function StatementsList() {
                           : false
                       }
                       onCheckedChange={(v) => toggleSelectAll(Boolean(v))}
-                      aria-label="Select all"
+                      aria-label={t("statements.aria.selectAllPage")}
                     />
                   </TableHead>
-                  <TableHead>File Name</TableHead>
-                  <TableHead>Card</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Upload Date</TableHead>
-                  <TableHead>File Type</TableHead>
+                  <TableHead>{t("statements.table.fileName")}</TableHead>
+                  <TableHead>{t("statements.table.card")}</TableHead>
+                  <TableHead>{t("statements.table.status")}</TableHead>
+                  <TableHead>{t("statements.table.uploadDate")}</TableHead>
+                  <TableHead>{t("statements.table.fileType")}</TableHead>
                   <TableHead className="w-[80px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -519,7 +553,9 @@ export function StatementsList() {
                         onCheckedChange={(v) =>
                           toggleSelectOne(statement.id, Boolean(v))
                         }
-                        aria-label={`Select ${statement.filename}`}
+                        aria-label={t("statements.aria.selectStatement", {
+                          filename: statement.filename,
+                        })}
                       />
                     </TableCell>
                     <TableCell>
@@ -528,7 +564,8 @@ export function StatementsList() {
                         <div>
                           <p className="font-medium">{statement.filename}</p>
                           <p className="text-xs text-muted-foreground">
-                            ID: {statement.id.slice(0, 8)}...
+                            {t("statements.idLabel")}:{" "}
+                            {statement.id.slice(0, 8)}...
                           </p>
                         </div>
                       </div>
@@ -542,7 +579,7 @@ export function StatementsList() {
                     <TableCell>{formatDate(statement.created_at)}</TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs uppercase">
-                        {statement.file_type || "PDF"}
+                        {statement.file_type || t("statements.fileType.pdf")}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -554,7 +591,9 @@ export function StatementsList() {
                             disabled={bulkRecategorizing}
                           >
                             <MoreHorizontal className="h-4 w-4" />
-                            <span className="sr-only">Actions</span>
+                            <span className="sr-only">
+                              {t("common.actions")}
+                            </span>
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
@@ -563,7 +602,7 @@ export function StatementsList() {
                             disabled={true} // Download functionality can be implemented later
                           >
                             <Download className="h-4 w-4" />
-                            Download
+                            {t("statements.menu.download")}
                           </DropdownMenuItem>
 
                           {/* Recategorize option - only show for completed statements */}
@@ -581,8 +620,8 @@ export function StatementsList() {
                               >
                                 <RefreshCw className="h-4 w-4" />
                                 {recategorizeMutation.isPending
-                                  ? "Recategorizing..."
-                                  : "Recategorize"}
+                                  ? t("statements.menu.recategorizing")
+                                  : t("statements.menu.recategorize")}
                               </DropdownMenuItem>
                             )}
 
@@ -595,7 +634,7 @@ export function StatementsList() {
                               disabled={bulkRecategorizing}
                             >
                               <Trash2 className="h-4 w-4" />
-                              Delete Statement
+                              {t("statements.menu.delete")}
                             </DropdownMenuItem>
                           </DeleteStatementDialog>
                         </DropdownMenuContent>
@@ -613,30 +652,33 @@ export function StatementsList() {
       <AlertDialog open={confirmBulkOpen} onOpenChange={setConfirmBulkOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete selected statements</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t("statements.bulkDelete.confirmTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {selectedIds.size} selected
-              statement{selectedIds.size === 1 ? "" : "s"}? This will also
-              delete all transactions associated with them. This action cannot
-              be undone.
+              {t("statements.bulkDelete.confirmDescription", {
+                count: selectedIds.size,
+              })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="text-sm text-muted-foreground">
             <p className="text-amber-600 font-medium">
-              ⚠️ All transactions from the selected statements will also be
-              deleted
+              {/* keep emoji for emphasis, leave copy localized */}
+              ⚠️ {t("statements.bulkDelete.warning")}
             </p>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>
-              Cancel
+              {t("common.cancel")}
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleBulkDelete}
               disabled={bulkDeleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {bulkDeleteMutation.isPending ? "Deleting..." : "Delete"}
+              {bulkDeleteMutation.isPending
+                ? t("statements.bulkDelete.deleting")
+                : t("statements.bulkDelete.confirm")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

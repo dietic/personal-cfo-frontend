@@ -1,15 +1,16 @@
 "use client";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
-import { getUserDisplayName, getUserInitials } from "@/lib/utils";
+import { Card, CardContent } from "@/components/ui/card";
 import { useUserProfile } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
+import { getUserInitials } from "@/lib/utils";
+import { Upload } from "lucide-react";
 
 export function DashboardHeader() {
   const { data: user } = useUserProfile();
-  // const displayName = getUserDisplayName(user || null);
+  const { t } = useI18n();
   const userInitials = getUserInitials(user || null);
 
   return (
@@ -26,17 +27,19 @@ export function DashboardHeader() {
             </Avatar>
             <div>
               <h1 className="text-2xl font-bold">
-                Welcome back, {user?.first_name}
+                {t("dashboard.welcomeBack", { name: user?.first_name || "" })}
               </h1>
               <p className="text-muted-foreground">
-                Here's what's happening with your finances today
+                {t("dashboard.whatsHappening")}
               </p>
             </div>
           </div>
-          <Button className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Import Statement
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button className="flex items-center gap-2">
+              <Upload className="h-4 w-4" />
+              {t("dashboard.importStatement")}
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

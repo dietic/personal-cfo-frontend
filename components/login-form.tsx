@@ -15,6 +15,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n";
 import { Eye, EyeOff, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -25,22 +26,21 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const { login, isLoading } = useAuth();
+  const { t } = useI18n();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
     if (!email || !password) {
-      setError("Please fill in all fields");
+      setError(t("login.fillAllFields"));
       return;
     }
 
     try {
       await login({ email, password });
     } catch (error: any) {
-      setError(
-        error.message || "Failed to sign in. Please check your credentials."
-      );
+      setError(error.message || t("login.failedCheckCredentials"));
     }
   };
 
@@ -48,9 +48,11 @@ export function LoginForm() {
     <Card className="border-0 shadow-lg">
       <form onSubmit={handleSubmit}>
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl text-center">Sign In</CardTitle>
+          <CardTitle className="text-2xl text-center">
+            {t("login.title")}
+          </CardTitle>
           <CardDescription className="text-center">
-            Enter your email and password to access your account
+            {t("login.subtitle")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -61,13 +63,13 @@ export function LoginForm() {
           )}
 
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("login.email")}</Label>
             <div className="relative">
               <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 id="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder={t("login.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="pl-10"
@@ -78,12 +80,12 @@ export function LoginForm() {
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
+              <Label htmlFor="password">{t("login.password")}</Label>
               <Link
                 href="/forgot-password"
                 className="text-xs text-primary hover:underline"
               >
-                Forgot password?
+                {t("login.forgotPassword")}
               </Link>
             </div>
             <div className="relative">
@@ -113,17 +115,17 @@ export function LoginForm() {
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Signing in..." : "Sign In"}
+            {isLoading ? t("login.loading") : t("login.submit")}
           </Button>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
-            Don't have an account?{" "}
+            {t("login.noAccount")}{" "}
             <Link
               href="/signup"
               className="text-primary hover:underline font-medium"
             >
-              Sign up
+              {t("login.signUp")}
             </Link>
           </p>
         </CardFooter>

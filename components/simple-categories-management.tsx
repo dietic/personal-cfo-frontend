@@ -1,26 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +11,26 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -40,23 +39,25 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Plus,
-  Edit3,
-  Trash2,
-  Tag,
-  AlertCircle,
-  CheckCircle,
-  Info,
-  Settings,
-} from "lucide-react";
+import { formatDate } from "@/lib/format";
 import {
   useCategories,
   useCreateCategory,
-  useUpdateCategory,
   useDeleteCategory,
+  useUpdateCategory,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { Category, CategoryCreate, CategoryUpdate } from "@/lib/types";
+import {
+  AlertCircle,
+  CheckCircle,
+  Edit3,
+  Plus,
+  Settings,
+  Tag,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 const DEFAULT_COLORS = [
@@ -79,6 +80,7 @@ interface SimpleCategoriesManagementProps {
 export function SimpleCategoriesManagement({
   onManageKeywords,
 }: SimpleCategoriesManagementProps) {
+  const { t } = useI18n();
   const { data: categories, isLoading, error } = useCategories();
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
@@ -95,7 +97,7 @@ export function SimpleCategoriesManagement({
 
   const handleCreateCategory = async () => {
     if (!formData.name.trim()) {
-      toast.error("Category name is required");
+      toast.error(t("category.errors.nameRequired"));
       return;
     }
 
@@ -108,7 +110,7 @@ export function SimpleCategoriesManagement({
       });
       setShowCreateDialog(false);
       resetForm();
-      toast.success("Category created successfully!");
+      toast.success(t("category.createdSuccessfully"));
     } catch (error) {
       // Error is handled by the mutation
     }
@@ -116,7 +118,7 @@ export function SimpleCategoriesManagement({
 
   const handleUpdateCategory = async () => {
     if (!editingCategory || !formData.name.trim()) {
-      toast.error("Category name is required");
+      toast.error(t("category.errors.nameRequired"));
       return;
     }
 
@@ -132,7 +134,7 @@ export function SimpleCategoriesManagement({
       });
       setEditingCategory(null);
       resetForm();
-      toast.success("Category updated successfully!");
+      toast.success(t("category.updatedSuccessfully"));
     } catch (error) {
       // Error is handled by the mutation
     }
@@ -141,7 +143,7 @@ export function SimpleCategoriesManagement({
   const handleDeleteCategory = async (categoryId: string) => {
     try {
       await deleteMutation.mutateAsync(categoryId);
-      toast.success("Category deleted successfully!");
+      toast.success(t("category.deletedSuccessfully"));
     } catch (error) {
       // Error is handled by the mutation
     }
@@ -175,13 +177,13 @@ export function SimpleCategoriesManagement({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            Categories Management
+            {t("simpleCategories.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin w-6 h-6 border border-current border-t-transparent rounded-full" />
-            <span className="ml-2">Loading categories...</span>
+            <span className="ml-2">{t("simpleCategories.loading")}</span>
           </div>
         </CardContent>
       </Card>
@@ -194,13 +196,13 @@ export function SimpleCategoriesManagement({
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            Categories Management
+            {t("simpleCategories.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8 text-red-600">
             <AlertCircle className="h-5 w-5 mr-2" />
-            <span>Failed to load categories</span>
+            <span>{t("simpleCategories.failed")}</span>
           </div>
         </CardContent>
       </Card>
@@ -213,7 +215,7 @@ export function SimpleCategoriesManagement({
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            Categories Management
+            {t("simpleCategories.title")}
           </div>
           {onManageKeywords && (
             <Button
@@ -222,7 +224,7 @@ export function SimpleCategoriesManagement({
               className="flex items-center gap-2"
             >
               <Settings className="h-4 w-4" />
-              Manage Keywords
+              {t("simpleCategories.manageKeywords")}
             </Button>
           )}
         </CardTitle>
@@ -234,13 +236,12 @@ export function SimpleCategoriesManagement({
               <AlertCircle className="h-4 w-4 text-orange-600" />
             )}
             <span>
-              {categoriesCount}/5 categories created
-              {!isRequirementMet && " (minimum 5 required)"}
+              {t("simpleCategories.countStatus", { count: categoriesCount })}
+              {!isRequirementMet && ` ${t("simpleCategories.minRequired")}`}
             </span>
           </div>
           <p className="text-sm text-muted-foreground">
-            Create and manage transaction categories. Use the Keyword Management
-            to configure keywords for pure keyword-based categorization.
+            {t("simpleCategories.help")}
           </p>
         </CardDescription>
       </CardHeader>
@@ -251,30 +252,34 @@ export function SimpleCategoriesManagement({
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Category
+                  {t("simpleCategories.addCategory.cta")}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Create New Category</DialogTitle>
+                  <DialogTitle>
+                    {t("simpleCategories.create.title")}
+                  </DialogTitle>
                   <DialogDescription>
-                    Add a new category for transaction classification.
+                    {t("simpleCategories.create.description")}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="name">Category Name *</Label>
+                    <Label htmlFor="name">
+                      {t("simpleCategories.form.name")} *
+                    </Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) =>
                         setFormData({ ...formData, name: e.target.value })
                       }
-                      placeholder="e.g., Food & Dining, Transportation"
+                      placeholder={t("simpleCategories.form.namePlaceholder")}
                     />
                   </div>
                   <div>
-                    <Label>Color</Label>
+                    <Label>{t("simpleCategories.form.color")}</Label>
                     <div className="flex gap-2 flex-wrap">
                       {DEFAULT_COLORS.map((color) => (
                         <button
@@ -297,15 +302,15 @@ export function SimpleCategoriesManagement({
                     variant="outline"
                     onClick={() => setShowCreateDialog(false)}
                   >
-                    Cancel
+                    {t("common.cancel")}
                   </Button>
                   <Button
                     onClick={handleCreateCategory}
                     disabled={createMutation.isPending}
                   >
                     {createMutation.isPending
-                      ? "Creating..."
-                      : "Create Category"}
+                      ? t("common.saving")
+                      : t("simpleCategories.create.submit")}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -317,10 +322,14 @@ export function SimpleCategoriesManagement({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead>
+                      {t("simpleCategories.table.category")}
+                    </TableHead>
+                    <TableHead>{t("simpleCategories.table.status")}</TableHead>
+                    <TableHead>{t("simpleCategories.table.created")}</TableHead>
+                    <TableHead className="w-[100px]">
+                      {t("common.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -341,12 +350,12 @@ export function SimpleCategoriesManagement({
                         <Badge
                           variant={category.is_active ? "default" : "secondary"}
                         >
-                          {category.is_active ? "Active" : "Inactive"}
+                          {category.is_active
+                            ? t("simpleCategories.status.active")
+                            : t("simpleCategories.status.inactive")}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        {new Date(category.created_at).toLocaleDateString()}
-                      </TableCell>
+                      <TableCell>{formatDate(category.created_at)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
                           <Dialog>
@@ -361,15 +370,17 @@ export function SimpleCategoriesManagement({
                             </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
-                                <DialogTitle>Edit Category</DialogTitle>
+                                <DialogTitle>
+                                  {t("simpleCategories.edit.title")}
+                                </DialogTitle>
                                 <DialogDescription>
-                                  Update category details.
+                                  {t("simpleCategories.edit.description")}
                                 </DialogDescription>
                               </DialogHeader>
                               <div className="space-y-4">
                                 <div>
                                   <Label htmlFor="edit-name">
-                                    Category Name *
+                                    {t("simpleCategories.form.name")} *
                                   </Label>
                                   <Input
                                     id="edit-name"
@@ -380,11 +391,15 @@ export function SimpleCategoriesManagement({
                                         name: e.target.value,
                                       })
                                     }
-                                    placeholder="e.g., Food & Dining, Transportation"
+                                    placeholder={t(
+                                      "simpleCategories.form.namePlaceholder"
+                                    )}
                                   />
                                 </div>
                                 <div>
-                                  <Label>Color</Label>
+                                  <Label>
+                                    {t("simpleCategories.form.color")}
+                                  </Label>
                                   <div className="flex gap-2 flex-wrap">
                                     {DEFAULT_COLORS.map((color) => (
                                       <button
@@ -409,15 +424,15 @@ export function SimpleCategoriesManagement({
                                   variant="outline"
                                   onClick={() => setEditingCategory(null)}
                                 >
-                                  Cancel
+                                  {t("common.cancel")}
                                 </Button>
                                 <Button
                                   onClick={handleUpdateCategory}
                                   disabled={updateMutation.isPending}
                                 >
                                   {updateMutation.isPending
-                                    ? "Updating..."
-                                    : "Update Category"}
+                                    ? t("common.updating")
+                                    : t("simpleCategories.edit.submit")}
                                 </Button>
                               </DialogFooter>
                             </DialogContent>
@@ -432,24 +447,25 @@ export function SimpleCategoriesManagement({
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
-                                  Delete Category
+                                  {t("simpleCategories.delete.title")}
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete "
-                                  {category.name}"? This action cannot be undone
-                                  and will affect all associated transactions
-                                  and keywords.
+                                  {t("simpleCategories.delete.description", {
+                                    name: category.name,
+                                  })}
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogCancel>
+                                  {t("common.cancel")}
+                                </AlertDialogCancel>
                                 <AlertDialogAction
                                   onClick={() =>
                                     handleDeleteCategory(category.id)
                                   }
                                   className="bg-red-600 hover:bg-red-700"
                                 >
-                                  Delete
+                                  {t("simpleCategories.delete.confirm")}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>
@@ -464,10 +480,8 @@ export function SimpleCategoriesManagement({
           ) : (
             <div className="text-center py-8 text-muted-foreground">
               <Tag className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No categories created yet</p>
-              <p className="text-sm">
-                Create your first category to get started
-              </p>
+              <p>{t("simpleCategories.empty.title")}</p>
+              <p className="text-sm">{t("simpleCategories.empty.subtitle")}</p>
             </div>
           )}
         </div>

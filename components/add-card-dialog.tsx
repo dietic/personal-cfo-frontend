@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { useBankProviders, useCreateCard } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { CardCreate } from "@/lib/types";
 import { Building2, CreditCard, Plus } from "lucide-react";
 import { useState } from "react";
@@ -31,6 +32,7 @@ interface AddCardDialogProps {
 
 export function AddCardDialog({ children }: AddCardDialogProps) {
   const { toast } = useToast();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     card_name: "",
@@ -55,7 +57,7 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
 
     try {
       await createCardMutation.mutateAsync(cardData);
-      toast({ title: "Card added successfully" });
+      toast({ title: t("card.createdSuccessfully") });
       setFormData({
         card_name: "",
         bank_provider_id: "",
@@ -66,7 +68,7 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
       console.error("Failed to add card:", error);
       toast({
         title: "Error",
-        description: "Failed to add card",
+        description: t("card.createFailed"),
         variant: "destructive",
       });
     }
@@ -78,7 +80,7 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
         {children || (
           <Button>
             <Plus className="h-4 w-4 mr-2" />
-            Add Card
+            {t("cards.addCard")}
           </Button>
         )}
       </DialogTrigger>
@@ -87,23 +89,20 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
-              Add New Card
+              {t("addCard.title")}
             </DialogTitle>
-            <DialogDescription>
-              Add a new credit or debit card to track your transactions and
-              balances.
-            </DialogDescription>
+            <DialogDescription>{t("addCard.description")}</DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="card_name">Card Name</Label>
+              <Label htmlFor="card_name">{t("addCard.form.name")}</Label>
               <Input
                 id="card_name"
                 value={formData.card_name}
                 onChange={(e) =>
                   setFormData({ ...formData, card_name: e.target.value })
                 }
-                placeholder="e.g. Chase Sapphire, Wells Fargo Checking"
+                placeholder={t("addCard.form.namePlaceholder")}
                 required
               />
             </div>
@@ -111,7 +110,7 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
             <div className="grid gap-2">
               <Label htmlFor="bank_provider_id">
                 <Building2 className="w-4 h-4 inline mr-2" />
-                Bank Provider
+                {t("addCard.form.bank")}
               </Label>
               <Select
                 value={formData.bank_provider_id}
@@ -124,8 +123,8 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
                   <SelectValue
                     placeholder={
                       bankProvidersLoading
-                        ? "Loading banks..."
-                        : "Select your bank"
+                        ? t("addCard.form.loadingBanks")
+                        : t("addCard.form.selectBank")
                     }
                   />
                 </SelectTrigger>
@@ -152,7 +151,7 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
                   {bankProviders?.some((bank) => bank.is_popular) &&
                     bankProviders?.some((bank) => !bank.is_popular) && (
                       <SelectItem value="separator" disabled>
-                        ──────────────────
+                        ─────────────────
                       </SelectItem>
                     )}
 
@@ -177,7 +176,7 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
 
             <div className="grid gap-2">
               <Label htmlFor="payment_due_date">
-                Payment Due Date (optional)
+                {t("addCard.form.dueDate")}
               </Label>
               <Input
                 id="payment_due_date"
@@ -195,10 +194,12 @@ export function AddCardDialog({ children }: AddCardDialogProps) {
               variant="outline"
               onClick={() => setOpen(false)}
             >
-              Cancel
+              {t("addCard.cancel")}
             </Button>
             <Button type="submit" disabled={createCardMutation.isPending}>
-              {createCardMutation.isPending ? "Adding..." : "Add Card"}
+              {createCardMutation.isPending
+                ? t("addCard.adding")
+                : t("addCard.submit")}
             </Button>
           </DialogFooter>
         </form>

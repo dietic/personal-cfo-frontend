@@ -1,7 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,9 +11,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { formatDate } from "@/lib/format";
 import { useDeleteStatement } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { Statement } from "@/lib/types";
-import { toast } from "sonner";
+import { useState } from "react";
 
 interface DeleteStatementDialogProps {
   statement: Statement;
@@ -28,6 +28,7 @@ export function DeleteStatementDialog({
 }: DeleteStatementDialogProps) {
   const [open, setOpen] = useState(false);
   const deleteMutation = useDeleteStatement();
+  const { t } = useI18n();
 
   const handleDelete = async () => {
     try {
@@ -44,36 +45,42 @@ export function DeleteStatementDialog({
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Statement</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("statements.deleteDialog.title")}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete "{statement.filename}"? This will
-            also delete all transactions associated with this statement. This
-            action cannot be undone.
+            {t("statements.deleteDialog.description", {
+              filename: statement.filename,
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="text-sm text-muted-foreground">
           <p>
-            <strong>File:</strong> {statement.filename}
+            <strong>{t("statements.deleteDialog.fileLabel")}:</strong>{" "}
+            {statement.filename}
           </p>
           <p>
-            <strong>Status:</strong> {statement.status}
+            <strong>{t("statements.deleteDialog.statusLabel")}:</strong>{" "}
+            {statement.status}
           </p>
           <p>
-            <strong>Uploaded:</strong>{" "}
-            {new Date(statement.created_at).toLocaleDateString()}
+            <strong>{t("statements.deleteDialog.uploadedLabel")}:</strong>{" "}
+            {formatDate(statement.created_at)}
           </p>
           <p className="text-amber-600 font-medium">
-            ⚠️ All transactions from this statement will also be deleted
+            ⚠️ {t("statements.deleteDialog.warning")}
           </p>
         </div>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {deleteMutation.isPending ? "Deleting..." : "Delete Statement"}
+            {deleteMutation.isPending
+              ? t("statements.deleting")
+              : t("statements.deleteDialog.confirm")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

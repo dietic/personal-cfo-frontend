@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -8,33 +8,39 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSpendingTrends, useTransactions } from "@/lib/hooks";
-import { format, parseISO, startOfMonth, subMonths } from "date-fns";
-import type { TrendsFilters, Transaction } from "@/lib/types";
-import { Button } from "@/components/ui/button";
-import { useExchangeRate } from "@/lib/hooks";
 import {
   convertAmount,
   getCurrencySymbol,
   type SupportedCurrency,
 } from "@/lib/exchange-rates";
+import { formatNumber } from "@/lib/format";
+import {
+  useExchangeRate,
+  useSpendingTrends,
+  useTransactions,
+} from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
+import type { TrendsFilters } from "@/lib/types";
+import { format, parseISO } from "date-fns";
+import { useMemo, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
 interface MonthlyComparisonProps {
   filters?: TrendsFilters;
 }
 
 export function MonthlyComparison({ filters }: MonthlyComparisonProps) {
+  const { t } = useI18n();
   const [currency, setCurrency] = useState<SupportedCurrency>("PEN");
   const { data: rate } = useExchangeRate();
   const { data: trendData, isLoading, error } = useSpendingTrends(filters);
@@ -48,20 +54,24 @@ export function MonthlyComparison({ filters }: MonthlyComparisonProps) {
       // Fallback to trends (no conversion)
       if (!trendData) return [] as Array<Record<string, any>>;
       const yearlyData: Record<number, Record<string, number>> = {};
-      trendData.forEach((item) => {
+      trendData.forEach((item: { month: string; amount: string }) => {
         const date = parseISO(item.month + "-01");
         const year = date.getFullYear();
         const monthName = format(date, "MMM");
         yearlyData[year] = yearlyData[year] || {};
-        yearlyData[year][monthName] = (yearlyData[year][monthName] || 0) + Math.abs(parseFloat(item.amount));
+        yearlyData[year][monthName] =
+          (yearlyData[year][monthName] || 0) +
+          Math.abs(parseFloat(item.amount));
       });
       const years = Object.keys(yearlyData).map(Number).sort().slice(-2);
       if (years.length < 2) return [];
       const [prevYear, currentYear] = years;
-      return monthsLabels.map((m) => ({
+      return monthsLabels.map((m: string) => ({
         name: m,
-        [prevYear.toString()]: Math.round((yearlyData[prevYear]?.[m] || 0) * 100) / 100,
-        [currentYear.toString()]: Math.round((yearlyData[currentYear]?.[m] || 0) * 100) / 100,
+        [prevYear.toString()]:
+          Math.round((yearlyData[prevYear]?.[m] || 0) * 100) / 100,
+        [currentYear.toString()]:
+          Math.round((yearlyData[currentYear]?.[m] || 0) * 100) / 100,
       }));
     }
 
@@ -96,7 +106,8 @@ export function MonthlyComparison({ filters }: MonthlyComparisonProps) {
     return monthsLabels.map((m) => ({
       name: m,
       [prevYear.toString()]: Math.round((sums[prevYear][m] || 0) * 100) / 100,
-      [currentYear.toString()]: Math.round((sums[currentYear][m] || 0) * 100) / 100,
+      [currentYear.toString()]:
+        Math.round((sums[currentYear][m] || 0) * 100) / 100,
     }));
   }, [allTransactions, trendData, rate, currency]);
 
@@ -104,8 +115,10 @@ export function MonthlyComparison({ filters }: MonthlyComparisonProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Comparison</CardTitle>
-          <CardDescription>Compare spending with previous year</CardDescription>
+          <CardTitle>{t("analytics.monthlyComparison.title")}</CardTitle>
+          <CardDescription>
+            {t("analytics.monthlyComparison.description")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <Skeleton className="h-[300px] w-full" />
@@ -118,12 +131,14 @@ export function MonthlyComparison({ filters }: MonthlyComparisonProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Monthly Comparison</CardTitle>
-          <CardDescription>Compare spending with previous year</CardDescription>
+          <CardTitle>{t("analytics.monthlyComparison.title")}</CardTitle>
+          <CardDescription>
+            {t("analytics.monthlyComparison.description")}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="h-[300px] flex items-center justify-center text-muted-foreground">
-            Failed to load comparison data
+            {t("analytics.monthlyComparison.loadFailed")}
           </div>
         </CardContent>
       </Card>
@@ -143,13 +158,11 @@ export function MonthlyComparison({ filters }: MonthlyComparisonProps) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Monthly Comparison</CardTitle>
-            <CardDescription>Compare spending with previous year</CardDescription>
-            {rate?.usingFixedFallback && (
-              <div className="text-xs text-muted-foreground mt-1">
-                Using fallback rate S/ 3.50 per $1
-              </div>
-            )}
+            <CardTitle>{t("analytics.monthlyComparison.title")}</CardTitle>
+            <CardDescription>
+              {t("analytics.monthlyComparison.description")}
+            </CardDescription>
+            {/* Single EXR note is shown at page level */}
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -183,8 +196,14 @@ export function MonthlyComparison({ filters }: MonthlyComparisonProps) {
             >
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
-              <YAxis tickFormatter={(v) => `${symbol}${Number(v).toLocaleString()}`} />
-              <Tooltip formatter={(value) => `${symbol}${Number(value).toLocaleString()}`} />
+              <YAxis
+                tickFormatter={(v: number | string) => formatNumber(Number(v))}
+              />
+              <Tooltip
+                formatter={(value: number | string) =>
+                  `${symbol}${formatNumber(Number(value))}`
+                }
+              />
               <Legend />
               {years.map((year, index) => (
                 <Bar

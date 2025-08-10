@@ -5,6 +5,7 @@ import {
   clearPendingVerification,
   setPendingVerification,
 } from "@/lib/auth-constants";
+import { useI18n } from "@/lib/i18n";
 import { User, UserCreate, UserLogin } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import React, {
@@ -76,6 +77,7 @@ export function AuthProvider({
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const { t } = useI18n();
 
   const isAuthenticated = !!user && apiClient.isAuthenticated();
 
@@ -148,8 +150,7 @@ export function AuthProvider({
           if (profile && profile.is_active === false) {
             const emailToUse = profile.email || data.email;
             setPendingVerification(emailToUse);
-            if (showToasts)
-              toast.message("Please verify your email to continue.");
+            if (showToasts) toast.message(t("auth.verifyPrompt"));
             router.push(
               `/signup?step=otp&email=${encodeURIComponent(emailToUse)}`
             );
@@ -160,8 +161,7 @@ export function AuthProvider({
           const status = profileErr?.response?.status;
           if (status === 403 || status === 401) {
             setPendingVerification(data.email);
-            if (showToasts)
-              toast.message("Please verify your email to continue.");
+            if (showToasts) toast.message(t("auth.verifyPrompt"));
             router.push(
               `/signup?step=otp&email=${encodeURIComponent(data.email)}`
             );
@@ -188,7 +188,7 @@ export function AuthProvider({
 
         // Clear any pending verification flag on successful login/profile fetch
         clearPendingVerification();
-        if (showToasts) toast.success("Login successful!");
+        if (showToasts) toast.success(t("auth.loginSuccess"));
         router.push("/dashboard");
       } catch (error: any) {
         console.error("Login error:", error);
@@ -196,21 +196,21 @@ export function AuthProvider({
         if (status === 403) {
           // Backend blocks unverified users from logging in
           setPendingVerification(data.email);
-          if (showToasts)
-            toast.message(
-              "Your account is not verified. Enter the code we emailed to activate it."
-            );
+          if (showToasts) toast.message(t("auth.unverifiedBlocked"));
           router.push(
             `/signup?step=otp&email=${encodeURIComponent(data.email)}`
           );
           return;
         }
         if (status === 400 || status === 401) {
-          if (showToasts) toast.error("Invalid credentials");
+          if (showToasts) toast.error(t("auth.invalidCredentials"));
           throw new Error("Invalid credentials");
         }
         const message =
-          error.response?.data?.detail || error.message || "Login failed";
+          error.response?.data?.detail ||
+          t("auth.loginFailed") ||
+          error.message ||
+          "Login failed";
         if (showToasts) toast.error(message);
         // Re-throw for forms
         throw new Error(message);
@@ -218,35 +218,37 @@ export function AuthProvider({
         setIsLoading(false);
       }
     },
-    [router]
+    [router, t]
   );
 
-  const register = useCallback(async (data: UserCreate) => {
-    try {
-      setIsLoading(true);
-      await apiClient.register(data);
-      // Mark pending verification and don't log in automatically
-      setPendingVerification(data.email);
-      toast.success(
-        "Account created. Check your email for the verification code."
-      );
-    } catch (error: any) {
-      console.error("Registration error:", error);
-      const message = error.response?.data?.detail || "Registration failed";
-      toast.error(message);
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const register = useCallback(
+    async (data: UserCreate) => {
+      try {
+        setIsLoading(true);
+        await apiClient.register(data);
+        // Mark pending verification and don't log in automatically
+        setPendingVerification(data.email);
+        toast.success(t("auth.accountCreatedCheckEmail"));
+      } catch (error: any) {
+        console.error("Registration error:", error);
+        const message =
+          error.response?.data?.detail || t("auth.registrationFailed");
+        toast.error(message);
+        throw error;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [t]
+  );
 
   const logout = useCallback(() => {
     apiClient.logout();
     setUser(null);
     clearPendingVerification();
     router.push("/login");
-    toast.success("Logged out successfully");
-  }, [router]);
+    toast.success(t("auth.loggedOut"));
+  }, [router, t]);
 
   const refreshToken = useCallback(async () => {
     try {

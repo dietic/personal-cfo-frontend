@@ -29,14 +29,18 @@ function getCache(): ExchangeRateInfo | undefined {
     const parsed = JSON.parse(raw) as ExchangeRateInfo;
     if (!parsed || !parsed.fetchedAt) return undefined;
     if (Date.now() - parsed.fetchedAt > ONE_DAY_MS) return undefined;
-    if (!isFinite(parsed.usdPerPen) || !isFinite(parsed.penPerUsd)) return undefined;
+    if (!isFinite(parsed.usdPerPen) || !isFinite(parsed.penPerUsd))
+      return undefined;
     return parsed;
   } catch (_e) {
     return undefined;
   }
 }
 
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(
+  url: string,
+  timeoutMs: number
+): Promise<Response> {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -47,9 +51,12 @@ async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Respons
   }
 }
 
-async function fetchPrimary(timeoutMs: number): Promise<ExchangeRateInfo | undefined> {
+async function fetchPrimary(
+  timeoutMs: number
+): Promise<ExchangeRateInfo | undefined> {
   // Safely access NEXT_PUBLIC env via globalThis to avoid TS node typings requirement
-  const key = (globalThis as any)?.process?.env?.NEXT_PUBLIC_EXCHANGERATE_API_KEY as string | undefined;
+  const key = (globalThis as any)?.process?.env
+    ?.NEXT_PUBLIC_EXCHANGERATE_API_KEY as string | undefined;
   if (!key) return undefined; // skip if no key configured
   const url = `https://v6.exchangerate-api.com/v6/${key}/latest/PEN`;
   try {
@@ -72,7 +79,9 @@ async function fetchPrimary(timeoutMs: number): Promise<ExchangeRateInfo | undef
   }
 }
 
-async function fetchFallback(timeoutMs: number): Promise<ExchangeRateInfo | undefined> {
+async function fetchFallback(
+  timeoutMs: number
+): Promise<ExchangeRateInfo | undefined> {
   const url = `https://api.exchangerate.fun/latest?base=PEN`;
   try {
     const res = await fetchWithTimeout(url, timeoutMs);
@@ -106,7 +115,9 @@ function fixedFallback(): ExchangeRateInfo {
   };
 }
 
-export async function getExchangeRate(timeoutMs: number = 4000): Promise<ExchangeRateInfo> {
+export async function getExchangeRate(
+  timeoutMs: number = 4000
+): Promise<ExchangeRateInfo> {
   // 1) Cache
   const cached = getCache();
   if (cached) return cached;

@@ -1,16 +1,14 @@
-import { StatementsList } from "@/components/statements-list";
-import { ImportStatementDialog } from "@/components/import-statement-dialog";
-import { PageHeader } from "@/components/page-header";
+import { tServer } from "@/lib/i18n-server";
+import type { Metadata } from "next";
+import StatementsClient from "./StatementsClient";
 
-export default function StatementsPage() {
-  return (
-    <div className="flex flex-col gap-6">
-      <PageHeader
-        title="Bank Statements"
-        description="Manage your uploaded bank statements"
-        action={<ImportStatementDialog />}
-      />
-      <StatementsList />
-    </div>
-  );
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: `${tServer("statements.page.title")} - PersonalCFO`,
+    description: tServer("statements.page.description"),
+  };
+}
+
+export default function Page() {
+  return <StatementsClient />;
 }

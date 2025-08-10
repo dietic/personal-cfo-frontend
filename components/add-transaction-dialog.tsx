@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,7 +19,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -28,26 +26,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus } from "lucide-react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { Textarea } from "@/components/ui/textarea";
 import {
-  useCreateTransaction,
   useCards,
   useCategories,
+  useCreateTransaction,
   useCurrencies,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { TransactionCreate } from "@/lib/types";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Plus } from "lucide-react";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { toast } from "sonner";
+import * as z from "zod";
 
 const transactionSchema = z.object({
-  merchant: z.string().min(1, "Merchant is required"),
-  amount: z.coerce.number().min(0.01, "Amount must be greater than 0"),
-  currency: z.string().min(1, "Currency is required"),
-  category: z.string().min(1, "Category is required"),
-  transaction_date: z.string().min(1, "Date is required"),
-  card_id: z.string().min(1, "Card is required"),
+  merchant: z.string().min(1, "transactions.form.merchantRequired"),
+  amount: z.coerce
+    .number()
+    .min(0.01, "transactions.form.amountGreaterThanZero"),
+  currency: z.string().min(1, "transactions.form.currencyRequired"),
+  category: z.string().min(1, "transactions.form.categoryRequired"),
+  transaction_date: z.string().min(1, "transactions.form.dateRequired"),
+  card_id: z.string().min(1, "transactions.form.cardRequired"),
   description: z.string().optional(),
 });
 
@@ -55,6 +58,7 @@ type TransactionFormData = z.infer<typeof transactionSchema>;
 
 export function AddTransactionDialog() {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
 
   const { data: cards } = useCards();
   const { data: categories } = useCategories();
@@ -88,10 +92,10 @@ export function AddTransactionDialog() {
       form.reset();
       setOpen(false);
 
-      toast.success("Transaction added successfully!");
+      toast.success(t("transaction.createdSuccessfully"));
     } catch (error) {
       console.error("Failed to create transaction:", error);
-      toast.error("Failed to add transaction. Please try again.");
+      toast.error(t("transaction.createFailed"));
     }
   };
 
@@ -100,15 +104,14 @@ export function AddTransactionDialog() {
       <DialogTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
           <Plus className="h-4 w-4" />
-          <span>Add Transaction</span>
+          <span>{t("transactions.add.cta")}</span>
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Add New Transaction</DialogTitle>
+          <DialogTitle>{t("transactions.add.title")}</DialogTitle>
           <DialogDescription>
-            Add a new transaction to your records. All fields marked with * are
-            required.
+            {t("transactions.add.description")}
           </DialogDescription>
         </DialogHeader>
 
@@ -120,9 +123,12 @@ export function AddTransactionDialog() {
               name="merchant"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Merchant *</FormLabel>
+                  <FormLabel>{t("transactions.form.merchant")}</FormLabel>
                   <FormControl>
-                    <Input placeholder="Enter merchant name" {...field} />
+                    <Input
+                      placeholder={t("transactions.form.merchantPlaceholder")}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -136,7 +142,7 @@ export function AddTransactionDialog() {
                 name="amount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Amount *</FormLabel>
+                    <FormLabel>{t("transactions.form.amount")}</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -156,14 +162,18 @@ export function AddTransactionDialog() {
                 name="currency"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Currency *</FormLabel>
+                    <FormLabel>{t("transactions.form.currency")}</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select currency" />
+                          <SelectValue
+                            placeholder={t(
+                              "transactions.form.currencyPlaceholder"
+                            )}
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -186,14 +196,18 @@ export function AddTransactionDialog() {
               name="category"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Category *</FormLabel>
+                  <FormLabel>{t("transactions.form.category")}</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Select a category" />
+                        <SelectValue
+                          placeholder={t(
+                            "transactions.form.categoryPlaceholder"
+                          )}
+                        />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -216,7 +230,7 @@ export function AddTransactionDialog() {
                 name="transaction_date"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date *</FormLabel>
+                    <FormLabel>{t("transactions.form.date")}</FormLabel>
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
@@ -230,14 +244,16 @@ export function AddTransactionDialog() {
                 name="card_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Card *</FormLabel>
+                    <FormLabel>{t("transactions.form.card")}</FormLabel>
                     <Select
                       onValueChange={field.onChange}
                       defaultValue={field.value}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a card" />
+                          <SelectValue
+                            placeholder={t("transactions.form.cardPlaceholder")}
+                          />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -260,10 +276,12 @@ export function AddTransactionDialog() {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>{t("transactions.form.description")}</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Optional description..."
+                      placeholder={t(
+                        "transactions.form.descriptionPlaceholder"
+                      )}
                       className="resize-none"
                       rows={3}
                       {...field}
@@ -280,10 +298,12 @@ export function AddTransactionDialog() {
                 variant="outline"
                 onClick={() => setOpen(false)}
               >
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={createTransaction.isPending}>
-                {createTransaction.isPending ? "Adding..." : "Add Transaction"}
+                {createTransaction.isPending
+                  ? t("transactions.add.adding")
+                  : t("transactions.add.submit")}
               </Button>
             </DialogFooter>
           </form>

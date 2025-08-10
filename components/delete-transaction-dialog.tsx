@@ -12,6 +12,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useDeleteTransaction } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { Transaction } from "@/lib/types";
 import { useState } from "react";
 
@@ -26,6 +27,7 @@ export function DeleteTransactionDialog({
 }: DeleteTransactionDialogProps) {
   const [open, setOpen] = useState(false);
   const deleteMutation = useDeleteTransaction();
+  const { t } = useI18n();
 
   const handleDelete = async () => {
     try {
@@ -42,37 +44,45 @@ export function DeleteTransactionDialog({
       <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+          <AlertDialogTitle>
+            {t("transactions.deleteOne.title")}
+          </AlertDialogTitle>
           <AlertDialogDescription>
-            Are you sure you want to delete this transaction "
-            {transaction.description &&
-            transaction.description !== transaction.merchant
-              ? transaction.description
-              : transaction.merchant}
-            "? This action cannot be undone.
+            {t("transactions.deleteOne.description", {
+              name:
+                transaction.description &&
+                transaction.description !== transaction.merchant
+                  ? transaction.description
+                  : transaction.merchant,
+            })}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="text-sm text-muted-foreground">
           <p>
-            <strong>Amount:</strong> ${transaction.amount}
+            <strong>{t("transactions.info.amountLabel")}:</strong> $
+            {transaction.amount}
           </p>
           <p>
-            <strong>Date:</strong> {transaction.transaction_date}
+            <strong>{t("transactions.info.dateLabel")}:</strong>{" "}
+            {transaction.transaction_date}
           </p>
           {transaction.category && (
             <p>
-              <strong>Category:</strong> {transaction.category}
+              <strong>{t("transactions.info.categoryLabel")}:</strong>{" "}
+              {transaction.category}
             </p>
           )}
         </div>
         <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
           <AlertDialogAction
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
           >
-            {deleteMutation.isPending ? "Deleting..." : "Delete Transaction"}
+            {deleteMutation.isPending
+              ? t("transactions.deleting")
+              : t("transactions.delete")}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

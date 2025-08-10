@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { StatementImport } from "@/components/statement-import";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -9,9 +10,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { useI18n } from "@/lib/i18n";
 import { Upload } from "lucide-react";
-import { StatementImport } from "@/components/statement-import";
+import { useState } from "react";
 
 interface ImportStatementDialogProps {
   trigger?: React.ReactNode;
@@ -19,6 +20,7 @@ interface ImportStatementDialogProps {
 
 export function ImportStatementDialog({ trigger }: ImportStatementDialogProps) {
   const [open, setOpen] = useState(false);
+  const { t } = useI18n();
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -26,17 +28,14 @@ export function ImportStatementDialog({ trigger }: ImportStatementDialogProps) {
         {trigger || (
           <Button>
             <Upload className="mr-2 h-4 w-4" />
-            Import Statement
+            {t("import.cta")}
           </Button>
         )}
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Import Bank Statement</DialogTitle>
-          <DialogDescription>
-            Upload your bank statement in PDF format to automatically import and
-            categorize transactions
-          </DialogDescription>
+          <DialogTitle>{t("import.title")}</DialogTitle>
+          <DialogDescription>{t("import.description")}</DialogDescription>
         </DialogHeader>
         <StatementImport />
       </DialogContent>

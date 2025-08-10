@@ -9,26 +9,33 @@ import {
 } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  getCurrencySymbol,
+  type SupportedCurrency,
+} from "@/lib/exchange-rates";
 import { useBudgets, useCategorySpending } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
+import type { Budget, CategorySpending } from "@/lib/types";
 import { format } from "date-fns";
 
+interface ProcessedBudget {
+  name: string;
+  spent: number;
+  budget: number;
+  percentage: number;
+  currency: string;
+  id: string;
+}
+
 // Currency formatting function
-const formatCurrency = (amount: number, currency: string) => {
+const formatCurrency = (amount: number, currency: SupportedCurrency) => {
   const formattedAmount = amount.toFixed(2);
-  const currencySymbol =
-    currency === "USD"
-      ? "$"
-      : currency === "PEN"
-      ? "S/"
-      : currency === "EUR"
-      ? "€"
-      : currency === "GBP"
-      ? "£"
-      : currency + " ";
+  const currencySymbol = getCurrencySymbol(currency);
   return `${currencySymbol}${formattedAmount}`;
 };
 
 export function BudgetProgress() {
+  const { t } = useI18n();
   const {
     data: budgets,
     isLoading: budgetsLoading,
@@ -51,15 +58,17 @@ export function BudgetProgress() {
   const isLoading = budgetsLoading || spendingLoading;
 
   // Process budget data with current spending, filtered by currency
-  const processedBudgets =
-    budgets?.map((budget) => {
+  const processedBudgets: ProcessedBudget[] =
+    (budgets as Budget[] | undefined)?.map((budget: Budget) => {
       // Find spending for this budget's category AND currency
-      const matchingSpending = categorySpending?.find(
-        (spending) =>
+      const matchingSpending = (
+        categorySpending as CategorySpending[] | undefined
+      )?.find(
+        (spending: CategorySpending) =>
           spending.category.toLowerCase() === budget.category.toLowerCase() &&
           spending.currency === budget.currency
       );
-      
+
       const spent = matchingSpending ? parseFloat(matchingSpending.amount) : 0;
       const limitAmount = parseFloat(budget.limit_amount);
       const percentage =
@@ -79,12 +88,14 @@ export function BudgetProgress() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Budget Progress</CardTitle>
-          <CardDescription>Your monthly budget utilization</CardDescription>
+          <CardTitle>{t("budgetProgress.title")}</CardTitle>
+          <CardDescription>{t("budgetProgress.description")}</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="text-center py-8">
-            <p className="text-muted-foreground">Failed to load budget data</p>
+            <p className="text-muted-foreground">
+              {t("budgetProgress.failed")}
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -95,8 +106,8 @@ export function BudgetProgress() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Budget Progress</CardTitle>
-          <CardDescription>Your monthly budget utilization</CardDescription>
+          <CardTitle>{t("budgetProgress.title")}</CardTitle>
+          <CardDescription>{t("budgetProgress.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {Array.from({ length: 4 }).map((_, i) => (
@@ -117,23 +128,29 @@ export function BudgetProgress() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Budget Progress</CardTitle>
-        <CardDescription>Your monthly budget utilization</CardDescription>
+        <CardTitle>{t("budgetProgress.title")}</CardTitle>
+        <CardDescription>{t("budgetProgress.description")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {processedBudgets.length === 0 ? (
           <div className="text-center py-8">
-            <p className="text-muted-foreground">
-              No budgets set for this month
-            </p>
+            <p className="text-muted-foreground">{t("budgetProgress.none")}</p>
           </div>
         ) : (
-          processedBudgets.map((category) => (
+          processedBudgets.map((category: ProcessedBudget) => (
             <div key={category.id} className="space-y-1">
               <div className="flex justify-between text-sm">
                 <span className="capitalize">{category.name}</span>
                 <span className="font-medium">
-                  {formatCurrency(category.spent, category.currency)} / {formatCurrency(category.budget, category.currency)}
+                  {formatCurrency(
+                    category.spent,
+                    category.currency as SupportedCurrency
+                  )}{" "}
+                  /{" "}
+                  {formatCurrency(
+                    category.budget,
+                    category.currency as SupportedCurrency
+                  )}
                 </span>
               </div>
               <Progress
@@ -156,8 +173,12 @@ export function BudgetProgress() {
               />
               <p className="text-xs text-muted-foreground">
                 {category.percentage > 100
-                  ? `${category.percentage - 100}% over budget`
-                  : `${100 - category.percentage}% remaining`}
+                  ? t("budgetProgress.overBudget", {
+                      percent: category.percentage - 100,
+                    })
+                  : t("budgetProgress.remaining", {
+                      percent: 100 - category.percentage,
+                    })}
               </p>
             </div>
           ))

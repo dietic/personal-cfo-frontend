@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
+import { CalendarIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 import { DateRange } from "react-day-picker";
 
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -20,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useI18n } from "@/lib/i18n";
+import { cn } from "@/lib/utils";
 
 interface AnalyticsDateFilterProps {
   onDateRangeChange: (startDate?: string, endDate?: string) => void;
@@ -30,6 +31,7 @@ export function AnalyticsDateFilter({
   onDateRangeChange,
   className,
 }: AnalyticsDateFilterProps) {
+  const { t } = useI18n();
   const [date, setDate] = useState<DateRange | undefined>();
   const [preset, setPreset] = useState<string>("custom");
 
@@ -130,19 +132,39 @@ export function AnalyticsDateFilter({
     <div className={cn("flex flex-col sm:flex-row gap-4", className)}>
       <Select value={preset} onValueChange={handlePresetChange}>
         <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder="Select time period" />
+          <SelectValue placeholder={t("analytics.dateFilter.selectPeriod")} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="last-7-days">Last 7 Days</SelectItem>
-          <SelectItem value="last-30-days">Last 30 Days</SelectItem>
-          <SelectItem value="current-month">Current Month</SelectItem>
-          <SelectItem value="last-month">Last Month</SelectItem>
-          <SelectItem value="last-3-months">Last 3 Months</SelectItem>
-          <SelectItem value="last-6-months">Last 6 Months</SelectItem>
-          <SelectItem value="current-year">Current Year</SelectItem>
-          <SelectItem value="last-year">Last Year</SelectItem>
-          <SelectItem value="may-2025">May 2025 (Test Data)</SelectItem>
-          <SelectItem value="custom">Custom Range</SelectItem>
+          <SelectItem value="last-7-days">
+            {t("analytics.dateFilter.last7")}
+          </SelectItem>
+          <SelectItem value="last-30-days">
+            {t("analytics.dateFilter.last30")}
+          </SelectItem>
+          <SelectItem value="current-month">
+            {t("analytics.dateFilter.currentMonth")}
+          </SelectItem>
+          <SelectItem value="last-month">
+            {t("analytics.dateFilter.lastMonth")}
+          </SelectItem>
+          <SelectItem value="last-3-months">
+            {t("analytics.dateFilter.last3")}
+          </SelectItem>
+          <SelectItem value="last-6-months">
+            {t("analytics.dateFilter.last6")}
+          </SelectItem>
+          <SelectItem value="current-year">
+            {t("analytics.dateFilter.currentYear")}
+          </SelectItem>
+          <SelectItem value="last-year">
+            {t("analytics.dateFilter.lastYear")}
+          </SelectItem>
+          <SelectItem value="may-2025">
+            {t("analytics.dateFilter.may2025")}
+          </SelectItem>
+          <SelectItem value="custom">
+            {t("analytics.dateFilter.custom")}
+          </SelectItem>
         </SelectContent>
       </Select>
 
@@ -167,7 +189,7 @@ export function AnalyticsDateFilter({
                 format(date.from, "MMM dd, yyyy")
               )
             ) : (
-              <span>Pick a date range</span>
+              <span>{t("analytics.dateFilter.pickRange")}</span>
             )}
           </Button>
         </PopoverTrigger>

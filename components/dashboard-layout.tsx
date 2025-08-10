@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/sidebar";
 import { UserNav } from "@/components/user-nav";
 import { useAuth } from "@/lib/auth-context";
+import { useI18n } from "@/lib/i18n";
 import {
   BarChart3,
   CalendarClock,
@@ -45,6 +46,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type React from "react";
 import { useEffect } from "react";
+import { LanguageToggle } from "./language-toggle";
 
 export function DashboardLayout({
   children,
@@ -52,6 +54,7 @@ export function DashboardLayout({
   const pathname = usePathname();
   const router = useRouter();
   const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const { t } = useI18n();
 
   // Development bypass for testing
   const isDevelopment = process.env.NODE_ENV === "development";
@@ -83,7 +86,7 @@ export function DashboardLayout({
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">{t("common.loading")}</p>
         </div>
       </div>
     );
@@ -99,7 +102,7 @@ export function DashboardLayout({
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center space-y-4">
-          <p className="text-lg">Redirecting to login...</p>
+          <p className="text-lg">{t("common.redirectingToLogin")}</p>
           <Loader2 className="h-6 w-6 animate-spin mx-auto" />
         </div>
       </div>
@@ -107,19 +110,34 @@ export function DashboardLayout({
   }
 
   const baseMenuItems = [
-    { title: "Dashboard", icon: LayoutDashboard, href: "/dashboard" },
-    { title: "Cards", icon: CreditCard, href: "/cards" },
-    { title: "Transactions", icon: Receipt, href: "/transactions" },
-    { title: "Statements", icon: FileText, href: "/statements" },
-    { title: "Services", icon: CalendarClock, href: "/services" },
-    { title: "Analytics", icon: BarChart3, href: "/analytics" },
-    { title: "Budget", icon: PiggyBank, href: "/budget" },
-    { title: "Settings", icon: Settings, href: "/settings" },
+    {
+      title: t("layout.menu.dashboard"),
+      icon: LayoutDashboard,
+      href: "/dashboard",
+    },
+    { title: t("layout.menu.cards"), icon: CreditCard, href: "/cards" },
+    {
+      title: t("layout.menu.transactions"),
+      icon: Receipt,
+      href: "/transactions",
+    },
+    { title: t("layout.menu.statements"), icon: FileText, href: "/statements" },
+    {
+      title: t("layout.menu.services"),
+      icon: CalendarClock,
+      href: "/services",
+    },
+    { title: t("layout.menu.analytics"), icon: BarChart3, href: "/analytics" },
+    { title: t("layout.menu.budget"), icon: PiggyBank, href: "/budget" },
+    { title: t("layout.menu.settings"), icon: Settings, href: "/settings" },
   ];
 
   // No hook here to avoid changing hooks order with early returns above
   const menuItems = user?.is_admin
-    ? [...baseMenuItems, { title: "Admin", icon: ShieldCheck, href: "/admin" }]
+    ? [
+        ...baseMenuItems,
+        { title: t("layout.menu.admin"), icon: ShieldCheck, href: "/admin" },
+      ]
     : baseMenuItems;
 
   return (
@@ -136,7 +154,7 @@ export function DashboardLayout({
                 <Avatar className="h-8 w-8">
                   <AvatarImage
                     src="/placeholder.svg?height=32&width=32"
-                    alt="User"
+                    alt={t("layout.user")}
                   />
                   <AvatarFallback>
                     {user?.email?.charAt(0).toUpperCase() || "U"}
@@ -144,10 +162,10 @@ export function DashboardLayout({
                 </Avatar>
                 <div className="flex flex-col">
                   <span className="font-medium text-sm">
-                    {user?.email?.split("@")[0] || "User"}
+                    {user?.email?.split("@")[0] || t("layout.user")}
                   </span>
                   <span className="text-xs text-muted-foreground">
-                    Personal Account
+                    {t("layout.account.personal")}
                   </span>
                 </div>
               </div>
@@ -182,13 +200,15 @@ export function DashboardLayout({
                   <div className="rounded-full bg-primary/20 p-2">
                     <Sparkles className="h-4 w-4 text-primary" />
                   </div>
-                  <span className="font-medium text-sm">Pro Features</span>
+                  <span className="font-medium text-sm">
+                    {t("layout.pro.title")}
+                  </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-2">
-                  Upgrade to unlock advanced analytics and budgeting tools.
+                  {t("layout.pro.description")}
                 </p>
                 <Button size="sm" className="w-full">
-                  Upgrade
+                  {t("layout.pro.upgrade")}
                 </Button>
               </div>
             </div>
@@ -205,11 +225,11 @@ export function DashboardLayout({
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onSelect={() => router.push("/profile")}>
                     <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                    <span>{t("userNav.profile")}</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onSelect={() => router.push("/settings")}>
                     <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
+                    <span>{t("userNav.settings")}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
@@ -217,7 +237,7 @@ export function DashboardLayout({
                     className="text-destructive"
                   >
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    <span>{t("userNav.logout")}</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -227,7 +247,8 @@ export function DashboardLayout({
         <div className="flex flex-1 flex-col overflow-hidden">
           <header className="flex h-14 items-center gap-4 border-b bg-background px-6">
             <SidebarTrigger />
-            <div className="ml-auto flex items-center gap-4">
+            <div className="ml-auto flex items-center gap-2">
+              <LanguageToggle />
               <ThemeToggleButton />
               <UserNav />
             </div>

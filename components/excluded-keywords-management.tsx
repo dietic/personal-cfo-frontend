@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiClient } from "@/lib/api-client";
-import { ExcludedKeywordItem } from "@/lib/types";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { apiClient } from "@/lib/api-client";
+import { useI18n } from "@/lib/i18n";
+import { ExcludedKeywordItem } from "@/lib/types";
+import React, { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 /**
@@ -19,6 +20,7 @@ export function ExcludedKeywordsManagement() {
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [newKeyword, setNewKeyword] = useState("");
+  const { t } = useI18n();
 
   const load = async () => {
     setLoading(true);
@@ -26,7 +28,9 @@ export function ExcludedKeywordsManagement() {
       const data = await apiClient.getExcludedKeywords();
       setItems(data.items || []);
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || "Failed to load excluded keywords");
+      toast.error(
+        e?.response?.data?.detail || t("excludedKeywords.loadFailed")
+      );
     } finally {
       setLoading(false);
     }
@@ -41,10 +45,10 @@ export function ExcludedKeywordsManagement() {
     setAdding(true);
     try {
       const created = await apiClient.addExcludedKeyword(newKeyword.trim());
-      setItems((prev) => [created, ...prev]);
+      setItems((prev: ExcludedKeywordItem[]) => [created, ...prev]);
       setNewKeyword("");
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || "Failed to add keyword");
+      toast.error(e?.response?.data?.detail || t("excludedKeywords.addFailed"));
     } finally {
       setAdding(false);
     }
@@ -53,9 +57,13 @@ export function ExcludedKeywordsManagement() {
   const onDelete = async (id: string) => {
     try {
       await apiClient.deleteExcludedKeyword(id);
-      setItems((prev) => prev.filter((x) => x.id !== id));
+      setItems((prev: ExcludedKeywordItem[]) =>
+        prev.filter((x: ExcludedKeywordItem) => x.id !== id)
+      );
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || "Failed to delete keyword");
+      toast.error(
+        e?.response?.data?.detail || t("excludedKeywords.deleteFailed")
+      );
     }
   };
 
@@ -63,42 +71,48 @@ export function ExcludedKeywordsManagement() {
     try {
       const data = await apiClient.resetExcludedKeywords();
       setItems(data.items || []);
-      toast.success("Reset to defaults");
+      toast.success(t("excludedKeywords.resetSuccess"));
     } catch (e: any) {
-      toast.error(e?.response?.data?.detail || "Failed to reset");
+      toast.error(
+        e?.response?.data?.detail || t("excludedKeywords.resetFailed")
+      );
     }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Excluded transaction keywords</CardTitle>
+        <CardTitle>{t("excludedKeywords.title")}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex gap-2 mb-4">
           <Input
-            placeholder="Add keyword (e.g., INTERESES)"
+            placeholder={t("excludedKeywords.placeholder")}
             value={newKeyword}
-            onChange={(e) => setNewKeyword(e.target.value)}
-            onKeyDown={(e) => {
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+              setNewKeyword(e.target.value)
+            }
+            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
               if (e.key === "Enter") onAdd();
             }}
           />
           <Button onClick={onAdd} disabled={adding || !newKeyword.trim()}>
-            Add
+            {t("excludedKeywords.add")}
           </Button>
           <Button variant="outline" onClick={onReset} disabled={loading}>
-            Reset to defaults
+            {t("excludedKeywords.reset")}
           </Button>
         </div>
 
         {loading ? (
-          <p>Loading…</p>
+          <p>{t("common.loading")}</p>
         ) : items.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No excluded keywords yet.</p>
+          <p className="text-sm text-muted-foreground">
+            {t("excludedKeywords.empty")}
+          </p>
         ) : (
           <ul className="space-y-2">
-            {items.map((item) => (
+            {items.map((item: ExcludedKeywordItem) => (
               <li
                 key={item.id}
                 className="flex items-center justify-between border rounded px-3 py-2"
@@ -109,7 +123,7 @@ export function ExcludedKeywordsManagement() {
                   size="sm"
                   onClick={() => onDelete(item.id)}
                 >
-                  Remove
+                  {t("excludedKeywords.remove")}
                 </Button>
               </li>
             ))}

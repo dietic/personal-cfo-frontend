@@ -1,6 +1,8 @@
 "use client";
 
 import { apiClient } from "@/lib/api-client";
+import { getExchangeRate, type ExchangeRateInfo } from "@/lib/exchange-rates";
+import { tInstant } from "@/lib/i18n";
 import {
   AdminUsersParams,
   AnalyticsFilters,
@@ -35,7 +37,6 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { getExchangeRate, type ExchangeRateInfo } from "@/lib/exchange-rates";
 
 // Query Keys
 export const queryKeys = {
@@ -92,11 +93,11 @@ export function useUpdateUserProfile() {
     mutationFn: (data: UserProfileUpdate) => apiClient.updateUserProfile(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.userProfile });
-      toast.success("Profile updated successfully");
+      toast.success(tInstant("profile.updatedSuccessfully", undefined));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to update profile";
+        error.response?.data?.detail || tInstant("profile.updateFailed");
       toast.error(message);
     },
   });
@@ -125,10 +126,11 @@ export function useCreateCard() {
     mutationFn: (data: CardCreate) => apiClient.createCard(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cards });
-      toast.success("Card created successfully");
+      toast.success(tInstant("card.createdSuccessfully"));
     },
     onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to create card";
+      const message =
+        error.response?.data?.detail || tInstant("card.createFailed");
       toast.error(message);
     },
   });
@@ -143,10 +145,11 @@ export function useUpdateCard() {
     onSuccess: (_, { cardId }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cards });
       queryClient.invalidateQueries({ queryKey: queryKeys.card(cardId) });
-      toast.success("Card updated successfully");
+      toast.success(tInstant("card.updatedSuccessfully"));
     },
     onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to update card";
+      const message =
+        error.response?.data?.detail || tInstant("card.updateFailed");
       toast.error(message);
     },
   });
@@ -159,10 +162,11 @@ export function useDeleteCard() {
     mutationFn: (cardId: string) => apiClient.deleteCard(cardId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.cards });
-      toast.success("Card deleted successfully");
+      toast.success(tInstant("card.deletedSuccessfully"));
     },
     onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to delete card";
+      const message =
+        error.response?.data?.detail || tInstant("card.deleteFailed");
       toast.error(message);
     },
   });
@@ -217,11 +221,11 @@ export function useCreateTransaction() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      toast.success("Transaction created successfully");
+      toast.success(tInstant("transaction.createdSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to create transaction";
+        error.response?.data?.detail || tInstant("transaction.createFailed");
       toast.error(message);
     },
   });
@@ -241,14 +245,14 @@ export function useUpdateTransaction() {
     onSuccess: (_, { transactionId }) => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({
-        queryKey: queryKeys.transaction(transactionId),
+        queryKey: { queryKey: queryKeys.transaction(transactionId) } as any,
       });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      toast.success("Transaction updated successfully");
+      toast.success(tInstant("transaction.updatedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to update transaction";
+        error.response?.data?.detail || tInstant("transaction.updateFailed");
       toast.error(message);
     },
   });
@@ -263,11 +267,11 @@ export function useDeleteTransaction() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      toast.success("Transaction deleted successfully");
+      toast.success(tInstant("transaction.deletedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to delete transaction";
+        error.response?.data?.detail || tInstant("transaction.deleteFailed");
       toast.error(message);
     },
   });
@@ -323,10 +327,11 @@ export function useCreateBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets });
       queryClient.invalidateQueries({ queryKey: queryKeys.budgetAlerts });
-      toast.success("Budget created successfully");
+      toast.success(tInstant("budget.createdSuccessfully"));
     },
     onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to create budget";
+      const message =
+        error.response?.data?.detail || tInstant("budget.createFailed");
       toast.error(message);
     },
   });
@@ -343,14 +348,15 @@ export function useUpdateBudget() {
       budgetId: string;
       data: BudgetUpdate;
     }) => apiClient.updateBudget(budgetId, data),
-    onSuccess: (_, { budgetId }) => {
+    onSuccess: (_: any, { budgetId }: { budgetId: string }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets });
       queryClient.invalidateQueries({ queryKey: queryKeys.budget(budgetId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.budgetAlerts });
-      toast.success("Budget updated successfully");
+      toast.success(tInstant("budget.updatedSuccessfully"));
     },
     onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to update budget";
+      const message =
+        error.response?.data?.detail || tInstant("budget.updateFailed");
       toast.error(message);
     },
   });
@@ -364,10 +370,11 @@ export function useDeleteBudget() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets });
       queryClient.invalidateQueries({ queryKey: queryKeys.budgetAlerts });
-      toast.success("Budget deleted successfully");
+      toast.success(tInstant("budget.deletedSuccessfully"));
     },
     onError: (error: any) => {
-      const message = error.response?.data?.detail || "Failed to delete budget";
+      const message =
+        error.response?.data?.detail || tInstant("budget.deleteFailed");
       toast.error(message);
     },
   });
@@ -397,11 +404,11 @@ export function useCreateRecurringService() {
       apiClient.createRecurringService(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.recurringServices });
-      toast.success("Recurring service created successfully");
+      toast.success(tInstant("recurring.createdSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to create recurring service";
+        error.response?.data?.detail || tInstant("recurring.createFailed");
       toast.error(message);
     },
   });
@@ -418,16 +425,16 @@ export function useUpdateRecurringService() {
       serviceId: string;
       data: RecurringServiceUpdate;
     }) => apiClient.updateRecurringService(serviceId, data),
-    onSuccess: (_, { serviceId }) => {
+    onSuccess: (_: any, { serviceId }: { serviceId: string }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.recurringServices });
       queryClient.invalidateQueries({
         queryKey: queryKeys.recurringService(serviceId),
       });
-      toast.success("Recurring service updated successfully");
+      toast.success(tInstant("recurring.updatedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to update recurring service";
+        error.response?.data?.detail || tInstant("recurring.updateFailed");
       toast.error(message);
     },
   });
@@ -441,11 +448,11 @@ export function useDeleteRecurringService() {
       apiClient.deleteRecurringService(serviceId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.recurringServices });
-      toast.success("Recurring service deleted successfully");
+      toast.success(tInstant("recurring.deletedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to delete recurring service";
+        error.response?.data?.detail || tInstant("recurring.deleteFailed");
       toast.error(message);
     },
   });
@@ -464,17 +471,19 @@ export function useDeleteStatement() {
 
   return useMutation({
     mutationFn: (statementId: string) => apiClient.deleteStatement(statementId),
-    onSuccess: (data) => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
       toast.success(
-        `Statement deleted. ${data.transactions_deleted} transactions also removed.`
+        tInstant("statement.deletedSummary", {
+          count: String(data.transactions_deleted || 0),
+        })
       );
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to delete statement";
+        error.response?.data?.detail || tInstant("statement.deleteFailed");
       toast.error(message);
     },
   });
@@ -512,25 +521,31 @@ export function useDeleteStatementsBulk() {
         successIds,
       };
     },
-    onSuccess: (result) => {
+    onSuccess: (result: any) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
 
       if (result.successCount > 0) {
         toast.success(
-          `Deleted ${result.successCount} statement(s). Removed ${result.transactionsDeleted} transactions.`
+          tInstant("statement.bulkDeleted", {
+            success: String(result.successCount),
+            tx: String(result.transactionsDeleted),
+          })
         );
       }
       if (result.failureCount > 0) {
         toast.warning(
-          `${result.failureCount} of ${result.total} statement(s) failed to delete.`
+          tInstant("statement.bulkFailed", {
+            failed: String(result.failureCount),
+            total: String(result.total),
+          })
         );
       }
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to delete statements";
+        error.response?.data?.detail || tInstant("statement.bulkDeleteFailed");
       toast.error(message);
     },
   });
@@ -542,13 +557,13 @@ export function useUploadStatement() {
   return useMutation({
     mutationFn: ({ file, cardId }: { file: File; cardId?: string }) =>
       apiClient.uploadStatement(file, cardId),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
-      toast.success("Statement uploaded successfully");
+      toast.success(tInstant("statement.uploadedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to upload statement";
+        error.response?.data?.detail || tInstant("statement.uploadFailed");
       toast.error(message);
     },
   });
@@ -571,11 +586,11 @@ export function useUploadStatementSimple() {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      toast.success("Statement processed successfully");
+      toast.success(tInstant("statement.processedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to process statement";
+        error.response?.data?.detail || tInstant("statement.processFailed");
       toast.error(message);
     },
   });
@@ -600,7 +615,7 @@ export function useUploadStatementAsync() {
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to upload statement";
+        error.response?.data?.detail || tInstant("statement.uploadFailed");
       toast.error(message);
     },
   });
@@ -611,7 +626,7 @@ export function useCheckPDFAccessibility() {
     mutationFn: (file: File) => apiClient.checkPDFAccessibility(file),
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to check PDF accessibility";
+        error.response?.data?.detail || tInstant("statement.checkPDFFailed");
       toast.error(message);
     },
   });
@@ -630,15 +645,15 @@ export function useUnlockAndUploadPDF() {
       password: string;
       cardId: string;
     }) => apiClient.unlockAndUploadPDF(file, password, cardId),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      toast.success("PDF unlocked and processed successfully");
+      toast.success(tInstant("pdf.unlockedProcessed"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to unlock and process PDF";
+        error.response?.data?.detail || tInstant("pdf.unlockFailed");
       toast.error(message);
     },
   });
@@ -655,15 +670,15 @@ export function useProcessStatement() {
       statementId: string;
       cardId: string;
     }) => apiClient.processStatement(statementId, cardId),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
-      toast.success("Statement processed successfully");
+      toast.success(tInstant("statement.processedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to process statement";
+        error.response?.data?.detail || tInstant("statement.processFailed");
       toast.error(message);
     },
   });
@@ -740,7 +755,10 @@ export function useRecategorizeTransactions() {
       statementId: string;
       data: CategorizationRequest;
     }) => apiClient.recategorizeTransactions(statementId, data),
-    onSuccess: (data) => {
+    onSuccess: (data: {
+      transactions_categorized: number;
+      uncategorized: number;
+    }) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.statements });
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["analytics"] });
@@ -836,11 +854,11 @@ export function useAnalyzeSpendingPatterns() {
   return useMutation({
     mutationFn: () => apiClient.analyzeSpendingPatterns(),
     onSuccess: () => {
-      toast.success("Spending analysis completed");
+      toast.success(tInstant("insights.completed"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to analyze spending patterns";
+        error.response?.data?.detail || tInstant("insights.failed");
       toast.error(message);
     },
   });
@@ -852,7 +870,7 @@ export function useDetectTransactionAnomalies() {
       apiClient.detectTransactionAnomalies(params),
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to detect anomalies";
+        error.response?.data?.detail || tInstant("anomalies.failed");
       toast.error(message);
     },
   });
@@ -881,7 +899,7 @@ export function useCategoryColors() {
   const getCategoryColor = (categoryName?: string | null) => {
     if (!categoryName || !categories) return "#64748b"; // Default color
 
-    const category = categories.find((cat) => cat.name === categoryName);
+    const category = categories.find((cat: any) => cat.name === categoryName);
     return category?.color || "#64748b"; // Default color if not found
   };
 
@@ -916,11 +934,11 @@ export function useCreateCategory() {
     mutationFn: (data: CategoryCreate) => apiClient.createCategory(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories });
-      toast.success("Category created successfully");
+      toast.success(tInstant("category.createdSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to create category";
+        error.response?.data?.detail || tInstant("category.createFailed");
       toast.error(message);
     },
   });
@@ -939,11 +957,11 @@ export function useUpdateCategory() {
     }) => apiClient.updateCategory(categoryId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories });
-      toast.success("Category updated successfully");
+      toast.success(tInstant("category.updatedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to update category";
+        error.response?.data?.detail || tInstant("category.updateFailed");
       toast.error(message);
     },
   });
@@ -956,11 +974,11 @@ export function useDeleteCategory() {
     mutationFn: (categoryId: string) => apiClient.deleteCategory(categoryId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.categories });
-      toast.success("Category deleted successfully");
+      toast.success(tInstant("category.deletedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to delete category";
+        error.response?.data?.detail || tInstant("category.deleteFailed");
       toast.error(message);
     },
   });
@@ -994,11 +1012,11 @@ export function useCreateKeyword() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.keywordsByCategory(variables.category_id),
       });
-      toast.success("Keyword created successfully");
+      toast.success(tInstant("keyword.createdSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to create keyword";
+        error.response?.data?.detail || tInstant("keyword.createFailed");
       toast.error(message);
     },
   });
@@ -1015,11 +1033,11 @@ export function useCreateKeywordsBulk() {
       queryClient.invalidateQueries({
         queryKey: queryKeys.keywordsByCategory(variables.category_id),
       });
-      toast.success("Keywords created successfully");
+      toast.success(tInstant("keyword.bulkCreatedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to create keywords";
+        error.response?.data?.detail || tInstant("keyword.bulkCreateFailed");
       toast.error(message);
     },
   });
@@ -1038,11 +1056,11 @@ export function useUpdateKeyword() {
     }) => apiClient.updateKeyword(keywordId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
-      toast.success("Keyword updated successfully");
+      toast.success(tInstant("keyword.updatedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to update keyword";
+        error.response?.data?.detail || tInstant("keyword.updateFailed");
       toast.error(message);
     },
   });
@@ -1055,11 +1073,11 @@ export function useDeleteKeyword() {
     mutationFn: (keywordId: string) => apiClient.deleteKeyword(keywordId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
-      toast.success("Keyword deleted successfully");
+      toast.success(tInstant("keyword.deletedSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to delete keyword";
+        error.response?.data?.detail || tInstant("keyword.deleteFailed");
       toast.error(message);
     },
   });
@@ -1073,11 +1091,11 @@ export function useSeedDefaultKeywords() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
       queryClient.invalidateQueries({ queryKey: queryKeys.categories });
-      toast.success("Default keywords seeded successfully");
+      toast.success(tInstant("keyword.seededDefaultsSuccessfully"));
     },
     onError: (error: any) => {
       const message =
-        error.response?.data?.detail || "Failed to seed default keywords";
+        error.response?.data?.detail || tInstant("keyword.seedDefaultsFailed");
       toast.error(message);
     },
   });
@@ -1097,31 +1115,41 @@ export function useToggleUserActive() {
   return useMutation({
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
       apiClient.adminToggleUserActive(userId, isActive),
-    onMutate: async ({ userId, isActive }) => {
+    onMutate: async ({
+      userId,
+      isActive,
+    }: {
+      userId: string;
+      isActive: boolean;
+    }) => {
       await queryClient.cancelQueries({ queryKey: ["admin", "users"] });
       const prev = queryClient.getQueriesData<User[]>({
         queryKey: ["admin", "users"],
       });
       // Optimistic update across all cached admin user lists
-      prev.forEach(([key, users]) => {
+      prev.forEach(([key, users]: [QueryKey, User[] | undefined]) => {
         if (!users) return;
-        const updated = users.map((u) =>
+        const updated = users.map((u: User) =>
           u.id === userId ? { ...u, is_active: isActive } : u
         );
         queryClient.setQueryData<User[]>(key, updated);
       });
       return { prev } as { prev: Array<[QueryKey, User[] | undefined]> };
     },
-    onError: (_err, _vars, context) => {
+    onError: (
+      _err: any,
+      _vars: any,
+      context: { prev: Array<[QueryKey, User[] | undefined]> }
+    ) => {
       // Rollback
       const prev = context as { prev: Array<[QueryKey, User[] | undefined]> };
       prev?.prev?.forEach(([key, data]) => {
         if (data) queryClient.setQueryData<User[]>(key, data);
       });
-      toast.error("Failed to update user status");
+      toast.error(tInstant("admin.userStatusUpdateFailed"));
     },
     onSuccess: (_data: ToggleUserActiveResponse) => {
-      toast.success("User status updated");
+      toast.success(tInstant("admin.userStatusUpdated"));
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["admin", "users"] });

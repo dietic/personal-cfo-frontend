@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -20,9 +19,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Building2 } from "lucide-react";
-import { useUpdateCard, useBankProviders } from "@/lib/hooks";
+import { useBankProviders, useUpdateCard } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { Card, CardUpdate } from "@/lib/types";
+import { Building2 } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 interface EditCardDialogProps {
@@ -31,17 +32,19 @@ interface EditCardDialogProps {
 }
 
 export function EditCardDialog({ card, children }: EditCardDialogProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<CardUpdate>({
     card_name: card.card_name,
     card_type: card.card_type || "",
     network_provider: card.network_provider || "",
-    bank_provider_id: card.bank_provider_id || "",  // Updated field name
+    bank_provider_id: card.bank_provider_id || "", // Updated field name
     payment_due_date: card.payment_due_date || "",
   });
 
   // Fetch bank providers for dropdown
-  const { data: bankProviders, isLoading: bankProvidersLoading } = useBankProviders("PE", false);
+  const { data: bankProviders, isLoading: bankProvidersLoading } =
+    useBankProviders("PE", false);
 
   const updateMutation = useUpdateCard();
 
@@ -49,7 +52,7 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
     e.preventDefault();
 
     if (!formData.card_name?.trim()) {
-      toast.error("Card name is required");
+      toast.error(t("card.errors.nameRequired"));
       return;
     }
 
@@ -59,7 +62,7 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
         data: formData,
       });
       setOpen(false);
-      toast.success("Card updated successfully");
+      toast.success(t("card.updatedSuccessfully"));
     } catch (error) {
       console.error("Update card error:", error);
       // Error handling is done in the mutation
@@ -78,47 +81,51 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Card</DialogTitle>
-          <DialogDescription>
-            Update your card information below.
-          </DialogDescription>
+          <DialogTitle>{t("card.edit.title")}</DialogTitle>
+          <DialogDescription>{t("card.edit.description")}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="card_name" className="text-right">
-                Card Name
+                {t("card.form.name")}
               </Label>
               <Input
                 id="card_name"
                 value={formData.card_name || ""}
                 onChange={(e) => handleInputChange("card_name", e.target.value)}
                 className="col-span-3"
-                placeholder="My Credit Card"
+                placeholder={t("card.form.namePlaceholder")}
                 required
               />
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="card_type" className="text-right">
-                Card Type
+                {t("card.form.type")}
               </Label>
               <Select
                 value={formData.card_type || ""}
                 onValueChange={(value) => handleInputChange("card_type", value)}
               >
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select card type" />
+                  <SelectValue placeholder={t("card.form.typePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Credit Card">Credit Card</SelectItem>
-                  <SelectItem value="Debit Card">Debit Card</SelectItem>
-                  <SelectItem value="Charge Card">Charge Card</SelectItem>
+                  <SelectItem value="Credit Card">
+                    {t("card.form.typeCredit")}
+                  </SelectItem>
+                  <SelectItem value="Debit Card">
+                    {t("card.form.typeDebit")}
+                  </SelectItem>
+                  <SelectItem value="Charge Card">
+                    {t("card.form.typeCharge")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="network_provider" className="text-right">
-                Network
+                {t("card.form.network")}
               </Label>
               <Select
                 value={formData.network_provider || ""}
@@ -127,7 +134,9 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
                 }
               >
                 <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder="Select network" />
+                  <SelectValue
+                    placeholder={t("card.form.networkPlaceholder")}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="Visa">Visa</SelectItem>
@@ -142,7 +151,7 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="bank_provider_id" className="text-right">
                 <Building2 className="w-4 h-4 inline mr-1" />
-                Bank
+                {t("card.form.bank")}
               </Label>
               <div className="col-span-3">
                 <Select
@@ -153,55 +162,55 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
                   disabled={bankProvidersLoading}
                 >
                   <SelectTrigger>
-                    <SelectValue 
+                    <SelectValue
                       placeholder={
-                        bankProvidersLoading 
-                          ? "Loading banks..." 
-                          : "Select your bank"
-                      } 
+                        bankProvidersLoading
+                          ? t("card.form.loadingBanks")
+                          : t("card.form.bankPlaceholder")
+                      }
                     />
                   </SelectTrigger>
                   <SelectContent>
                     {/* Popular banks first */}
                     {bankProviders
-                      ?.filter(bank => bank.is_popular)
+                      ?.filter((bank) => bank.is_popular)
                       .map((bank) => (
                         <SelectItem key={bank.id} value={bank.id}>
                           <div className="flex items-center gap-2">
                             <span className="font-medium">
                               {bank.short_name || bank.name}
                             </span>
-                            {bank.short_name && bank.short_name !== bank.name && (
-                              <span className="text-xs text-muted-foreground">
-                                ({bank.name})
-                              </span>
-                            )}
+                            {bank.short_name &&
+                              bank.short_name !== bank.name && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({bank.name})
+                                </span>
+                              )}
                           </div>
                         </SelectItem>
                       ))}
-                    
+
                     {/* Separator if we have both popular and regular banks */}
-                    {bankProviders?.some(bank => bank.is_popular) && 
-                     bankProviders?.some(bank => !bank.is_popular) && (
-                      <SelectItem value="separator" disabled>
-                        ──────────────────
-                      </SelectItem>
-                    )}
-                    
+                    {bankProviders?.some((bank) => bank.is_popular) &&
+                      bankProviders?.some((bank) => !bank.is_popular) && (
+                        <SelectItem value="separator" disabled>
+                          ──────────────────
+                        </SelectItem>
+                      )}
+
                     {/* Other banks */}
                     {bankProviders
-                      ?.filter(bank => !bank.is_popular)
+                      ?.filter((bank) => !bank.is_popular)
                       .map((bank) => (
                         <SelectItem key={bank.id} value={bank.id}>
                           <div className="flex items-center gap-2">
-                            <span>
-                              {bank.short_name || bank.name}
-                            </span>
-                            {bank.short_name && bank.short_name !== bank.name && (
-                              <span className="text-xs text-muted-foreground">
-                                ({bank.name})
-                              </span>
-                            )}
+                            <span>{bank.short_name || bank.name}</span>
+                            {bank.short_name &&
+                              bank.short_name !== bank.name && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({bank.name})
+                                </span>
+                              )}
                           </div>
                         </SelectItem>
                       ))}
@@ -211,7 +220,7 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="payment_due_date" className="text-right">
-                Due Date
+                {t("card.form.dueDate")}
               </Label>
               <Input
                 id="payment_due_date"
@@ -230,10 +239,12 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
               variant="outline"
               onClick={() => setOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? "Updating..." : "Update Card"}
+              {updateMutation.isPending
+                ? t("common.updating")
+                : t("card.edit.submit")}
             </Button>
           </DialogFooter>
         </form>

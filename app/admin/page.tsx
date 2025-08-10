@@ -17,11 +17,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useAuth } from "@/lib/auth-context";
+import { formatDate } from "@/lib/format";
 import {
   useAdminSignupStats,
   useAdminUsers,
   useToggleUserActive,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { AdminUsersParams, SignupStatsPoint, User } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
@@ -31,6 +33,7 @@ import { toast } from "sonner";
 export default function AdminPage() {
   const { user, isLoading } = useAuth();
   const router = useRouter();
+  const { t } = useI18n();
 
   // Gate non-admins
   useEffect(() => {
@@ -68,7 +71,7 @@ export default function AdminPage() {
 
   const handleToggle = (u: User) => {
     if (u.id === user?.id || u.id === "current-user") {
-      toast.error("Cannot change your own status");
+      toast.error(t("admin.cannotChangeOwn"));
       return;
     }
     toggleUser.mutate({ userId: u.id, isActive: !u.is_active });
@@ -81,18 +84,18 @@ export default function AdminPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Admin</h1>
+        <h1 className="text-2xl font-bold">{t("admin.title")}</h1>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>Users</CardTitle>
+            <CardTitle>{t("admin.users.title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2 mb-4">
               <Input
-                placeholder="Search by email or name"
+                placeholder={t("admin.search.placeholder")}
                 value={q}
                 onChange={(e) => {
                   setPage(1);
@@ -105,12 +108,14 @@ export default function AdminPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Admin</TableHead>
-                    <TableHead>Created</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>{t("admin.table.email")}</TableHead>
+                    <TableHead>{t("admin.table.name")}</TableHead>
+                    <TableHead>{t("admin.table.status")}</TableHead>
+                    <TableHead>{t("admin.table.admin")}</TableHead>
+                    <TableHead>{t("admin.table.created")}</TableHead>
+                    <TableHead className="text-right">
+                      {t("admin.table.actions")}
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -128,13 +133,15 @@ export default function AdminPage() {
                               : "bg-red-100 text-red-700"
                           }`}
                         >
-                          {u.is_active ? "Active" : "Inactive"}
+                          {u.is_active
+                            ? t("admin.status.active")
+                            : t("admin.status.inactive")}
                         </span>
                       </TableCell>
-                      <TableCell>{u.is_admin ? "Yes" : "No"}</TableCell>
                       <TableCell>
-                        {new Date(u.created_at).toLocaleString()}
+                        {u.is_admin ? t("admin.yes") : t("admin.no")}
                       </TableCell>
+                      <TableCell>{formatDate(u.created_at)}</TableCell>
                       <TableCell className="text-right">
                         <Button
                           size="sm"
@@ -142,7 +149,9 @@ export default function AdminPage() {
                           onClick={() => handleToggle(u)}
                           disabled={toggleUser.isPending}
                         >
-                          {u.is_active ? "Deactivate" : "Activate"}
+                          {u.is_active
+                            ? t("admin.actions.deactivate")
+                            : t("admin.actions.activate")}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -153,7 +162,7 @@ export default function AdminPage() {
                         colSpan={6}
                         className="text-center text-muted-foreground"
                       >
-                        {isFetching ? "Loading..." : "No users found"}
+                        {isFetching ? t("admin.loading") : t("admin.noUsers")}
                       </TableCell>
                     </TableRow>
                   )}
@@ -167,15 +176,17 @@ export default function AdminPage() {
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
               >
-                Previous
+                {t("admin.pagination.previous")}
               </Button>
-              <span className="text-sm text-muted-foreground">Page {page}</span>
+              <span className="text-sm text-muted-foreground">
+                {t("admin.pagination.page", { page: String(page) })}
+              </span>
               <Button
                 variant="outline"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={isLastPage}
               >
-                Next
+                {t("admin.pagination.next")}
               </Button>
             </div>
           </CardContent>
@@ -183,12 +194,15 @@ export default function AdminPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>New users per day</CardTitle>
+            <CardTitle>{t("admin.chart.signupsPerDay")}</CardTitle>
           </CardHeader>
           <CardContent>
             <ChartContainer
               config={{
-                users: { label: "Signups", color: "hsl(var(--primary))" },
+                users: {
+                  label: t("admin.chart.signups"),
+                  color: "hsl(var(--primary))",
+                },
               }}
               className="h-64"
             >

@@ -1,12 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Edit, Trash2, TrendingUp, TrendingDown } from "lucide-react";
-import { format } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -24,17 +21,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   useBudgets,
+  useCategories,
   useCategorySpending,
   useCreateBudget,
-  useUpdateBudget,
   useDeleteBudget,
-  useCategories,
+  useUpdateBudget,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
 import { Budget, BudgetCreate, BudgetUpdate } from "@/lib/types";
-import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { Edit, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 
 interface BudgetFormData {
   category: string;
@@ -51,6 +52,7 @@ const initialFormData: BudgetFormData = {
 };
 
 export function BudgetCategories() {
+  const { t } = useI18n();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -77,7 +79,7 @@ export function BudgetCategories() {
 
   const handleCreateBudget = async () => {
     if (!formData.category || !formData.amount) {
-      toast.error("Please fill in all fields");
+      toast.error(t("common.fillAllFields"));
       return;
     }
 
@@ -96,7 +98,7 @@ export function BudgetCategories() {
 
     try {
       await createBudgetMutation.mutateAsync(budgetData);
-      toast.success("Budget created successfully");
+      toast.success(t("budget.createdSuccessfully"));
       setIsCreateDialogOpen(false);
       setFormData(initialFormData);
     } catch (error: any) {
@@ -104,14 +106,14 @@ export function BudgetCategories() {
       const errorMessage =
         error?.response?.data?.detail ||
         error?.message ||
-        "Failed to create budget";
+        t("budget.createFailed");
       toast.error(errorMessage);
     }
   };
 
   const handleUpdateBudget = async () => {
     if (!selectedBudget || !formData.category || !formData.amount) {
-      toast.error("Please fill in all fields");
+      toast.error(t("common.fillAllFields"));
       return;
     }
 
@@ -133,7 +135,7 @@ export function BudgetCategories() {
         budgetId: selectedBudget.id,
         data: budgetData,
       });
-      toast.success("Budget updated successfully");
+      toast.success(t("budget.updatedSuccessfully"));
       setIsEditDialogOpen(false);
       setSelectedBudget(null);
       setFormData(initialFormData);
@@ -142,7 +144,7 @@ export function BudgetCategories() {
       const errorMessage =
         error?.response?.data?.detail ||
         error?.message ||
-        "Failed to update budget";
+        t("budget.updateFailed");
       toast.error(errorMessage);
     }
   };
@@ -152,11 +154,11 @@ export function BudgetCategories() {
 
     try {
       await deleteBudgetMutation.mutateAsync(selectedBudget.id);
-      toast.success("Budget deleted successfully");
+      toast.success(t("budget.deletedSuccessfully"));
       setIsDeleteDialogOpen(false);
       setSelectedBudget(null);
     } catch (error) {
-      toast.error("Failed to delete budget");
+      toast.error(t("budget.deleteFailed"));
     }
   };
 
@@ -205,10 +207,13 @@ export function BudgetCategories() {
 
   const getBudgetStatus = (percentage: number) => {
     if (percentage >= 100)
-      return { variant: "destructive" as const, label: "Over Budget" };
+      return {
+        variant: "destructive" as const,
+        label: t("budget.status.over"),
+      };
     if (percentage >= 80)
-      return { variant: "secondary" as const, label: "Near Limit" };
-    return { variant: "default" as const, label: "On Track" };
+      return { variant: "secondary" as const, label: t("budget.status.near") };
+    return { variant: "default" as const, label: t("budget.status.ok") };
   };
 
   if (budgetsError) {
@@ -216,7 +221,7 @@ export function BudgetCategories() {
       <Card>
         <CardContent className="pt-6">
           <div className="text-center text-red-600">
-            Failed to load budgets. Please try again.
+            {t("budget.loadFailed")}
           </div>
         </CardContent>
       </Card>
@@ -228,7 +233,7 @@ export function BudgetCategories() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Budget Categories</span>
+            <span>{t("budget.categories.title")}</span>
             <Skeleton className="h-9 w-24" />
           </CardTitle>
         </CardHeader>
@@ -254,28 +259,28 @@ export function BudgetCategories() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
-            <span>Budget Categories</span>
+            <span>{t("budget.categories.title")}</span>
             <Button
               size="sm"
               onClick={() => setIsCreateDialogOpen(true)}
               className="gap-1"
             >
               <Plus className="h-4 w-4" />
-              Add Budget
+              {t("budget.categories.add")}
             </Button>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {!budgets || budgets.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              <div className="mb-2">No budgets created yet</div>
+              <div className="mb-2">{t("budget.empty.title")}</div>
               <Button
                 variant="outline"
                 onClick={() => setIsCreateDialogOpen(true)}
                 className="gap-1"
               >
                 <Plus className="h-4 w-4" />
-                Create your first budget
+                {t("budget.empty.cta")}
               </Button>
             </div>
           ) : (
@@ -283,6 +288,7 @@ export function BudgetCategories() {
               {budgets.map((budget) => {
                 const { spent, percentage } = getBudgetProgress(budget);
                 const status = getBudgetStatus(percentage);
+                const percentLabel = percentage.toFixed(1);
 
                 return (
                   <div key={budget.id} className="space-y-2">
@@ -331,13 +337,14 @@ export function BudgetCategories() {
                       }
                     />
                     <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>{percentage.toFixed(1)}% used</span>
+                      <span>{t("budget.used", { percent: percentLabel })}</span>
                       <span>
-                        {formatCurrency(
-                          parseFloat(budget.limit_amount) - spent,
-                          budget.currency
-                        )}{" "}
-                        remaining
+                        {t("budget.remaining", {
+                          amount: formatCurrency(
+                            parseFloat(budget.limit_amount) - spent,
+                            budget.currency
+                          ),
+                        })}
                       </span>
                     </div>
                   </div>
@@ -352,14 +359,14 @@ export function BudgetCategories() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Create New Budget</DialogTitle>
+            <DialogTitle>{t("budget.create.title")}</DialogTitle>
             <DialogDescription>
-              Set a spending limit for a specific category.
+              {t("budget.create.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">{t("budget.form.category")}</Label>
               <Select
                 value={formData.category}
                 onValueChange={(value) =>
@@ -367,12 +374,12 @@ export function BudgetCategories() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder={t("budget.form.selectCategory")} />
                 </SelectTrigger>
                 <SelectContent>
                   {categoriesLoading ? (
                     <SelectItem value="" disabled>
-                      Loading categories...
+                      {t("budget.form.loadingCategories")}
                     </SelectItem>
                   ) : categories && categories.length > 0 ? (
                     categories.map((category) => (
@@ -382,18 +389,18 @@ export function BudgetCategories() {
                     ))
                   ) : (
                     <SelectItem value="" disabled>
-                      No categories available
+                      {t("budget.form.noCategories")}
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="amount">Budget Amount</Label>
+              <Label htmlFor="amount">{t("budget.form.amount")}</Label>
               <Input
                 id="amount"
                 type="number"
-                placeholder="0.00"
+                placeholder={t("budget.form.amountPlaceholder")}
                 step="0.01"
                 value={formData.amount}
                 onChange={(e) =>
@@ -402,7 +409,7 @@ export function BudgetCategories() {
               />
             </div>
             <div>
-              <Label htmlFor="currency">Currency</Label>
+              <Label htmlFor="currency">{t("budget.form.currency")}</Label>
               <Select
                 value={formData.currency}
                 onValueChange={(value) =>
@@ -410,18 +417,18 @@ export function BudgetCategories() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select currency" />
+                  <SelectValue placeholder={t("budget.form.selectCurrency")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USD">USD - US Dollar</SelectItem>
-                  <SelectItem value="PEN">PEN - Peruvian Sol</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                  <SelectItem value="USD">{t("currency.USD")}</SelectItem>
+                  <SelectItem value="PEN">{t("currency.PEN")}</SelectItem>
+                  <SelectItem value="EUR">{t("currency.EUR")}</SelectItem>
+                  <SelectItem value="GBP">{t("currency.GBP")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="period">Period</Label>
+              <Label htmlFor="period">{t("budget.form.period")}</Label>
               <Select
                 value={formData.period}
                 onValueChange={(value: "monthly" | "weekly" | "yearly") =>
@@ -432,9 +439,15 @@ export function BudgetCategories() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
+                  <SelectItem value="weekly">
+                    {t("budget.form.weekly")}
+                  </SelectItem>
+                  <SelectItem value="monthly">
+                    {t("budget.form.monthly")}
+                  </SelectItem>
+                  <SelectItem value="yearly">
+                    {t("budget.form.yearly")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -444,13 +457,15 @@ export function BudgetCategories() {
               variant="outline"
               onClick={() => setIsCreateDialogOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleCreateBudget}
               disabled={createBudgetMutation.isPending}
             >
-              {createBudgetMutation.isPending ? "Creating..." : "Create Budget"}
+              {createBudgetMutation.isPending
+                ? t("budget.creating")
+                : t("budget.create.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -460,14 +475,14 @@ export function BudgetCategories() {
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Budget</DialogTitle>
+            <DialogTitle>{t("budget.edit.title")}</DialogTitle>
             <DialogDescription>
-              Update the spending limit for this category.
+              {t("budget.edit.description")}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label htmlFor="edit-category">Category</Label>
+              <Label htmlFor="edit-category">{t("budget.form.category")}</Label>
               <Select
                 value={formData.category}
                 onValueChange={(value) =>
@@ -475,12 +490,12 @@ export function BudgetCategories() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder={t("budget.form.selectCategory")} />
                 </SelectTrigger>
                 <SelectContent>
                   {categoriesLoading ? (
                     <SelectItem value="" disabled>
-                      Loading categories...
+                      {t("budget.form.loadingCategories")}
                     </SelectItem>
                   ) : categories && categories.length > 0 ? (
                     categories.map((category) => (
@@ -490,18 +505,18 @@ export function BudgetCategories() {
                     ))
                   ) : (
                     <SelectItem value="" disabled>
-                      No categories available
+                      {t("budget.form.noCategories")}
                     </SelectItem>
                   )}
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="edit-amount">Budget Amount</Label>
+              <Label htmlFor="edit-amount">{t("budget.form.amount")}</Label>
               <Input
                 id="edit-amount"
                 type="number"
-                placeholder="0.00"
+                placeholder={t("budget.form.amountPlaceholder")}
                 step="0.01"
                 value={formData.amount}
                 onChange={(e) =>
@@ -510,7 +525,7 @@ export function BudgetCategories() {
               />
             </div>
             <div>
-              <Label htmlFor="edit-currency">Currency</Label>
+              <Label htmlFor="edit-currency">{t("budget.form.currency")}</Label>
               <Select
                 value={formData.currency}
                 onValueChange={(value) =>
@@ -518,18 +533,18 @@ export function BudgetCategories() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select currency" />
+                  <SelectValue placeholder={t("budget.form.selectCurrency")} />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="USD">USD - US Dollar</SelectItem>
-                  <SelectItem value="PEN">PEN - Peruvian Sol</SelectItem>
-                  <SelectItem value="EUR">EUR - Euro</SelectItem>
-                  <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                  <SelectItem value="USD">{t("currency.USD")}</SelectItem>
+                  <SelectItem value="PEN">{t("currency.PEN")}</SelectItem>
+                  <SelectItem value="EUR">{t("currency.EUR")}</SelectItem>
+                  <SelectItem value="GBP">{t("currency.GBP")}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div>
-              <Label htmlFor="edit-period">Period</Label>
+              <Label htmlFor="edit-period">{t("budget.form.period")}</Label>
               <Select
                 value={formData.period}
                 onValueChange={(value: "monthly" | "weekly" | "yearly") =>
@@ -540,9 +555,15 @@ export function BudgetCategories() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="yearly">Yearly</SelectItem>
+                  <SelectItem value="weekly">
+                    {t("budget.form.weekly")}
+                  </SelectItem>
+                  <SelectItem value="monthly">
+                    {t("budget.form.monthly")}
+                  </SelectItem>
+                  <SelectItem value="yearly">
+                    {t("budget.form.yearly")}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -552,13 +573,15 @@ export function BudgetCategories() {
               variant="outline"
               onClick={() => setIsEditDialogOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               onClick={handleUpdateBudget}
               disabled={updateBudgetMutation.isPending}
             >
-              {updateBudgetMutation.isPending ? "Updating..." : "Update Budget"}
+              {updateBudgetMutation.isPending
+                ? t("budget.updating")
+                : t("budget.edit.submit")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -568,11 +591,11 @@ export function BudgetCategories() {
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete Budget</DialogTitle>
+            <DialogTitle>{t("budget.delete.title")}</DialogTitle>
             <DialogDescription>
-              Are you sure you want to delete the budget for{" "}
-              <strong>{selectedBudget?.category}</strong>? This action cannot be
-              undone.
+              {t("budget.delete.description", {
+                name: selectedBudget?.category ?? "",
+              })}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -580,14 +603,16 @@ export function BudgetCategories() {
               variant="outline"
               onClick={() => setIsDeleteDialogOpen(false)}
             >
-              Cancel
+              {t("common.cancel")}
             </Button>
             <Button
               variant="destructive"
               onClick={handleDeleteBudget}
               disabled={deleteBudgetMutation.isPending}
             >
-              {deleteBudgetMutation.isPending ? "Deleting..." : "Delete Budget"}
+              {deleteBudgetMutation.isPending
+                ? t("budget.deleting")
+                : t("budget.delete.confirm")}
             </Button>
           </DialogFooter>
         </DialogContent>

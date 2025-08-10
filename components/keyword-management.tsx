@@ -1,27 +1,5 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,14 +11,26 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -49,41 +39,46 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import {
-  Plus,
-  Edit3,
-  Trash2,
-  Tag,
-  AlertCircle,
-  CheckCircle,
-  Info,
-  Sparkles,
-  Search,
-  Loader2,
-} from "lucide-react";
+import { formatDate } from "@/lib/format";
 import {
   useCategories,
-  useKeywordsByCategory,
   useCreateKeyword,
   useCreateKeywordsBulk,
-  useUpdateKeyword,
   useDeleteKeyword,
+  useKeywordsByCategory,
   useSeedDefaultKeywords,
+  useUpdateKeyword,
 } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
+import { CategoryKeywordCreate, CategoryKeywordResponse } from "@/lib/types";
 import {
-  CategoryKeywordCreate,
-  CategoryKeywordUpdate,
-  CategoryKeywordResponse,
-  CategoryKeywordsBulkCreate,
-} from "@/lib/types";
+  Edit3,
+  Loader2,
+  Plus,
+  Search,
+  Sparkles,
+  Tag,
+  Trash2,
+} from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 export function KeywordManagement() {
+  const { t } = useI18n();
   const { data: categories, isLoading: categoriesLoading } = useCategories();
   const createKeywordMutation = useCreateKeyword();
   const createKeywordsBulkMutation = useCreateKeywordsBulk();
@@ -124,7 +119,7 @@ export function KeywordManagement() {
 
   const handleCreateKeyword = async () => {
     if (!keywordForm.keyword.trim()) {
-      toast.error("Keyword is required");
+      toast.error(t("keywords.errors.required"));
       return;
     }
 
@@ -147,7 +142,7 @@ export function KeywordManagement() {
       .filter((line) => line.length > 0);
 
     if (keywords.length === 0) {
-      toast.error("Please enter at least one keyword");
+      toast.error(t("keywords.errors.atLeastOne"));
       return;
     }
 
@@ -165,7 +160,7 @@ export function KeywordManagement() {
 
   const handleUpdateKeyword = async () => {
     if (!editingKeyword || !keywordForm.keyword.trim()) {
-      toast.error("Keyword is required");
+      toast.error(t("keywords.errors.required"));
       return;
     }
 
@@ -223,13 +218,13 @@ export function KeywordManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            Keyword Management
+            {t("keywords.title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
             <div className="animate-spin w-6 h-6 border border-current border-t-transparent rounded-full" />
-            <span className="ml-2">Loading categories...</span>
+            <span className="ml-2">{t("keywords.loadingCategories")}</span>
           </div>
         </CardContent>
       </Card>
@@ -242,24 +237,22 @@ export function KeywordManagement() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Tag className="h-5 w-5" />
-            Keyword Management
+            {t("keywords.title")}
           </CardTitle>
-          <CardDescription>
-            Manage keywords for pure keyword-based transaction categorization.
-            Each category should have at least 10 keywords for effective
-            matching.
-          </CardDescription>
+          <CardDescription>{t("keywords.description")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
             <div className="flex-1">
-              <Label htmlFor="category-select">Select Category</Label>
+              <Label htmlFor="category-select">
+                {t("keywords.selectCategory")}
+              </Label>
               <Select
                 value={selectedCategoryId}
                 onValueChange={setSelectedCategoryId}
               >
                 <SelectTrigger id="category-select">
-                  <SelectValue placeholder="Choose a category to manage keywords" />
+                  <SelectValue placeholder={t("keywords.choosePlaceholder")} />
                 </SelectTrigger>
                 <SelectContent>
                   {categories?.map((category) => (
@@ -293,11 +286,11 @@ export function KeywordManagement() {
                       ) : (
                         <Sparkles className="h-4 w-4" />
                       )}
-                      Seed Defaults
+                      {t("keywords.seedDefaults")}
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p>Add default Spanish keywords to all categories to help with automatic transaction categorization</p>
+                    <p>{t("keywords.seedTooltip")}</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -307,7 +300,7 @@ export function KeywordManagement() {
           {!selectedCategoryId && (
             <div className="text-center py-8 text-muted-foreground">
               <Tag className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Select a category to view and manage its keywords</p>
+              <p>{t("keywords.empty.selectPrompt")}</p>
             </div>
           )}
         </CardContent>
@@ -325,13 +318,17 @@ export function KeywordManagement() {
                       backgroundColor: selectedCategory?.color || "#64748b",
                     }}
                   />
-                  {selectedCategory?.name} Keywords
+                  {t("keywords.categoryTitle", {
+                    name: selectedCategory?.name || "",
+                  })}
                 </CardTitle>
                 <CardDescription>
-                  {keywords?.length || 0} keywords configured
+                  {t("keywords.metrics.count", {
+                    count: String(keywords?.length || 0),
+                  })}
                   {keywords && keywords.length < 10 && (
                     <span className="text-orange-600 ml-2">
-                      (Recommended: at least 10 keywords)
+                      {t("keywords.metrics.recommended")}
                     </span>
                   )}
                 </CardDescription>
@@ -344,27 +341,28 @@ export function KeywordManagement() {
                   <DialogTrigger asChild>
                     <Button variant="outline" size="sm">
                       <Plus className="h-4 w-4" />
-                      Bulk Add
+                      {t("keywords.addBulk")}
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add Multiple Keywords</DialogTitle>
+                      <DialogTitle>{t("keywords.addBulk.title")}</DialogTitle>
                       <DialogDescription>
-                        Enter keywords one per line. These will be added to{" "}
-                        {selectedCategory?.name}.
+                        {t("keywords.addBulk.description", {
+                          name: selectedCategory?.name || "",
+                        })}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="bulk-keywords">
-                          Keywords (one per line)
+                          {t("keywords.addBulk.label")}
                         </Label>
                         <Textarea
                           id="bulk-keywords"
                           value={bulkKeywordsText}
                           onChange={(e) => setBulkKeywordsText(e.target.value)}
-                          placeholder="restaurant&#10;food&#10;dining&#10;takeout"
+                          placeholder={t("keywords.addBulk.placeholder")}
                           rows={8}
                         />
                       </div>
@@ -374,15 +372,15 @@ export function KeywordManagement() {
                         variant="outline"
                         onClick={() => setShowBulkAddDialog(false)}
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                       <Button
                         onClick={handleCreateKeywordsBulk}
                         disabled={createKeywordsBulkMutation.isPending}
                       >
                         {createKeywordsBulkMutation.isPending
-                          ? "Adding..."
-                          : "Add Keywords"}
+                          ? t("common.adding")
+                          : t("keywords.addBulk.submit")}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -392,20 +390,23 @@ export function KeywordManagement() {
                   <DialogTrigger asChild>
                     <Button size="sm">
                       <Plus className="h-4 w-4" />
-                      Add Keyword
+                      {t("keywords.add")}
                     </Button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add New Keyword</DialogTitle>
+                      <DialogTitle>{t("keywords.add.title")}</DialogTitle>
                       <DialogDescription>
-                        Add a keyword to help categorize transactions for{" "}
-                        {selectedCategory?.name}.
+                        {t("keywords.add.description", {
+                          name: selectedCategory?.name || "",
+                        })}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="keyword">Keyword *</Label>
+                        <Label htmlFor="keyword">
+                          {t("keywords.form.keyword")}
+                        </Label>
                         <Input
                           id="keyword"
                           value={keywordForm.keyword}
@@ -415,12 +416,12 @@ export function KeywordManagement() {
                               keyword: e.target.value,
                             })
                           }
-                          placeholder="e.g., restaurant, gas station, grocery"
+                          placeholder={t("keywords.form.keywordPlaceholder")}
                         />
                       </div>
                       <div>
                         <Label htmlFor="description">
-                          Description (Optional)
+                          {t("keywords.form.description")}
                         </Label>
                         <Input
                           id="description"
@@ -431,7 +432,7 @@ export function KeywordManagement() {
                               description: e.target.value,
                             })
                           }
-                          placeholder="Brief description of this keyword"
+                          placeholder={t("keywords.placeholder.description")}
                         />
                       </div>
                     </div>
@@ -440,15 +441,15 @@ export function KeywordManagement() {
                         variant="outline"
                         onClick={() => setShowAddDialog(false)}
                       >
-                        Cancel
+                        {t("common.cancel")}
                       </Button>
                       <Button
                         onClick={handleCreateKeyword}
                         disabled={createKeywordMutation.isPending}
                       >
                         {createKeywordMutation.isPending
-                          ? "Adding..."
-                          : "Add Keyword"}
+                          ? t("common.adding")
+                          : t("keywords.add.submit")}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
@@ -460,7 +461,7 @@ export function KeywordManagement() {
             {keywordsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <div className="animate-spin w-6 h-6 border border-current border-t-transparent rounded-full" />
-                <span className="ml-2">Loading keywords...</span>
+                <span className="ml-2">{t("keywords.loading")}</span>
               </div>
             ) : (
               <>
@@ -469,7 +470,7 @@ export function KeywordManagement() {
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                       <Input
-                        placeholder="Search keywords..."
+                        placeholder={t("keywords.search.placeholder")}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="pl-10"
@@ -483,13 +484,11 @@ export function KeywordManagement() {
                     <Tag className="h-12 w-12 mx-auto mb-4 opacity-50" />
                     <p>
                       {keywords?.length === 0
-                        ? "No keywords added yet"
-                        : "No keywords match your search"}
+                        ? t("keywords.empty.none")
+                        : t("keywords.empty.noResults")}
                     </p>
                     {keywords?.length === 0 && (
-                      <p className="text-sm mt-2">
-                        Add keywords to enable pure keyword-based categorization
-                      </p>
+                      <p className="text-sm mt-2">{t("keywords.empty.hint")}</p>
                     )}
                   </div>
                 ) : (
@@ -497,10 +496,14 @@ export function KeywordManagement() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Keyword</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Created</TableHead>
-                          <TableHead className="w-[100px]">Actions</TableHead>
+                          <TableHead>{t("keywords.table.keyword")}</TableHead>
+                          <TableHead>
+                            {t("keywords.table.description")}
+                          </TableHead>
+                          <TableHead>{t("keywords.table.created")}</TableHead>
+                          <TableHead className="w-[100px]">
+                            {t("keywords.table.actions")}
+                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -514,14 +517,12 @@ export function KeywordManagement() {
                             <TableCell>
                               {keyword.description || (
                                 <span className="text-muted-foreground italic">
-                                  No description
+                                  {t("keywords.badge.noDescription")}
                                 </span>
                               )}
                             </TableCell>
                             <TableCell>
-                              {new Date(
-                                keyword.created_at
-                              ).toLocaleDateString()}
+                              {formatDate(keyword.created_at)}
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
@@ -537,15 +538,17 @@ export function KeywordManagement() {
                                   </DialogTrigger>
                                   <DialogContent>
                                     <DialogHeader>
-                                      <DialogTitle>Edit Keyword</DialogTitle>
+                                      <DialogTitle>
+                                        {t("keywords.edit.title")}
+                                      </DialogTitle>
                                       <DialogDescription>
-                                        Update the keyword details.
+                                        {t("keywords.edit.description")}
                                       </DialogDescription>
                                     </DialogHeader>
                                     <div className="space-y-4">
                                       <div>
                                         <Label htmlFor="edit-keyword">
-                                          Keyword *
+                                          {t("keywords.form.keyword")}
                                         </Label>
                                         <Input
                                           id="edit-keyword"
@@ -556,12 +559,14 @@ export function KeywordManagement() {
                                               keyword: e.target.value,
                                             })
                                           }
-                                          placeholder="e.g., restaurant, gas station, grocery"
+                                          placeholder={t(
+                                            "keywords.form.keywordPlaceholder"
+                                          )}
                                         />
                                       </div>
                                       <div>
                                         <Label htmlFor="edit-description">
-                                          Description (Optional)
+                                          {t("keywords.form.description")}
                                         </Label>
                                         <Input
                                           id="edit-description"
@@ -572,7 +577,9 @@ export function KeywordManagement() {
                                               description: e.target.value,
                                             })
                                           }
-                                          placeholder="Brief description of this keyword"
+                                          placeholder={t(
+                                            "keywords.placeholder.description"
+                                          )}
                                         />
                                       </div>
                                     </div>
@@ -581,7 +588,7 @@ export function KeywordManagement() {
                                         variant="outline"
                                         onClick={() => setEditingKeyword(null)}
                                       >
-                                        Cancel
+                                        {t("common.cancel")}
                                       </Button>
                                       <Button
                                         onClick={handleUpdateKeyword}
@@ -590,8 +597,8 @@ export function KeywordManagement() {
                                         }
                                       >
                                         {updateKeywordMutation.isPending
-                                          ? "Updating..."
-                                          : "Update Keyword"}
+                                          ? t("common.updating")
+                                          : t("keywords.edit.submit")}
                                       </Button>
                                     </DialogFooter>
                                   </DialogContent>
@@ -606,17 +613,17 @@ export function KeywordManagement() {
                                   <AlertDialogContent>
                                     <AlertDialogHeader>
                                       <AlertDialogTitle>
-                                        Delete Keyword
+                                        {t("keywords.delete.title")}
                                       </AlertDialogTitle>
                                       <AlertDialogDescription>
-                                        Are you sure you want to delete the
-                                        keyword "{keyword.keyword}"? This action
-                                        cannot be undone.
+                                        {t("keywords.delete.description", {
+                                          keyword: keyword.keyword,
+                                        })}
                                       </AlertDialogDescription>
                                     </AlertDialogHeader>
                                     <AlertDialogFooter>
                                       <AlertDialogCancel>
-                                        Cancel
+                                        {t("common.cancel")}
                                       </AlertDialogCancel>
                                       <AlertDialogAction
                                         onClick={() =>
@@ -624,7 +631,9 @@ export function KeywordManagement() {
                                         }
                                         className="bg-red-600 hover:bg-red-700"
                                       >
-                                        Delete
+                                        {deleteKeywordMutation.isPending
+                                          ? t("common.deleting")
+                                          : t("common.delete")}
                                       </AlertDialogAction>
                                     </AlertDialogFooter>
                                   </AlertDialogContent>

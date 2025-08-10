@@ -1,28 +1,5 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,25 +11,39 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  User,
-  Mail,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "@/lib/auth-context";
+import { useUpdateUserProfile, useUserProfile } from "@/lib/hooks";
+import { useI18n } from "@/lib/i18n";
+import { formatDistanceToNow, parseISO } from "date-fns";
+import {
   Calendar,
-  Shield,
   Camera,
+  Download,
   Eye,
   EyeOff,
+  Mail,
+  Shield,
   Trash2,
-  Download,
-  Upload,
+  User,
 } from "lucide-react";
-import { useAuth } from "@/lib/auth-context";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { formatDistanceToNow, parseISO } from "date-fns";
-import { useUserProfile, useUpdateUserProfile } from "@/lib/hooks";
 
 export function ProfileForm() {
+  const { t } = useI18n();
   const { logout } = useAuth();
   const { data: user, isLoading } = useUserProfile();
   const updateProfileMutation = useUpdateUserProfile();
@@ -73,7 +64,7 @@ export function ProfileForm() {
   // Update form data when user data is loaded
   useEffect(() => {
     if (user) {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         email: user.email || "",
         first_name: user.first_name || "",
@@ -96,18 +87,18 @@ export function ProfileForm() {
 
   const handleChangePassword = async () => {
     if (formData.newPassword !== formData.confirmPassword) {
-      toast.error("New passwords don't match");
+      toast.error(t("profile.password.mismatch"));
       return;
     }
 
     if (formData.newPassword.length < 8) {
-      toast.error("Password must be at least 8 characters long");
+      toast.error(t("profile.password.tooShort"));
       return;
     }
 
     try {
       // Since backend doesn't have password change endpoint yet, just show success
-      toast.success("Password changed successfully!");
+      toast.success(t("profile.password.changed"));
       setFormData({
         ...formData,
         currentPassword: "",
@@ -115,34 +106,34 @@ export function ProfileForm() {
         confirmPassword: "",
       });
     } catch (error) {
-      toast.error("Failed to change password");
+      toast.error(t("profile.password.failed"));
     }
   };
 
   const handleDeleteAccount = async () => {
     try {
       // Since backend doesn't have account deletion endpoint yet, just logout
-      toast.success("Account deletion requested. You will be logged out.");
+      toast.success(t("profile.danger.deleteRequested"));
       setTimeout(() => {
         logout();
       }, 2000);
     } catch (error) {
-      toast.error("Failed to delete account");
+      toast.error(t("profile.danger.deleteFailed"));
     }
   };
 
   const handleExportData = async () => {
     try {
       // Simulate data export
-      toast.success("Data export started. You'll receive an email when ready.");
+      toast.success(t("profile.data.exportStarted"));
     } catch (error) {
-      toast.error("Failed to export data");
+      toast.error(t("profile.data.exportFailed"));
     }
   };
 
   const accountCreatedDate = user?.created_at
     ? formatDistanceToNow(parseISO(user.created_at), { addSuffix: true })
-    : "Unknown";
+    : t("profile.unknown");
 
   if (isLoading) {
     return (
@@ -150,7 +141,7 @@ export function ProfileForm() {
         <Card>
           <CardContent className="py-8">
             <div className="text-center">
-              <p className="text-muted-foreground">Loading profile...</p>
+              <p className="text-muted-foreground">{t("profile.loading")}</p>
             </div>
           </CardContent>
         </Card>
@@ -162,10 +153,14 @@ export function ProfileForm() {
     <div className="max-w-4xl mx-auto space-y-6">
       <Tabs defaultValue="profile" className="w-full">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
-          <TabsTrigger value="security">Security</TabsTrigger>
-          <TabsTrigger value="preferences">Preferences</TabsTrigger>
-          <TabsTrigger value="data">Data & Privacy</TabsTrigger>
+          <TabsTrigger value="profile">{t("profile.tabs.profile")}</TabsTrigger>
+          <TabsTrigger value="security">
+            {t("profile.tabs.security")}
+          </TabsTrigger>
+          <TabsTrigger value="preferences">
+            {t("profile.tabs.preferences")}
+          </TabsTrigger>
+          <TabsTrigger value="data">{t("profile.tabs.data")}</TabsTrigger>
         </TabsList>
 
         {/* Profile Tab */}
@@ -174,11 +169,9 @@ export function ProfileForm() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <User className="h-5 w-5" />
-                Personal Information
+                {t("profile.info.title")}
               </CardTitle>
-              <CardDescription>
-                Manage your account details and profile information
-              </CardDescription>
+              <CardDescription>{t("profile.info.description")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Profile Picture */}
@@ -186,7 +179,7 @@ export function ProfileForm() {
                 <Avatar className="h-20 w-20">
                   <AvatarImage
                     src="/placeholder.svg?height=80&width=80"
-                    alt="Profile"
+                    alt={t("profile.photo.alt")}
                   />
                   <AvatarFallback className="text-lg">
                     {user?.email?.charAt(0).toUpperCase() || "U"}
@@ -195,10 +188,10 @@ export function ProfileForm() {
                 <div className="space-y-2">
                   <Button variant="outline" size="sm" className="gap-2">
                     <Camera className="h-4 w-4" />
-                    Change Photo
+                    {t("profile.photo.change")}
                   </Button>
                   <p className="text-xs text-muted-foreground">
-                    JPG, PNG or GIF. Max size 5MB.
+                    {t("profile.photo.help")}
                   </p>
                 </div>
               </div>
@@ -213,12 +206,16 @@ export function ProfileForm() {
                       variant="secondary"
                       className="bg-green-100 text-green-800"
                     >
-                      Verified
+                      {t("profile.status.verified")}
                     </Badge>
                   </div>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Calendar className="h-4 w-4" />
-                    <span>Member since {accountCreatedDate}</span>
+                    <span>
+                      {t("profile.status.memberSince", {
+                        ago: accountCreatedDate,
+                      })}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -226,7 +223,9 @@ export function ProfileForm() {
               {/* Form Fields */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="first_name">First Name</Label>
+                  <Label htmlFor="first_name">
+                    {t("profile.form.firstName")}
+                  </Label>
                   <Input
                     id="first_name"
                     value={formData.first_name}
@@ -237,7 +236,9 @@ export function ProfileForm() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="last_name">Last Name</Label>
+                  <Label htmlFor="last_name">
+                    {t("profile.form.lastName")}
+                  </Label>
                   <Input
                     id="last_name"
                     value={formData.last_name}
@@ -250,7 +251,7 @@ export function ProfileForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="email">{t("profile.form.email")}</Label>
                 <Input
                   id="email"
                   type="email"
@@ -259,7 +260,7 @@ export function ProfileForm() {
                   className="bg-muted"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Email cannot be changed for security reasons
+                  {t("profile.form.emailNote")}
                 </p>
               </div>
 
@@ -267,23 +268,25 @@ export function ProfileForm() {
               <div className="flex items-center gap-2">
                 {isEditing ? (
                   <>
-                    <Button 
+                    <Button
                       onClick={handleSaveProfile}
                       disabled={updateProfileMutation.isPending}
                     >
-                      {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                      {updateProfileMutation.isPending
+                        ? t("profile.actions.saving")
+                        : t("profile.actions.save")}
                     </Button>
                     <Button
                       variant="outline"
                       onClick={() => setIsEditing(false)}
                       disabled={updateProfileMutation.isPending}
                     >
-                      Cancel
+                      {t("profile.actions.cancel")}
                     </Button>
                   </>
                 ) : (
                   <Button onClick={() => setIsEditing(true)}>
-                    Edit Profile
+                    {t("profile.actions.edit")}
                   </Button>
                 )}
               </div>
@@ -297,15 +300,17 @@ export function ProfileForm() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                Password & Security
+                {t("profile.security.title")}
               </CardTitle>
               <CardDescription>
-                Manage your password and security settings
+                {t("profile.security.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="currentPassword">Current Password</Label>
+                <Label htmlFor="currentPassword">
+                  {t("profile.password.current")}
+                </Label>
                 <div className="relative">
                   <Input
                     id="currentPassword"
@@ -335,7 +340,7 @@ export function ProfileForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="newPassword">New Password</Label>
+                <Label htmlFor="newPassword">{t("profile.password.new")}</Label>
                 <div className="relative">
                   <Input
                     id="newPassword"
@@ -362,7 +367,9 @@ export function ProfileForm() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                <Label htmlFor="confirmPassword">
+                  {t("profile.password.confirm")}
+                </Label>
                 <div className="relative">
                   <Input
                     id="confirmPassword"
@@ -391,7 +398,9 @@ export function ProfileForm() {
                 </div>
               </div>
 
-              <Button onClick={handleChangePassword}>Update Password</Button>
+              <Button onClick={handleChangePassword}>
+                {t("profile.password.update")}
+              </Button>
             </CardContent>
           </Card>
         </TabsContent>
@@ -400,14 +409,14 @@ export function ProfileForm() {
         <TabsContent value="preferences" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Application Preferences</CardTitle>
+              <CardTitle>{t("profile.prefs.title")}</CardTitle>
               <CardDescription>
-                Customize your experience and notification settings
+                {t("profile.prefs.description")}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Preferences settings will be available in a future update.
+                {t("profile.prefs.body")}
               </p>
             </CardContent>
           </Card>
@@ -417,22 +426,24 @@ export function ProfileForm() {
         <TabsContent value="data" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Data Export</CardTitle>
-              <CardDescription>Download a copy of your data</CardDescription>
+              <CardTitle>{t("profile.data.title")}</CardTitle>
+              <CardDescription>{t("profile.data.description")}</CardDescription>
             </CardHeader>
             <CardContent>
               <Button onClick={handleExportData} className="gap-2">
                 <Download className="h-4 w-4" />
-                Export My Data
+                {t("profile.data.exportCTA")}
               </Button>
             </CardContent>
           </Card>
 
           <Card className="border-destructive/20">
             <CardHeader>
-              <CardTitle className="text-destructive">Danger Zone</CardTitle>
+              <CardTitle className="text-destructive">
+                {t("profile.danger.title")}
+              </CardTitle>
               <CardDescription>
-                Irreversible actions that will affect your account
+                {t("profile.danger.description")}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -440,26 +451,27 @@ export function ProfileForm() {
                 <AlertDialogTrigger asChild>
                   <Button variant="destructive" className="gap-2">
                     <Trash2 className="h-4 w-4" />
-                    Delete Account
+                    {t("profile.danger.deleteCTA")}
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>
-                      Are you absolutely sure?
+                      {t("profile.danger.confirmTitle")}
                     </AlertDialogTitle>
                     <AlertDialogDescription>
-                      This action cannot be undone. This will permanently delete
-                      your account and remove all your data from our servers.
+                      {t("profile.danger.confirmDescription")}
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
-                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogCancel>
+                      {t("profile.danger.cancel")}
+                    </AlertDialogCancel>
                     <AlertDialogAction
                       onClick={handleDeleteAccount}
                       className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                     >
-                      Delete Account
+                      {t("profile.danger.confirmDelete")}
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
