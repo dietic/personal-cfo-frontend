@@ -35,6 +35,7 @@ import {
   type QueryKey,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { getExchangeRate, type ExchangeRateInfo } from "@/lib/exchange-rates";
 
 // Query Keys
 export const queryKeys = {
@@ -73,6 +74,7 @@ export const queryKeys = {
     signupStats: (start?: string, end?: string, tz: string = "America/Lima") =>
       ["admin", "signup-stats", { start, end, tz }] as const,
   },
+  exchangeRate: ["exchange-rate"] as const,
 };
 
 // User Profile Hooks
@@ -804,6 +806,16 @@ export function useAIInsights() {
   return useQuery({
     queryKey: queryKeys.analytics.insights,
     queryFn: () => apiClient.getAIInsights(),
+  });
+}
+
+// NEW: Exchange Rate hook
+export function useExchangeRate() {
+  return useQuery<ExchangeRateInfo>({
+    queryKey: queryKeys.exchangeRate,
+    queryFn: () => getExchangeRate(),
+    staleTime: 1000 * 60 * 60 * 24, // 24 hours
+    gcTime: 1000 * 60 * 60 * 24,
   });
 }
 

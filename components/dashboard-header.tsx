@@ -25,7 +25,9 @@ export function DashboardHeader() {
               <AvatarFallback>{userInitials}</AvatarFallback>
             </Avatar>
             <div>
-              <h1 className="text-2xl font-bold">Welcome back, {user?.first_name}</h1>
+              <h1 className="text-2xl font-bold">
+                Welcome back, {user?.first_name}
+              </h1>
               <p className="text-muted-foreground">
                 Here's what's happening with your finances today
               </p>

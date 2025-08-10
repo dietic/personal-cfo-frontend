@@ -6,6 +6,7 @@ import { SpendingByCategory } from "@/components/spending-by-category";
 import { MonthlyComparison } from "@/components/monthly-comparison";
 import { SpendingTrends } from "@/components/spending-trends";
 import { AnalyticsDateFilter } from "@/components/analytics-date-filter";
+import ExchangeRateNote from "@/components/exchange-rate-note";
 import type { AnalyticsFilters, TrendsFilters } from "@/lib/types";
 
 export default function AnalyticsPage() {
@@ -32,6 +33,8 @@ export default function AnalyticsPage() {
         title="Analytics"
         description="Analyze your spending patterns and trends"
       />
+
+      <ExchangeRateNote />
 
       <AnalyticsDateFilter
         onDateRangeChange={handleDateRangeChange}

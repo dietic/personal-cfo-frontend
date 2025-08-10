@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -20,9 +20,12 @@ import {
 } from "recharts";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useSpendingTrends, useCategorySpending } from "@/lib/hooks";
-import { format, parseISO, getMonth, getYear } from "date-fns";
-import type { TrendsFilters, AnalyticsFilters } from "@/lib/types";
+import { useSpendingTrends, useCategorySpending, useTransactions } from "@/lib/hooks";
+import { format, parseISO } from "date-fns";
+import type { TrendsFilters, AnalyticsFilters, Transaction } from "@/lib/types";
+import { Button } from "@/components/ui/button";
+import { useExchangeRate } from "@/lib/hooks";
+import { convertAmount, getCurrencySymbol, type SupportedCurrency } from "@/lib/exchange-rates";
 
 interface SpendingTrendsProps {
   trendsFilters?: TrendsFilters;
@@ -33,6 +36,9 @@ export function SpendingTrends({
   trendsFilters,
   analyticsFilters,
 }: SpendingTrendsProps) {
+  const [currency, setCurrency] = useState<SupportedCurrency>("PEN");
+  const { data: rate } = useExchangeRate();
+
   const {
     data: trendData,
     isLoading: trendsLoading,
@@ -44,30 +50,57 @@ export function SpendingTrends({
     error: categoryError,
   } = useCategorySpending(analyticsFilters);
 
-  const monthlyData = useMemo(() => {
-    if (!trendData) return [];
+  // Transactions for monthly conversion
+  const { data: allTransactions } = useTransactions({});
 
-    const monthlySpending: Record<string, number> = {};
-
-    trendData.forEach((item) => {
-      const date = parseISO(item.month + "-01"); // Assuming month is in YYYY-MM format
-      const monthKey = format(date, "MMM");
-      monthlySpending[monthKey] =
-        (monthlySpending[monthKey] || 0) + parseFloat(item.amount);
+  const monthOrder = useMemo(() => {
+    if (!trendData) return [] as string[];
+    // Derive month names (MMM) from trendData order
+    return trendData.map((item) => {
+      const d = parseISO(item.month + "-01");
+      return format(d, "MMM");
     });
-
-    return Object.entries(monthlySpending).map(([name, amount]) => ({
-      name,
-      amount: Math.round(amount * 100) / 100,
-    }));
   }, [trendData]);
 
+  const monthlyData = useMemo(() => {
+    if (!trendData) return [] as Array<{ name: string; amount: number }>;
+
+    // Initialize sums following monthOrder
+    const sums: Record<string, number> = Object.fromEntries(
+      monthOrder.map((m) => [m, 0])
+    );
+
+    if (allTransactions && allTransactions.length > 0) {
+      for (const tx of allTransactions) {
+        const d = parseISO(tx.transaction_date);
+        const monthKey = format(d, "MMM");
+        if (!(monthKey in sums)) continue;
+        const raw = Math.abs(parseFloat(tx.amount));
+        const ccy = (tx.currency as SupportedCurrency) || "PEN";
+        const converted = rate ? convertAmount(raw, ccy, currency, rate) : raw;
+        sums[monthKey] += converted;
+      }
+    } else {
+      // Fallback: use trendData values without conversion, just for shape
+      trendData.forEach((item) => {
+        const date = parseISO(item.month + "-01");
+        const monthKey = format(date, "MMM");
+        sums[monthKey] = (sums[monthKey] || 0) + Math.abs(parseFloat(item.amount));
+      });
+    }
+
+    return monthOrder.map((name) => ({
+      name,
+      amount: Math.round((sums[name] || 0) * 100) / 100,
+    }));
+  }, [trendData, allTransactions, rate, currency, monthOrder]);
+
   const categoryTrendData = useMemo(() => {
-    if (!categoryData || !trendData) return [];
+    if (!categoryData || !trendData) return [] as Array<Record<string, number | string>>;
 
     const months: Record<string, Record<string, number>> = {};
 
-    // Initialize months from trends data
+    // Initialize months from trends data (keep last 5 as original)
     trendData.forEach((item) => {
       const date = parseISO(item.month + "-01");
       const monthKey = format(date, "MMM");
@@ -76,28 +109,29 @@ export function SpendingTrends({
       }
     });
 
-    // Add category spending data
+    const lastFive = Object.keys(months).slice(-5);
+
+    // Add category spending data with conversion
     categoryData.forEach((item) => {
       if (item.category) {
-        // For this example, we'll distribute the spending across recent months
-        Object.keys(months)
-          .slice(-5)
-          .forEach((month, index) => {
-            const baseAmount = parseFloat(item.amount) / 5;
-            const variation = (Math.random() - 0.5) * 0.3 * baseAmount;
-            months[month][item.category] =
-              Math.round((baseAmount + variation) * 100) / 100;
-          });
+        const totalRaw = Math.abs(parseFloat(item.amount));
+        const ccy = (item.currency as SupportedCurrency) || "PEN";
+        const total = rate ? convertAmount(totalRaw, ccy, currency, rate) : totalRaw;
+
+        lastFive.forEach((_month, index) => {
+          const baseAmount = total / lastFive.length;
+          const variation = (Math.random() - 0.5) * 0.3 * baseAmount; // keep the simple synthetic variation
+          months[_month][item.category] =
+            Math.round((baseAmount + variation) * 100) / 100;
+        });
       }
     });
 
-    return Object.entries(months)
-      .slice(-5)
-      .map(([name, categories]) => ({
-        name,
-        ...categories,
-      }));
-  }, [categoryData, trendData]);
+    return lastFive.map((name) => ({
+      name,
+      ...months[name],
+    }));
+  }, [categoryData, trendData, rate, currency]);
 
   const categoryColors = [
     "hsl(var(--primary))",
@@ -107,6 +141,8 @@ export function SpendingTrends({
     "hsl(142, 76%, 36%)",
     "hsl(262, 83%, 58%)",
   ];
+
+  const symbol = getCurrencySymbol(currency);
 
   if (trendsLoading || categoryLoading) {
     return (
@@ -145,10 +181,35 @@ export function SpendingTrends({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Spending Trends</CardTitle>
-        <CardDescription>
-          Track your spending patterns over time
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Spending Trends</CardTitle>
+            <CardDescription>
+              Track your spending patterns over time
+            </CardDescription>
+            {rate?.usingFixedFallback && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Using fallback rate S/ 3.50 per $1
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={currency === "PEN" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrency("PEN")}
+            >
+              PEN
+            </Button>
+            <Button
+              variant={currency === "USD" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrency("USD")}
+            >
+              USD
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="monthly">
@@ -170,8 +231,8 @@ export function SpendingTrends({
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `$${value}`} />
+                  <YAxis tickFormatter={(v) => `${symbol}${Number(v).toLocaleString()}`} />
+                  <Tooltip formatter={(value) => `${symbol}${Number(value).toLocaleString()}`} />
                   <Legend />
                   <Line
                     type="monotone"
@@ -197,8 +258,8 @@ export function SpendingTrends({
                 >
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
-                  <YAxis />
-                  <Tooltip formatter={(value) => `$${value}`} />
+                  <YAxis tickFormatter={(v) => `${symbol}${Number(v).toLocaleString()}`} />
+                  <Tooltip formatter={(value) => `${symbol}${Number(value).toLocaleString()}`} />
                   <Legend />
                   {Object.keys(categoryTrendData[0] || {})
                     .filter((key) => key !== "name")

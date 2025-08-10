@@ -11,6 +11,7 @@ import type { TransactionFilters } from "@/lib/types";
 import { X } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
+import ExchangeRateNote from "@/components/exchange-rate-note";
 
 function TransactionsPageContent() {
   const searchParams = useSearchParams();
@@ -68,6 +69,8 @@ function TransactionsPageContent() {
           </div>
         }
       />
+
+      <ExchangeRateNote />
 
       {/* Show active card filter */}
       {filters.card_id && cardName && (

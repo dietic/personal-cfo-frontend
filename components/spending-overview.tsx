@@ -24,12 +24,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { useAnalyticsDashboard, useSpendingTrends, useTransactions } from "@/lib/hooks";
 import { Transaction } from "@/lib/types";
-import { format, parseISO, startOfYear, addDays, isWithinInterval } from "date-fns";
+import { format, parseISO, startOfYear, addDays, isWithinInterval, startOfMonth, subMonths, isAfter } from "date-fns";
+import { useExchangeRate } from "@/lib/hooks";
+import { convertAmount, getCurrencySymbol, type SupportedCurrency } from "@/lib/exchange-rates";
+import ExchangeRateNote from "@/components/exchange-rate-note";
 
 export function SpendingOverview() {
   const [activeTab, setActiveTab] = useState("monthly");
-  const [selectedCurrency, setSelectedCurrency] = useState<"PEN" | "USD">("PEN"); // Currency toggle for weekly view
+  const [selectedCurrency, setSelectedCurrency] = useState<SupportedCurrency>("PEN");
   
+  const { data: rate } = useExchangeRate();
   const { data: analytics, isLoading, error } = useAnalyticsDashboard();
   const {
     data: trendsData,
@@ -37,136 +41,99 @@ export function SpendingOverview() {
     error: trendsError,
   } = useSpendingTrends({ months: 12 });
   
-  // Fetch all transactions for weekly processing
+  // Fetch all transactions for computing monthly and weekly with conversion
   const { data: allTransactions } = useTransactions({});
 
-  // We can remove the old pie chart data processing since we only use Monthly and Weekly now
-  const data = []; // Keeping for compatibility, but not used anymore
-
-  // Process trends data to create monthly spending data (for bar chart)
+  // Monthly from transactions (last 12 months), converted
   const processMonthlyData = useMemo(() => {
-    if (!trendsData) return [];
+    if (!allTransactions || allTransactions.length === 0) {
+      // Fallback: map trendsData without conversion (best effort)
+      if (!trendsData) return [] as Array<{ month: string; amount: number; fullMonth: string }>;
+      return trendsData
+        .map((item) => {
+          const date = parseISO(item.month + "-01");
+          const monthName = format(date, "MMM yyyy");
+          return {
+            month: monthName,
+            amount: Math.abs(parseFloat(item.amount)),
+            fullMonth: item.month,
+          };
+        })
+        .sort((a, b) => a.fullMonth.localeCompare(b.fullMonth));
+    }
 
-    return trendsData
-      .map((item) => {
-        console.log("item", item);
-        const date = parseISO(item.month + "-01"); // Convert YYYY-MM to date
-        const monthName = format(date, "MMM yyyy"); // Format as "Feb 2025"
+    // Build last 12 months keys
+    const now = new Date();
+    const months: string[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = subMonths(startOfMonth(now), i);
+      months.push(format(d, "yyyy-MM"));
+    }
 
-        return {
-          month: monthName,
-          amount: Math.abs(parseFloat(item.amount)), // Show absolute values for spending
-          fullMonth: item.month, // Keep original for potential future use
-        };
-      })
-      .sort((a, b) => a.fullMonth.localeCompare(b.fullMonth)); // Sort chronologically
-  }, [trendsData]);
+    const sums: Record<string, number> = Object.fromEntries(months.map((m) => [m, 0]));
 
-  // Process weekly data - last 4 weeks based on current date, but week numbering starts from Jan 1st
+    for (const tx of allTransactions) {
+      const d = parseISO(tx.transaction_date);
+      const key = format(startOfMonth(d), "yyyy-MM");
+      if (!sums.hasOwnProperty(key)) continue; // outside last 12 months
+      const raw = Math.abs(parseFloat(tx.amount));
+      const ccy = (tx.currency as SupportedCurrency) || "PEN";
+      const converted = rate ? convertAmount(raw, ccy, selectedCurrency, rate) : raw;
+      sums[key] += converted;
+    }
+
+    const result = months.map((key) => {
+      const date = parseISO(key + "-01");
+      return {
+        month: format(date, "MMM yyyy"),
+        amount: Math.round(sums[key] * 100) / 100,
+        fullMonth: key,
+      };
+    });
+
+    return result;
+  }, [allTransactions, rate, selectedCurrency, trendsData]);
+
+  // Weekly data - last 4 weeks, convert all tx to selected currency
   const processWeeklyData = useMemo(() => {
     if (!allTransactions) {
-      console.log("No allTransactions data available");
-      return [];
+      return [] as Array<{ week: string; amount: number; weekNumber: number }>;
     }
-
-    console.log("All transactions:", allTransactions.length);
-    console.log("Selected currency:", selectedCurrency);
-    
-    // Debug: Show currency distribution
-    const currencyDistribution = allTransactions.reduce((acc: Record<string, number>, t: Transaction) => {
-      acc[t.currency] = (acc[t.currency] || 0) + 1;
-      return acc;
-    }, {});
-    console.log("Currency distribution:", currencyDistribution);
-    
-    // Debug: Check first few transactions
-    console.log("Sample transactions:", allTransactions.slice(0, 5).map(t => ({
-      id: t.id,
-      date: t.transaction_date,
-      amount: t.amount,
-      currency: t.currency,
-      merchant: t.merchant
-    })));
 
     const currentYear = new Date().getFullYear();
-    const yearStart = startOfYear(new Date(currentYear, 0, 1)); // January 1st of current year
+    const yearStart = startOfYear(new Date(currentYear, 0, 1));
     const today = new Date();
-    
-    // Calculate which week we're currently in (starting from Jan 1st)
     const daysSinceYearStart = Math.floor((today.getTime() - yearStart.getTime()) / (1000 * 60 * 60 * 24));
-    const currentWeekNumber = Math.floor(daysSinceYearStart / 7) + 1; // +1 because weeks start at 1, not 0
-    
-    console.log("Current week number:", currentWeekNumber);
-    console.log("Year start:", yearStart);
-    console.log("Today:", today);
-    
-    // Debug: Show what weeks we're calculating
-    console.log("Will calculate weeks:", Array.from({length: 4}, (_, i) => currentWeekNumber - (3 - i)).filter(w => w >= 1));
-    
-    // Generate the last 4 weeks (including current week)
-    const weeks = [];
-    for (let i = 3; i >= 0; i--) { // Start from 3 weeks ago to current week
+    const currentWeekNumber = Math.floor(daysSinceYearStart / 7) + 1;
+
+    const weeks: Array<{ week: string; amount: number; weekNumber: number }> = [];
+    for (let i = 3; i >= 0; i--) {
       const weekNumber = currentWeekNumber - i;
-      
-      // Skip if week number is less than 1 (shouldn't happen in normal cases)
       if (weekNumber < 1) continue;
-      
-      // Calculate week start and end dates
       const weekStart = addDays(yearStart, (weekNumber - 1) * 7);
       const weekEnd = addDays(weekStart, 6);
-      
-      console.log(`Week ${weekNumber}: ${format(weekStart, "MMM d")} - ${format(weekEnd, "MMM d")}`);
-      
-      // Filter transactions for this week and selected currency
-      const weekTransactions = allTransactions.filter((transaction: Transaction) => {
-        const transactionDate = parseISO(transaction.transaction_date);
-        const isInWeek = isWithinInterval(transactionDate, {
-          start: weekStart,
-          end: weekEnd
-        });
-        const isCorrectCurrency = transaction.currency === selectedCurrency;
-        
-        // Accept both positive and negative amounts (expenses can be stored either way)
-        const hasAmount = parseFloat(transaction.amount) !== 0;
-        
-        return isInWeek && isCorrectCurrency && hasAmount;
-      });
-      
-      console.log(`Week ${weekNumber} (${format(weekStart, "MMM d")}-${format(weekEnd, "MMM d")}) transactions:`, {
-        count: weekTransactions.length,
-        currency: selectedCurrency,
-        transactions: weekTransactions.map(t => ({
-          id: t.id,
-          date: t.transaction_date,
-          amount: t.amount,
-          currency: t.currency,
-          merchant: t.merchant,
-          parsedAmount: parseFloat(t.amount),
-          absoluteAmount: Math.abs(parseFloat(t.amount))
-        }))
-      });
-      
-      // Sum up spending for this week (take absolute value to ensure positive display)
-      const weekSpending = weekTransactions.reduce((sum: number, transaction: Transaction) => {
-        const amount = Math.abs(parseFloat(transaction.amount));
-        console.log(`Adding transaction ${transaction.id}: ${transaction.merchant} = ${amount}`);
-        return sum + amount;
+
+      const weekSpending = allTransactions.reduce((sum: number, tx: Transaction) => {
+        const txDate = parseISO(tx.transaction_date);
+        const isInWeek = isWithinInterval(txDate, { start: weekStart, end: weekEnd });
+        if (!isInWeek) return sum;
+        const raw = Math.abs(parseFloat(tx.amount));
+        const ccy = (tx.currency as SupportedCurrency) || "PEN";
+        const converted = rate ? convertAmount(raw, ccy, selectedCurrency, rate) : raw;
+        return sum + converted;
       }, 0);
-      
-      console.log(`Week ${weekNumber} total spending: ${weekSpending}`);
-      
+
       weeks.push({
-        week: `W${weekNumber} (${format(weekStart, "MMM d")}-${format(weekEnd, "d")})`, // e.g., "W6 (Feb 5-11)"
-        amount: weekSpending,
-        weekNumber: weekNumber
+        week: `W${weekNumber} (${format(weekStart, "MMM d")}-${format(weekEnd, "d")})`,
+        amount: Math.round(weekSpending * 100) / 100,
+        weekNumber,
       });
     }
-    
-    return weeks;
-  }, [allTransactions, selectedCurrency]);
 
-  console.log("error", error);
-  console.log("trendsError", trendsError);
+    return weeks;
+  }, [allTransactions, selectedCurrency, rate]);
+
+  const symbol = getCurrencySymbol(selectedCurrency);
 
   // Loading and error handling for monthly view
   if (activeTab === "monthly") {
@@ -188,7 +155,7 @@ export function SpendingOverview() {
       );
     }
 
-    if (trendsLoading) {
+    if (trendsLoading && (!allTransactions || allTransactions.length === 0)) {
       return (
         <Card>
           <CardHeader>
@@ -229,7 +196,7 @@ export function SpendingOverview() {
       );
     }
 
-    if (isLoading) {
+    if (isLoading && (!allTransactions || allTransactions.length === 0)) {
       return (
         <Card>
           <CardHeader>
@@ -276,7 +243,6 @@ export function SpendingOverview() {
     }
 
     if (activeTab === "monthly") {
-      console.log("Monthly data:", processMonthlyData); // Debug log
       return (
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -295,11 +261,11 @@ export function SpendingOverview() {
               />
               <YAxis
                 fontSize={11}
-                tickFormatter={(value) => `$${Number(value).toLocaleString()}`}
+                tickFormatter={(value) => `${symbol}${Number(value).toLocaleString()}`}
               />
               <Tooltip
                 formatter={(value) => [
-                  `$${Number(value).toLocaleString()}`,
+                  `${symbol}${Number(value).toLocaleString()}`,
                   "Spent",
                 ]}
                 labelStyle={{ color: "#000" }}
@@ -317,9 +283,6 @@ export function SpendingOverview() {
     }
 
     if (activeTab === "weekly") {
-      const currencySymbol = selectedCurrency === "PEN" ? "S/" : "$";
-      console.log("Weekly data:", processWeeklyData); // Debug log
-      
       return (
         <div className="h-[300px] w-full">
           <ResponsiveContainer width="100%" height="100%">
@@ -338,11 +301,11 @@ export function SpendingOverview() {
               />
               <YAxis
                 fontSize={11}
-                tickFormatter={(value) => `${currencySymbol}${Number(value).toLocaleString()}`}
+                tickFormatter={(value) => `${symbol}${Number(value).toLocaleString()}`}
               />
               <Tooltip
                 formatter={(value) => [
-                  `${currencySymbol}${Number(value).toLocaleString()}`,
+                  `${symbol}${Number(value).toLocaleString()}`,
                   "Spent",
                 ]}
                 labelStyle={{ color: "#000" }}
@@ -376,6 +339,7 @@ export function SpendingOverview() {
         <CardDescription>
           Your monthly trends and weekly spending patterns
         </CardDescription>
+        <ExchangeRateNote />
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -385,25 +349,23 @@ export function SpendingOverview() {
               <TabsTrigger value="weekly">Weekly</TabsTrigger>
             </TabsList>
             
-            {/* Currency toggle - only show for weekly view */}
-            {activeTab === "weekly" && (
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant={selectedCurrency === "PEN" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCurrency("PEN")}
-                >
-                  PEN
-                </Button>
-                <Button
-                  variant={selectedCurrency === "USD" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setSelectedCurrency("USD")}
-                >
-                  USD
-                </Button>
-              </div>
-            )}
+            {/* Currency toggle for both views */}
+            <div className="flex items-center space-x-2">
+              <Button
+                variant={selectedCurrency === "PEN" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCurrency("PEN")}
+              >
+                PEN
+              </Button>
+              <Button
+                variant={selectedCurrency === "USD" ? "default" : "outline"}
+                size="sm"
+                onClick={() => setSelectedCurrency("USD")}
+              >
+                USD
+              </Button>
+            </div>
           </div>
           
           <TabsContent value="monthly" className="space-y-4">

@@ -16,8 +16,12 @@ import {
   Legend,
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { useCategorySpending } from "@/lib/hooks";
 import type { AnalyticsFilters } from "@/lib/types";
+import { useState, useMemo } from "react";
+import { useExchangeRate } from "@/lib/hooks";
+import { convertAmount, getCurrencySymbol, type SupportedCurrency } from "@/lib/exchange-rates";
 
 // Colors for pie chart segments
 const COLORS = [
@@ -38,17 +42,27 @@ interface SpendingByCategoryProps {
 }
 
 export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
+  const [currency, setCurrency] = useState<SupportedCurrency>("PEN");
+  const { data: rate } = useExchangeRate();
   const { data: categoryData, isLoading, error } = useCategorySpending(filters);
 
-  const data =
-    categoryData && categoryData.length > 0
-      ? categoryData
-          .map((item) => ({
-            name: item.category || "Other",
-            amount: Math.round(parseFloat(item.amount) * 100) / 100,
-          }))
-          .sort((a, b) => b.amount - a.amount)
-      : []; // No fallback data - show empty state instead
+  const data = useMemo(() => {
+    if (!categoryData) return [] as Array<{ name: string; amount: number }>;
+    return categoryData
+      .map((item) => {
+        const raw = Math.abs(parseFloat(item.amount));
+        const amt = rate
+          ? convertAmount(raw, (item.currency as SupportedCurrency) || "PEN", currency, rate)
+          : raw; // no rate yet, show raw
+        return {
+          name: item.category || "Other",
+          amount: Math.round(amt * 100) / 100,
+        };
+      })
+      .sort((a, b) => b.amount - a.amount);
+  }, [categoryData, rate, currency]);
+
+  const symbol = getCurrencySymbol(currency);
 
   if (isLoading) {
     return (
@@ -105,10 +119,35 @@ export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Spending by Category</CardTitle>
-        <CardDescription>
-          Your spending breakdown for the selected period
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Spending by Category</CardTitle>
+            <CardDescription>
+              Your spending breakdown for the selected period
+            </CardDescription>
+            {rate?.usingFixedFallback && (
+              <div className="text-xs text-muted-foreground mt-1">
+                Using fallback rate S/ 3.50 per $1
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant={currency === "PEN" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrency("PEN")}
+            >
+              PEN
+            </Button>
+            <Button
+              variant={currency === "USD" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setCurrency("USD")}
+            >
+              USD
+            </Button>
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
         <div className="h-[400px] w-full">
@@ -132,7 +171,7 @@ export function SpendingByCategory({ filters }: SpendingByCategoryProps) {
               </Pie>
               <Tooltip
                 formatter={(value) => [
-                  `$${Number(value).toFixed(2)}`,
+                  `${symbol}${Number(value).toFixed(2)}`,
                   "Amount",
                 ]}
               />
