@@ -1,20 +1,28 @@
 "use client";
 
+import { useAuth } from "@/lib/auth-context";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 const PENDING_VERIFICATION_KEY = "pcfo.pendingVerificationEmail";
 
-/**
- * Global gate that forces users with pending email verification
- * to the OTP screen, allowing only landing, login, terms, and privacy pages otherwise.
- */
 export function VerificationGate() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
+    const step = searchParams.get("step");
+    const emailParam = searchParams.get("email");
+    const isOnOtp = pathname === "/signup" && step === "otp";
+
+    // If already authenticated and active, do not allow staying on OTP screen
+    if (isOnOtp && isAuthenticated && user?.is_active !== false) {
+      router.replace("/dashboard");
+      return;
+    }
+
     // Read pending email from localStorage
     let pendingEmail = "";
     try {
@@ -23,10 +31,13 @@ export function VerificationGate() {
       // no-op (SSR or storage disabled)
     }
 
-    if (!pendingEmail) return; // nothing to enforce
+    // If there's no pending verification email and user is on OTP, kick to login
+    if (isOnOtp && !pendingEmail) {
+      router.replace("/login");
+      return;
+    }
 
-    const step = searchParams.get("step");
-    const emailParam = searchParams.get("email");
+    if (!pendingEmail) return; // nothing else to enforce
 
     // Allow landing, login, terms, and privacy
     const isAllowedBase = [
@@ -37,10 +48,7 @@ export function VerificationGate() {
       "/privacy",
     ].includes(pathname);
 
-    // Allow the OTP screen specifically (on /signup with step=otp)
-    const isOnOtpScreen = pathname === "/signup" && step === "otp";
-
-    if (isOnOtpScreen) {
+    if (isOnOtp) {
       // Ensure the URL email matches the stored pending email for consistency
       if (emailParam !== pendingEmail) {
         router.replace(
@@ -56,7 +64,7 @@ export function VerificationGate() {
         `/signup?step=otp&email=${encodeURIComponent(pendingEmail)}`
       );
     }
-  }, [pathname, router, searchParams]);
+  }, [pathname, router, searchParams, isAuthenticated, user?.is_active]);
 
   return null;
 }

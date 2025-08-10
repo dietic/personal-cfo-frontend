@@ -82,15 +82,22 @@ class APIClient {
       (response) => response,
       async (error) => {
         const status = error?.response?.status;
+        const reqUrl: string = error?.config?.url || "";
         if (status === 401) {
           this.removeToken();
-          // Skip redirect in development for testing purposes
-          const isDevelopment = process.env.NODE_ENV === "development";
-          const currentPath =
-            typeof window !== "undefined" ? window.location.pathname : "";
+          // Skip hard redirect for auth endpoints so UI can show toasts
+          const isAuthEndpoint =
+            reqUrl.includes("/api/v1/auth/login") ||
+            reqUrl.includes("/api/v1/auth/register") ||
+            reqUrl.includes("/api/v1/auth/verify-otp") ||
+            reqUrl.includes("/api/v1/auth/resend-otp");
 
-          if (!isDevelopment || !currentPath.startsWith("/transactions")) {
-            // Redirect to login or dispatch logout action
+          // Also skip if we're already on login or signup pages
+          const path =
+            typeof window !== "undefined" ? window.location.pathname : "";
+          const isAuthPage = path === "/login" || path.startsWith("/signup");
+
+          if (!isAuthEndpoint && !isAuthPage) {
             if (typeof window !== "undefined") {
               window.location.href = "/login";
             }

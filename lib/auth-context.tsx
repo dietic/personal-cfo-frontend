@@ -59,7 +59,10 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (data: UserLogin) => Promise<void>;
+  login: (
+    data: UserLogin,
+    opts?: { suppressToasts?: boolean }
+  ) => Promise<void>;
   register: (data: UserCreate) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<void>;
@@ -130,7 +133,8 @@ export function AuthProvider({
   }, []);
 
   const login = useCallback(
-    async (data: UserLogin) => {
+    async (data: UserLogin, opts?: { suppressToasts?: boolean }) => {
+      const showToasts = !(opts && opts.suppressToasts);
       try {
         setIsLoading(true);
         await apiClient.login(data);
@@ -144,7 +148,8 @@ export function AuthProvider({
           if (profile && profile.is_active === false) {
             const emailToUse = profile.email || data.email;
             setPendingVerification(emailToUse);
-            toast.message("Please verify your email to continue.");
+            if (showToasts)
+              toast.message("Please verify your email to continue.");
             router.push(
               `/signup?step=otp&email=${encodeURIComponent(emailToUse)}`
             );
@@ -155,7 +160,8 @@ export function AuthProvider({
           const status = profileErr?.response?.status;
           if (status === 403 || status === 401) {
             setPendingVerification(data.email);
-            toast.message("Please verify your email to continue.");
+            if (showToasts)
+              toast.message("Please verify your email to continue.");
             router.push(
               `/signup?step=otp&email=${encodeURIComponent(data.email)}`
             );
@@ -182,7 +188,7 @@ export function AuthProvider({
 
         // Clear any pending verification flag on successful login/profile fetch
         clearPendingVerification();
-        toast.success("Login successful!");
+        if (showToasts) toast.success("Login successful!");
         router.push("/dashboard");
       } catch (error: any) {
         console.error("Login error:", error);
@@ -190,17 +196,22 @@ export function AuthProvider({
         if (status === 403) {
           // Backend blocks unverified users from logging in
           setPendingVerification(data.email);
-          toast.message(
-            "Your account is not verified. Enter the code we emailed to activate it."
-          );
+          if (showToasts)
+            toast.message(
+              "Your account is not verified. Enter the code we emailed to activate it."
+            );
           router.push(
             `/signup?step=otp&email=${encodeURIComponent(data.email)}`
           );
           return;
         }
+        if (status === 400 || status === 401) {
+          if (showToasts) toast.error("Invalid credentials");
+          throw new Error("Invalid credentials");
+        }
         const message =
           error.response?.data?.detail || error.message || "Login failed";
-        toast.error(message);
+        if (showToasts) toast.error(message);
         // Re-throw for forms
         throw new Error(message);
       } finally {

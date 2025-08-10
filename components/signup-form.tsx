@@ -15,12 +15,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { apiClient } from "@/lib/api-client";
+import { clearPendingVerification } from "@/lib/auth-constants";
 import { useAuth } from "@/lib/auth-context";
 import { CheckCircle, Eye, EyeOff, Github, Lock, Mail } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 export function SignupForm() {
   const [email, setEmail] = useState("");
@@ -78,7 +80,28 @@ export function SignupForm() {
     if (step === "otp") {
       try {
         await apiClient.verifyOTP({ email: pendingEmail || email, code: otp });
-        await login({ email: pendingEmail || email, password });
+        // Clear pending verification flag so navigation isn't restricted anymore
+        clearPendingVerification();
+
+        const targetEmail = pendingEmail || email;
+        // If we have the password (fresh signup), try a silent auto-login first
+        if (password && password.trim().length > 0) {
+          toast.success("Account verified");
+          try {
+            await login(
+              { email: targetEmail, password },
+              { suppressToasts: true }
+            );
+          } catch {
+            // If auto-login fails for any reason, avoid an extra error toast
+            toast.message("Account verified. Please sign in.");
+            router.push(`/login?email=${encodeURIComponent(targetEmail)}`);
+          }
+        } else {
+          // No local password available (e.g., came from login -> OTP). Ask user to sign in.
+          toast.success("Account verified. Please sign in.");
+          router.push(`/login?email=${encodeURIComponent(targetEmail)}`);
+        }
       } catch (error: any) {
         setError(error.message || "Invalid or expired code");
       }
