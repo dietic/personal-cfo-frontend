@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/table";
 import {
   useCategories,
+  useCategoryPermissions,
   useCreateCategory,
   useDeleteCategory,
   useUpdateCategory,
@@ -73,7 +74,16 @@ const DEFAULT_COLORS = [
 
 export function CategoriesManagement() {
   const { t } = useI18n();
-  const { data: categories, isLoading, error } = useCategories();
+  const { data: categoriesData, isLoading, error } = useCategories();
+  
+  // Extract categories and permissions from the same response
+  const categories = categoriesData?.categories || [];
+  const permissions = categoriesData?.permissions;
+  
+  // Default to restricted permissions while loading or if no permissions data
+  const canCreate = permissions?.can_create_categories === true;
+  const canEdit = permissions?.can_edit_categories === true;
+  const canDelete = permissions?.can_delete_categories === true;
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
@@ -245,14 +255,15 @@ export function CategoriesManagement() {
             <Tag className="h-5 w-5" />
             {t("categories.title")}
           </div>
-          <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-            <DialogTrigger asChild>
-              <Button onClick={resetForm}>
-                <Plus className="h-4 w-4 mr-2" />
-                {t("categories.create.cta")}
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
+          {canCreate ? (
+            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+              <DialogTrigger asChild>
+                <Button onClick={resetForm}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  {t("categories.create.cta")}
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
               <DialogHeader>
                 <DialogTitle>{t("categories.create.title")}</DialogTitle>
                 <DialogDescription>
@@ -346,6 +357,7 @@ export function CategoriesManagement() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
+          ) : null}
         </CardTitle>
         <CardDescription>{t("categories.description")}</CardDescription>
       </CardHeader>
@@ -438,22 +450,23 @@ export function CategoriesManagement() {
                   </TableCell>
                   <TableCell>
                     <div className="flex gap-2">
-                      <Dialog
-                        open={editingCategory?.id === category.id}
-                        onOpenChange={(open) =>
-                          !open && setEditingCategory(null)
-                        }
-                      >
-                        <DialogTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openEditDialog(category)}
-                          >
-                            <Edit3 className="h-3 w-3" />
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent>
+                      {canEdit && (category.can_modify !== false) ? (
+                        <Dialog
+                          open={editingCategory?.id === category.id}
+                          onOpenChange={(open) =>
+                            !open && setEditingCategory(null)
+                          }
+                        >
+                          <DialogTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => openEditDialog(category)}
+                            >
+                              <Edit3 className="h-3 w-3" />
+                            </Button>
+                          </DialogTrigger>
+                          <DialogContent>
                           <DialogHeader>
                             <DialogTitle>
                               {t("categories.edit.title")}
@@ -561,15 +574,17 @@ export function CategoriesManagement() {
                             </Button>
                           </DialogFooter>
                         </DialogContent>
-                      </Dialog>
+                        </Dialog>
+                      ) : null}
 
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
+                      {canDelete && (category.can_modify !== false) ? (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="outline" size="sm">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
                           <AlertDialogHeader>
                             <AlertDialogTitle>
                               {t("categories.delete.title")}
@@ -595,7 +610,8 @@ export function CategoriesManagement() {
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>
-                      </AlertDialog>
+                        </AlertDialog>
+                      ) : null}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -611,10 +627,18 @@ export function CategoriesManagement() {
             <p className="text-sm text-muted-foreground mb-4">
               {t("categories.empty.description")}
             </p>
-            <Button onClick={() => setShowCreateDialog(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              {t("categories.empty.cta")}
-            </Button>
+            {canCreate ? (
+              <Button onClick={() => setShowCreateDialog(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                {t("categories.empty.cta")}
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {permissions?.message || "You cannot create categories with your current plan."}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </CardContent>

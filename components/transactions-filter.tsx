@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { useCards, useCategories, useCurrencies } from "@/lib/hooks";
+import { useCards, useCategoryList, useCurrencies } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import type { TransactionFilters } from "@/lib/types";
 import { format, parseISO } from "date-fns";
@@ -45,7 +45,7 @@ export function TransactionsFilter({
 
   // Fetch real data
   const { data: cards } = useCards();
-  const { data: categories } = useCategories();
+  const { data: categories } = useCategoryList();
   const { data: currencies } = useCurrencies();
 
   // Initialize filters with initial values - only run once

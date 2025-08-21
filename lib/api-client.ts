@@ -32,6 +32,8 @@ import {
   ExtractionResponse,
   OTPResendRequest,
   OTPVerifyRequest,
+  PlanChangeRequest,
+  PlanChangeResponse,
   RecurringService,
   RecurringServiceCreate,
   RecurringServiceUpdate,
@@ -54,7 +56,11 @@ import {
   YearComparison,
 } from "./types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "";
+// --- Robust API baseURL handling ---
+// To completely avoid accidental duplication like "/api/v1/api/v1/...", we force
+// Axios baseURL to be empty and rely on absolute paths per request.
+// Force empty base to prevent prefix duplication in all environments
+const API_URL = "";
 const TOKEN_KEY = "access_token";
 
 class APIClient {
@@ -68,9 +74,37 @@ class APIClient {
       },
     });
 
-    // Request interceptor to add auth token
+    // Request interceptor to normalize URL and add auth token
     this.client.interceptors.request.use((config) => {
       const token = this.getToken();
+
+      // Normalize duplicate /api or /api/v1 segments when baseURL already contains them (safety)
+      const base = (config.baseURL ??
+        this.client.defaults.baseURL ??
+        "") as string;
+      if (typeof config.url === "string" && base) {
+        const hasApiV1InBase = /\/api\/v1\/?$/.test(base);
+        const hasApiInBase = /\/api\/?$/.test(base) && !hasApiV1InBase;
+        if (hasApiV1InBase && config.url.startsWith("/api/v1")) {
+          config.url = config.url.replace(/^\/api\/v1/, "");
+        } else if (hasApiInBase && config.url.startsWith("/api")) {
+          config.url = config.url.replace(/^\/api/, "");
+        }
+        // Ensure health endpoints hit root when base contains /api*
+        if (/^\/health(\/?|$)/.test(config.url) && /\/api(\/?|$)/.test(base)) {
+          try {
+            const origin = base.startsWith("http")
+              ? new URL(base).origin
+              : typeof window !== "undefined"
+              ? window.location.origin
+              : undefined;
+            config.baseURL = origin || "";
+          } catch {
+            config.baseURL = "";
+          }
+        }
+      }
+
       if (token) {
         (config.headers as any).Authorization = `Bearer ${token}`;
       }
@@ -90,7 +124,12 @@ class APIClient {
             reqUrl.includes("/api/v1/auth/login") ||
             reqUrl.includes("/api/v1/auth/register") ||
             reqUrl.includes("/api/v1/auth/verify-otp") ||
-            reqUrl.includes("/api/v1/auth/resend-otp");
+            reqUrl.includes("/api/v1/auth/resend-otp") ||
+            // Also handle normalized URLs without the /api/v1 prefix
+            reqUrl.includes("/auth/login") ||
+            reqUrl.includes("/auth/register") ||
+            reqUrl.includes("/auth/verify-otp") ||
+            reqUrl.includes("/auth/resend-otp");
 
           // Also skip if we're already on login or signup pages
           const path =
@@ -187,6 +226,14 @@ class APIClient {
     return response.data;
   }
 
+  async changePlan(data: PlanChangeRequest): Promise<PlanChangeResponse> {
+    const response = await this.client.post<PlanChangeResponse>(
+      "/api/v1/users/plan/change",
+      data
+    );
+    return response.data;
+  }
+
   // Cards endpoints
   async getCards(): Promise<Card[]> {
     const response = await this.client.get<Card[]>("/api/v1/cards/");
@@ -232,10 +279,30 @@ class APIClient {
   }
 
   // Categories endpoints
-  async getCategories(includeInactive: boolean = false): Promise<Category[]> {
-    const response = await this.client.get<Category[]>("/api/v1/categories/", {
+  async getCategories(includeInactive: boolean = false): Promise<{
+    categories: Category[];
+    permissions: {
+      can_create_categories: boolean;
+      can_edit_categories: boolean;
+      can_delete_categories: boolean;
+      plan_tier: string;
+      message: string;
+    };
+  }> {
+    const response = await this.client.get("/api/v1/categories/", {
       params: { include_inactive: includeInactive },
     });
+    return response.data;
+  }
+
+  async getCategoryPermissions(): Promise<{
+    can_create_categories: boolean;
+    can_edit_categories: boolean;
+    can_delete_categories: boolean;
+    plan_tier: string;
+    message: string;
+  }> {
+    const response = await this.client.get("/api/v1/categories/permissions");
     return response.data;
   }
 

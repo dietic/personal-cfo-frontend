@@ -4,6 +4,8 @@ import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import RouteLoader from "@/components/route-loader";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
+import { UpgradeModal } from "@/components/upgrade-modal";
+import { DowngradeWarningModal } from "@/components/downgrade-warning-modal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,8 @@ import {
 import { UserNav } from "@/components/user-nav";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n";
+import { apiClient } from "@/lib/api-client";
+import { useToast } from "@/hooks/use-toast";
 import {
   BarChart3,
   CalendarClock,
@@ -45,7 +49,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import type React from "react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { LanguageToggle } from "./language-toggle";
 
 export function DashboardLayout({
@@ -53,8 +57,13 @@ export function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, isLoading, user, logout } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, refreshUserProfile } = useAuth();
   const { t } = useI18n();
+  const { toast } = useToast();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
+  const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
+  const [pendingPlanChange, setPendingPlanChange] = useState<"free" | "plus" | "pro" | null>(null);
+  const [isChangingPlan, setIsChangingPlan] = useState(false);
 
   // Development bypass for testing
   const isDevelopment = process.env.NODE_ENV === "development";
@@ -140,13 +149,83 @@ export function DashboardLayout({
       ]
     : baseMenuItems;
 
+  const handlePlanSelection = (plan: "free" | "plus" | "pro") => {
+    const currentPlan = user?.plan_tier;
+    if (!currentPlan || plan === currentPlan) {
+      setUpgradeModalOpen(false);
+      return;
+    }
+
+    // Check if this is a downgrade
+    const plans = ["free", "plus", "pro"];
+    const currentIndex = plans.indexOf(currentPlan);
+    const targetIndex = plans.indexOf(plan);
+    
+    if (targetIndex < currentIndex) {
+      // This is a downgrade - show warning modal
+      setPendingPlanChange(plan);
+      setUpgradeModalOpen(false);
+      setDowngradeModalOpen(true);
+    } else {
+      // This is an upgrade - proceed directly
+      setPendingPlanChange(plan);
+      setUpgradeModalOpen(false);
+      executePlanChange(plan);
+    }
+  };
+
+  const executePlanChange = async (targetPlan: "free" | "plus" | "pro") => {
+    setIsChangingPlan(true);
+    
+    try {
+      const response = await apiClient.changePlan({ target_plan: targetPlan });
+      
+      if (response.success) {
+        if (response.checkout_url) {
+          // Redirect to payment for upgrades
+          window.location.href = response.checkout_url;
+        } else {
+          // Plan changed successfully (downgrade)
+          toast({
+            title: "Success",
+            description: response.message,
+          });
+          // Refresh user data to show new plan
+          await refreshUserProfile();
+        }
+      }
+    } catch (error: any) {
+      console.error("Plan change error:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to change plan",
+        variant: "destructive",
+      });
+    } finally {
+      setIsChangingPlan(false);
+      setPendingPlanChange(null);
+    }
+  };
+
+  const handleDowngradeConfirm = () => {
+    if (pendingPlanChange) {
+      setDowngradeModalOpen(false);
+      executePlanChange(pendingPlanChange);
+    }
+  };
+
+  const handleDowngradeCancel = () => {
+    setDowngradeModalOpen(false);
+    setPendingPlanChange(null);
+  };
+
   return (
     <SidebarProvider>
       <div className="flex h-screen overflow-hidden w-full">
         <Sidebar className="border-r">
           <SidebarHeader className="flex h-14 items-center px-4 border-b">
             <Logo className="h-6 w-6 text-primary" />
-            <span className="ml-2 text-lg font-bold">FinanceCFO</span>
+            <span className="ml-2 text-lg font-bold">Personal CFO</span>
           </SidebarHeader>
           <SidebarContent className="px-2 py-4">
             <div className="mb-4 px-4">
@@ -194,24 +273,31 @@ export function DashboardLayout({
               ))}
             </SidebarMenu>
 
-            <div className="mt-6 px-4">
-              <div className="rounded-lg bg-muted p-3">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="rounded-full bg-primary/20 p-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
+            {/* Dynamic upgrade section based on user plan */}
+            {user?.plan_tier !== "admin" && (
+              <div className="mt-6 px-4">
+                <div className="rounded-lg bg-muted p-3">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="rounded-full bg-primary/20 p-2">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </div>
+                    <span className="font-medium text-sm">
+                      {t(`layout.upgrade.${user?.plan_tier || "free"}.title`)}
+                    </span>
                   </div>
-                  <span className="font-medium text-sm">
-                    {t("layout.pro.title")}
-                  </span>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    {t(`layout.upgrade.${user?.plan_tier || "free"}.description`)}
+                  </p>
+                  <Button 
+                    size="sm" 
+                    className="w-full"
+                    onClick={() => setUpgradeModalOpen(true)}
+                  >
+                    {t("layout.upgrade.button")}
+                  </Button>
                 </div>
-                <p className="text-xs text-muted-foreground mb-2">
-                  {t("layout.pro.description")}
-                </p>
-                <Button size="sm" className="w-full">
-                  {t("layout.pro.upgrade")}
-                </Button>
               </div>
-            </div>
+            )}
           </SidebarContent>
           <SidebarFooter className="p-4 border-t">
             <div className="flex items-center justify-between">
@@ -259,6 +345,27 @@ export function DashboardLayout({
           </main>
         </div>
       </div>
+      
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        open={upgradeModalOpen}
+        onOpenChange={setUpgradeModalOpen}
+        currentUser={user}
+        onSelectPlan={handlePlanSelection}
+      />
+
+      {/* Downgrade Warning Modal */}
+      {pendingPlanChange && user?.plan_tier && (
+        <DowngradeWarningModal
+          open={downgradeModalOpen}
+          onOpenChange={setDowngradeModalOpen}
+          currentPlan={user.plan_tier as "plus" | "pro"}
+          targetPlan={pendingPlanChange as "free" | "plus"}
+          onConfirm={handleDowngradeConfirm}
+          onCancel={handleDowngradeCancel}
+          isLoading={isChangingPlan}
+        />
+      )}
     </SidebarProvider>
   );
 }

@@ -29,7 +29,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import {
   useCards,
-  useCategories,
+  useCategoryList,
   useCreateTransaction,
   useCurrencies,
 } from "@/lib/hooks";
@@ -61,7 +61,7 @@ export function AddTransactionDialog() {
   const { t } = useI18n();
 
   const { data: cards } = useCards();
-  const { data: categories } = useCategories();
+  const { data: categories } = useCategoryList();
   const { data: currencies } = useCurrencies();
   const createTransaction = useCreateTransaction();
 

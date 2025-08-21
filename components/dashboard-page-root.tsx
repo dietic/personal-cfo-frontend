@@ -2,6 +2,7 @@ import { Alerts } from "@/components/alerts";
 import { BudgetProgress } from "@/components/budget-progress";
 import { CardsDashboard } from "@/components/cards-dashboard";
 import { DashboardHeader } from "@/components/dashboard-header";
+import { PaymentStatusModal } from "@/components/payment-status-modal";
 import { RecentTransactions } from "@/components/recent-transactions";
 import { RecurringServices } from "@/components/recurring-services";
 import { SpendingOverview } from "@/components/spending-overview";
@@ -9,6 +10,7 @@ import { SpendingOverview } from "@/components/spending-overview";
 export default function DashboardRootPage() {
   return (
     <div className="flex flex-col gap-6">
+      <PaymentStatusModal />
       <DashboardHeader />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

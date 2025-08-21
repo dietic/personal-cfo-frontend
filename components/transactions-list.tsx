@@ -132,16 +132,14 @@ export function TransactionsList({
   const filteredTransactions =
     transactions?.filter((transaction: Transaction) => {
       // Search filter
+      const merchant = (transaction.merchant || "").toLowerCase();
+      const category = (transaction.category || "").toLowerCase();
+      const description = (transaction.description || "").toLowerCase();
+      const query = (searchQuery || "").toLowerCase();
       const matchesSearch =
-        transaction.merchant
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        transaction.category
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase()) ||
-        transaction.description
-          ?.toLowerCase()
-          .includes(searchQuery.toLowerCase());
+        merchant.includes(query) ||
+        category.includes(query) ||
+        description.includes(query);
 
       // Currency filter
       const matchesCurrency = !currency || transaction.currency === currency;
@@ -178,8 +176,10 @@ export function TransactionsList({
   };
 
   const getInitials = (merchant: string) => {
-    return merchant
+    const safe = (merchant || "?").trim();
+    return safe
       .split(" ")
+      .filter(Boolean)
       .map((word) => word[0])
       .join("")
       .toUpperCase()

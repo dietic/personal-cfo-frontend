@@ -348,7 +348,10 @@ export function useUpdateBudget() {
       budgetId: string;
       data: BudgetUpdate;
     }) => apiClient.updateBudget(budgetId, data),
-    onSuccess: (_: any, { budgetId }: { budgetId: string }) => {
+    onSuccess: (
+      _: any,
+      { budgetId }: { budgetId: string; data: BudgetUpdate }
+    ) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.budgets });
       queryClient.invalidateQueries({ queryKey: queryKeys.budget(budgetId) });
       queryClient.invalidateQueries({ queryKey: queryKeys.budgetAlerts });
@@ -425,7 +428,10 @@ export function useUpdateRecurringService() {
       serviceId: string;
       data: RecurringServiceUpdate;
     }) => apiClient.updateRecurringService(serviceId, data),
-    onSuccess: (_: any, { serviceId }: { serviceId: string }) => {
+    onSuccess: (
+      _: any,
+      { serviceId }: { serviceId: string; data: RecurringServiceUpdate }
+    ) => {
       queryClient.invalidateQueries({ queryKey: queryKeys.recurringServices });
       queryClient.invalidateQueries({
         queryKey: queryKeys.recurringService(serviceId),
@@ -884,6 +890,23 @@ export function useCategories(includeInactive: boolean = false) {
   });
 }
 
+// Returns only the array of categories (for selectors, dropdowns, etc.)
+export function useCategoryList(includeInactive: boolean = false) {
+  return useQuery({
+    queryKey: [...queryKeys.categories, { includeInactive }, "list"],
+    queryFn: () => apiClient.getCategories(includeInactive),
+    select: (data) => data.categories,
+  });
+}
+
+export function useCategoryPermissions() {
+  return useQuery({
+    queryKey: ["categories", "permissions"],
+    queryFn: () => apiClient.getCategoryPermissions(),
+    staleTime: 60000, // 1 minute
+  });
+}
+
 export function useCategory(categoryId: string) {
   return useQuery({
     queryKey: queryKeys.category(categoryId),
@@ -894,7 +917,7 @@ export function useCategory(categoryId: string) {
 
 // Custom hook to get category color mapping
 export function useCategoryColors() {
-  const { data: categories } = useCategories();
+  const { data: categories } = useCategoryList();
 
   const getCategoryColor = (categoryName?: string | null) => {
     if (!categoryName || !categories) return "#64748b"; // Default color
@@ -1138,12 +1161,11 @@ export function useToggleUserActive() {
     },
     onError: (
       _err: any,
-      _vars: any,
-      context: { prev: Array<[QueryKey, User[] | undefined]> }
+      _vars: { userId: string; isActive: boolean },
+      context?: { prev: Array<[QueryKey, User[] | undefined]> }
     ) => {
       // Rollback
-      const prev = context as { prev: Array<[QueryKey, User[] | undefined]> };
-      prev?.prev?.forEach(([key, data]) => {
+      context?.prev?.forEach(([key, data]) => {
         if (data) queryClient.setQueryData<User[]>(key, data);
       });
       toast.error(tInstant("admin.userStatusUpdateFailed"));

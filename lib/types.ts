@@ -17,6 +17,8 @@ export interface User {
   is_active: boolean;
   // Admin flag (RBAC)
   is_admin: boolean;
+  // User plan tier
+  plan_tier: "free" | "plus" | "pro" | "admin";
   created_at: string;
   updated_at?: string;
 }
@@ -43,14 +45,28 @@ export interface Token {
   token_type: string;
 }
 
+export interface PlanChangeRequest {
+  target_plan: "free" | "plus" | "pro" | "admin";
+}
+
+export interface PlanChangeResponse {
+  success: boolean;
+  message: string;
+  checkout_url?: string;
+  current_plan: "free" | "plus" | "pro" | "admin";
+}
+
 export interface Category {
   id: string;
   name: string;
   color?: string | null;
   keywords?: string[] | null;
   is_active: boolean;
+  is_default?: boolean;
+  can_modify?: boolean;
   user_id: string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface CategoryCreate {

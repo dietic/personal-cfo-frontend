@@ -43,6 +43,7 @@ export function SignupForm() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [pendingEmail, setPendingEmail] = useState("");
   const otpInputRef = useRef<HTMLInputElement | null>(null);
+  const planIntentRef = useRef<string | null>(null);
 
   // Sync step/email with URL so state survives remounts
   useEffect(() => {
@@ -60,6 +61,21 @@ export function SignupForm() {
       otpInputRef.current.focus();
     }
   }, [step]);
+
+  // Persist plan intent from URL/localStorage
+  useEffect(() => {
+    const plan =
+      searchParams.get("plan") ||
+      (typeof window !== "undefined"
+        ? localStorage.getItem("plan_intent")
+        : null);
+    if (plan === "plus" || plan === "pro") {
+      planIntentRef.current = plan;
+      try {
+        localStorage.setItem("plan_intent", plan);
+      } catch {}
+    }
+  }, [searchParams]);
 
   const getPasswordStrength = (password: string) => {
     let strength = 0;
@@ -93,13 +109,17 @@ export function SignupForm() {
               { email: targetEmail, password },
               { suppressToasts: true }
             );
+            // Redirect to billing redirect if plan intent
+            if (planIntentRef.current) {
+              router.push(`/billing/redirect?plan=${planIntentRef.current}`);
+            } else {
+              router.push("/dashboard");
+            }
           } catch {
-            // If auto-login fails for any reason, avoid an extra error toast
             toast.message(t("signup.verifiedPleaseSignIn"));
             router.push(`/login?email=${encodeURIComponent(targetEmail)}`);
           }
         } else {
-          // No local password available (e.g., came from login -> OTP). Ask user to sign in.
           toast.success(t("signup.verifiedPleaseSignIn"));
           router.push(`/login?email=${encodeURIComponent(targetEmail)}`);
         }

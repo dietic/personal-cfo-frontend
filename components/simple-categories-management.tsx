@@ -81,7 +81,17 @@ export function SimpleCategoriesManagement({
   onManageKeywords,
 }: SimpleCategoriesManagementProps) {
   const { t } = useI18n();
-  const { data: categories, isLoading, error } = useCategories();
+  const { data: categoriesData, isLoading, error } = useCategories();
+  
+  // Extract categories and permissions from the same response
+  const categories = categoriesData?.categories || [];
+  const permissions = categoriesData?.permissions;
+  
+  // Default to restricted permissions while loading or if no permissions data
+  const canCreate = permissions?.can_create_categories === true;
+  const canEdit = permissions?.can_edit_categories === true;
+  const canDelete = permissions?.can_delete_categories === true;
+  
   const createMutation = useCreateCategory();
   const updateMutation = useUpdateCategory();
   const deleteMutation = useDeleteCategory();
@@ -248,13 +258,14 @@ export function SimpleCategoriesManagement({
       <CardContent>
         <div className="space-y-4">
           <div className="flex justify-between items-center">
-            <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  {t("simpleCategories.addCategory.cta")}
-                </Button>
-              </DialogTrigger>
+            {canCreate ? (
+              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    {t("simpleCategories.addCategory.cta")}
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>
@@ -315,6 +326,13 @@ export function SimpleCategoriesManagement({
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {permissions?.message || "You cannot create categories with your current plan."}
+                </p>
+              </div>
+            )}
           </div>
 
           {categories && categories.length > 0 ? (
@@ -358,16 +376,17 @@ export function SimpleCategoriesManagement({
                       <TableCell>{formatDate(category.created_at)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Dialog>
-                            <DialogTrigger asChild>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => openEditDialog(category)}
-                              >
-                                <Edit3 className="h-4 w-4" />
-                              </Button>
-                            </DialogTrigger>
+                          {canEdit && (category.can_modify !== false) ? (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEditDialog(category)}
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                </Button>
+                              </DialogTrigger>
                             <DialogContent>
                               <DialogHeader>
                                 <DialogTitle>
@@ -437,13 +456,15 @@ export function SimpleCategoriesManagement({
                               </DialogFooter>
                             </DialogContent>
                           </Dialog>
+                          ) : null}
 
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
+                          {canDelete && (category.can_modify !== false) ? (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="outline" size="sm">
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
                             <AlertDialogContent>
                               <AlertDialogHeader>
                                 <AlertDialogTitle>
@@ -470,6 +491,7 @@ export function SimpleCategoriesManagement({
                               </AlertDialogFooter>
                             </AlertDialogContent>
                           </AlertDialog>
+                          ) : null}
                         </div>
                       </TableCell>
                     </TableRow>

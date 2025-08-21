@@ -3,11 +3,24 @@
 import { LanguageToggle } from "@/components/language-toggle";
 import { ScrollReveal } from "@/components/scroll-reveal";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
+import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n";
 import Link from "next/link";
+import React from "react";
+
+function safeUseAuth() {
+  try {
+    return useAuth();
+  } catch {
+    return null; // Landing rendered outside provider
+  }
+}
 
 export default function LandingRoot() {
   const { t } = useI18n();
+  const auth = safeUseAuth();
+  const isAuthenticated = !!auth?.isAuthenticated;
+  const user = auth?.user;
   return (
     <main className="min-h-screen w-full overflow-x-hidden">
       {/* Top Nav */}
@@ -32,28 +45,33 @@ export default function LandingRoot() {
             >
               {t("landing.nav.pricing")}
             </Link>
-            <Link
-              href="#reviews"
-              className="text-slate-600 hover:text-slate-900 dark:text-white/80 dark:hover:text-white"
-            >
-              {t("landing.nav.reviews")}
-            </Link>
             <ThemeToggleButton />
             <LanguageToggle />
           </nav>
           <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="hidden text-sm text-slate-700 hover:text-slate-900 dark:text-white/90 dark:hover:text-white md:inline"
-            >
-              {t("landing.cta.signIn")}
-            </Link>
-            <Link
-              href="#pricing"
-              className="inline-flex items-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-semibold text-white shadow shadow-blue-500/25 hover:bg-blue-500"
-            >
-              {t("landing.cta.startTrial")}
-            </Link>
+            {isAuthenticated ? (
+              <Link
+                href="/dashboard"
+                className="text-sm font-medium text-blue-600 hover:underline"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="text-sm font-medium text-slate-600 hover:text-slate-900 dark:text-white/80 dark:hover:text-white"
+                >
+                  {t("landing.cta.signIn")}
+                </Link>
+                <Link
+                  href="/signup"
+                  className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-500"
+                >
+                  {t("landing.cta.getStarted")}
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
@@ -76,45 +94,31 @@ export default function LandingRoot() {
         <div className="relative z-10 mx-auto max-w-4xl text-center">
           <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-foreground sm:text-5xl md:text-6xl">
             <span className="block">{t("landing.hero.line1")}</span>
-            <span className="block bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent dark:from-sky-400 dark:to-blue-500">
+            <span className="block bg-gradient-to-r from-sky-500 to-blue-600 bg-clip-text text-transparent">
               {t("landing.hero.line2")}
             </span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-base text-muted-foreground md:text-lg">
             {t("landing.hero.tagline")}
           </p>
-
-          <div className="mt-8 flex items-center justify-center gap-3">
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Link
               href="/signup"
-              className="inline-flex items-center rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:translate-y-[-1px] hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="rounded-md bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow hover:bg-blue-500"
             >
-              <span>{t("landing.cta.getStarted")}</span>
-              <span aria-hidden className="ml-2">
-                ↗
-              </span>
+              {t("landing.cta.getStarted")}
             </Link>
-            <Link
+            <a
               href="#pricing"
-              className="inline-flex items-center rounded-md border border-slate-300 bg:white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 dark:border:white/10 dark:bg-white/5 dark:text-white/90 dark:hover:bg:white/10"
+              className="text-sm font-medium text-slate-700 hover:text-slate-900 dark:text-white/80 dark:hover:text-white"
             >
-              {t("landing.cta.startTrial")}
-            </Link>
+              {t("landing.nav.pricing")}
+            </a>
           </div>
-
-          <div className="mt-6 flex items-center justify-center gap-6 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-500">✔</span>
-              <span>{t("landing.badges.noCard")}</span>
-            </div>
-            <div className="flex items:center gap-2">
-              <span className="text-emerald-500">✔</span>
-              <span>{t("landing.badges.freeForever")}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-emerald-500">✔</span>
-              <span>{t("landing.badges.upgradeAnytime")}</span>
-            </div>
+          <div className="mt-6 flex items-center justify-center gap-4 text-xs text-muted-foreground">
+            <span>{t("landing.badges.noCard")}</span>
+            <span>• {t("landing.badges.freeForever")}</span>
+            <span>• {t("landing.badges.upgradeAnytime")}</span>
           </div>
         </div>
       </section>
@@ -122,63 +126,40 @@ export default function LandingRoot() {
       {/* Features */}
       <section
         id="features"
-        className="bg-background py-20 text-foreground dark:bg-[#0E1528] dark:text-white"
+        className="py-24 bg-gradient-to-b from-white to-slate-50 dark:from-[#0E1528] dark:to-[#0B1220]"
       >
-        <div className="mx-auto max-w-5xl px-6">
-          <div className="mb-10 text-center">
-            <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg-white/10 dark:text:white/80">
-              {t("landing.nav.features")}
-            </span>
-            <h2 className="mt-4 text-3xl font-extrabold sm:text-4xl">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               {t("landing.features.title")}
             </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+            <p className="mt-4 text-sm text-muted-foreground">
               {t("landing.features.subtitle")}
             </p>
           </div>
-
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {[
-              {
-                title: t("landing.features.cards.title"),
-                desc: t("landing.features.cards.desc"),
-                emoji: "💳",
-              },
-              {
-                title: t("landing.features.categorization.title"),
-                desc: t("landing.features.categorization.desc"),
-                emoji: "⚡",
-              },
-              {
-                title: t("landing.features.budgeting.title"),
-                desc: t("landing.features.budgeting.desc"),
-                emoji: "🎯",
-              },
-              {
-                title: t("landing.features.alerts.title"),
-                desc: t("landing.features.alerts.desc"),
-                emoji: "🔔",
-              },
-              {
-                title: t("landing.features.import.title"),
-                desc: t("landing.features.import.desc"),
-                emoji: "📥",
-              },
-              {
-                title: t("landing.features.analytics.title"),
-                desc: t("landing.features.analytics.desc"),
-                emoji: "📊",
-              },
-            ].map((f) => (
+          <div className="mt-14 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+            {featureItems(t).map((f) => (
               <div
-                key={f.title}
-                className="reveal-up rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md dark:border:white/10 dark:bg-black/20 dark:shadow-black/20 dark:hover:shadow-blue-500/10"
+                key={f.key}
+                className="relative group rounded-2xl border border-slate-200/60 bg-white/70 p-6 transition duration-300 ease-out hover:-translate-y-1 hover:shadow-xl dark:border-white/10 dark:bg-white/[0.06] dark:hover:bg-white/[0.09] backdrop-blur-sm overflow-hidden"
               >
-                <div className="mb-3 inline-flex h-9 w-9 items:center justify-center rounded-md bg-slate-100 text-lg dark:bg:white/10">
-                  <span aria-hidden>{f.emoji}</span>
+                <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition duration-300">
+                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-fuchsia-500/5 to-transparent" />
                 </div>
-                <h3 className="text-lg font-semibold">{f.title}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">{f.desc}</p>
+                <div className="mb-4 text-xl leading-none" aria-hidden="true">
+                  {f.emoji}
+                </div>
+                <h3 className="relative font-semibold mb-2 tracking-tight text-slate-800 dark:text-white">
+                  {f.title}
+                </h3>
+                <p className="relative text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+                  {f.desc}
+                </p>
+                <div className="mt-4 h-px w-full bg-gradient-to-r from-transparent via-slate-200/70 to-transparent dark:via-white/10" />
+                <div className="mt-4 flex items-center gap-1 text-xs font-medium text-indigo-600/70 opacity-0 group-hover:opacity-100 transition">
+                  <span>★</span>
+                  <span>Core Feature</span>
+                </div>
               </div>
             ))}
           </div>
@@ -188,149 +169,103 @@ export default function LandingRoot() {
       {/* Pricing */}
       <section
         id="pricing"
-        className="bg-background py-20 text-foreground dark:bg-[#0E1528] dark:text:white"
+        className="relative py-24 bg-white dark:bg-[#0B1220]"
       >
         <div className="mx-auto max-w-6xl px-6">
-          <div className="mb-10 text-center">
-            <span className="inline-block rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600 dark:bg:white/10 dark:text:white/80">
-              {t("landing.nav.pricing")}
-            </span>
-            <h2 className="mt-4 text-3xl font-extrabold sm:text-4xl">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
               {t("landing.pricing.title")}
             </h2>
-            <p className="mt-3 text-muted-foreground">
+            <p className="mt-4 text-sm text-muted-foreground">
               {t("landing.pricing.subtitle")}
             </p>
           </div>
-
-          <div className="grid gap-6 lg:grid-cols-3">
-            {[
-              {
-                name: t("landing.pricing.free.name"),
-                price: "$0",
-                perks: [
-                  t("landing.pricing.free.p1"),
-                  t("landing.pricing.free.p2"),
-                  t("landing.pricing.free.p3"),
-                  t("landing.pricing.free.p4"),
-                  t("landing.pricing.free.p5"),
-                  t("landing.pricing.free.p6"),
-                ],
-                cta: t("landing.cta.getStarted"),
-                popular: false,
-              },
-              {
-                name: t("landing.pricing.plus.name"),
-                price: "$9",
-                perks: [
-                  t("landing.pricing.plus.p1"),
-                  t("landing.pricing.plus.p2"),
-                  t("landing.pricing.plus.p3"),
-                  t("landing.pricing.plus.p4"),
-                  t("landing.pricing.plus.p5"),
-                  t("landing.pricing.plus.p6"),
-                ],
-                cta: t("landing.pricing.plus.cta"),
-                popular: true,
-              },
-              {
-                name: t("landing.pricing.pro.name"),
-                price: "$19",
-                perks: [
-                  t("landing.pricing.pro.p1"),
-                  t("landing.pricing.pro.p2"),
-                  t("landing.pricing.pro.p3"),
-                  t("landing.pricing.pro.p4"),
-                  t("landing.pricing.pro.p5"),
-                  t("landing.pricing.pro.p6"),
-                ],
-                cta: t("landing.pricing.pro.cta"),
-                popular: false,
-              },
-            ].map((plan) => (
-              <div
-                key={plan.name}
-                className={`reveal-up rounded-2xl border ${
-                  plan.popular
-                    ? "border-blue-500/40 ring-1 ring-blue-500/30"
-                    : "border-slate-200"
-                } bg-white p-6 shadow-sm dark:border:white/10 dark:bg-black/20 dark:shadow-xl`}
-              >
-                {plan.popular && (
-                  <div className="mb-3 inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-3 py-1 text-xs text-blue-700 dark:bg-blue-500/10 dark:text-blue-200">
-                    {t("landing.pricing.popular")}
-                  </div>
-                )}
-                <h3 className="text-xl font-semibold">{plan.name}</h3>
-                <p className="mt-2 text-4xl font-bold">{plan.price}</p>
-                <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
-                  {plan.perks.map((p) => (
-                    <li className="flex items-start gap-2" key={p}>
-                      <span className="mt-1 text-emerald-500" aria-hidden>
-                        ✔
-                      </span>
-                      <span>{p}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div className="mt-6">
-                  <Link
-                    href="/signup"
-                    className={`inline-flex w-full items-center justify-center rounded-md px-4 py-2.5 text-sm font-semibold shadow transition ${
-                      plan.popular
-                        ? "bg-blue-600 text-white shadow-blue-500/25 hover:bg-blue-500"
-                        : "border border-slate-300 bg-white text-slate-900 hover:bg-slate-50 dark:border:white/10 dark:bg-white/5 dark:text-white"
-                    }`}
-                  >
-                    {plan.cta}
-                  </Link>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <p className="mx-auto mt-8 max-w-2xl text-center text-xs text-muted-foreground">
-            {t("landing.pricing.footer")}
-          </p>
-
-          <div className="mt-6 text-center">
-            <Link
-              href="#features"
-              className="text-sm text-blue-700 hover:text-blue-600 dark:text-blue-300 dark:hover:text-blue-200"
-            >
-              {t("landing.pricing.seeAll")}
-            </Link>
+          <div className="mt-12 grid gap-8 md:grid-cols-3">
+            <PricingCard
+              plan={t("landing.pricing.free.name")}
+              price={formatPrice(0)}
+              features={[
+                t("landing.pricing.free.p6"),
+                t("landing.pricing.free.p1"),
+                t("landing.pricing.free.p5"),
+                t("landing.pricing.free.p3"),
+                t("landing.pricing.free.p4"),
+                t("landing.pricing.free.p2"),
+              ]}
+              cta={
+                <Link
+                  href="/signup"
+                  className="w-full rounded-md border px-4 py-2 text-sm font-medium text-center hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/10"
+                >
+                  {t("landing.pricing.free.cta")}
+                </Link>
+              }
+            />
+            <PricingCard
+              plan={t("landing.pricing.plus.name")}
+              highlight
+              price={formatPrice(getPlanPriceCents("plus"))}
+              features={[
+                t("landing.pricing.plus.p6"),
+                t("landing.pricing.plus.p1"),
+                t("landing.pricing.plus.p5"),
+                t("landing.pricing.plus.p3"),
+                t("landing.pricing.plus.p4"),
+                t("landing.pricing.plus.p2"),
+              ]}
+              cta={
+                <SubscriptionButton
+                  plan="plus"
+                  label={t("landing.pricing.plus.cta")}
+                />
+              }
+            />
+            <PricingCard
+              plan={t("landing.pricing.pro.name")}
+              price={formatPrice(getPlanPriceCents("pro"))}
+              features={[
+                t("landing.pricing.pro.p6"),
+                t("landing.pricing.pro.p1"),
+                t("landing.pricing.pro.p5"),
+                t("landing.pricing.pro.p3"),
+                t("landing.pricing.pro.p4"),
+                t("landing.pricing.pro.p2"),
+              ]}
+              cta={
+                <SubscriptionButton
+                  plan="pro"
+                  label={t("landing.pricing.pro.cta")}
+                />
+              }
+            />
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="relative bg-gradient-to-r from-blue-600/5 via-purple-500/5 to-pink-500/5 py-16 text-foreground dark:from-indigo-500/20 dark:via-purple-500/20 dark:to-pink-500/20">
-        <div className="mx-auto max-w-4xl px-6 text-center">
-          <h2 className="text-3xl font-extrabold sm:text-4xl">
+      {/* CTA Section */}
+      <section className="py-28 bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-600 text-white">
+        <div className="mx-auto max-w-4xl px-6 text-center space-y-6">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
             {t("landing.cta.sectionTitle")}
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-muted-foreground">
+          <p className="text-sm opacity-90 max-w-2xl mx-auto">
             {t("landing.cta.sectionSubtitle")}
           </p>
-          <div className="mt-6 flex items-center justify-center gap-3">
+          <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Link
               href="/signup"
-              className="inline-flex items-center rounded-md bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-blue-500/25 transition hover:translate-y-[-1px] hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-400"
+              className="rounded-md bg-white px-6 py-3 text-sm font-semibold text-indigo-600 shadow hover:bg-slate-100"
             >
               {t("landing.cta.getStarted")}
             </Link>
             <Link
-              href="/demo"
-              className="inline-flex items-center rounded-md border border-slate-300 bg:white px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:bg-slate-50 dark:border:white/20 dark:bg:white/5 dark:text:white/90 dark:hover:bg:white/10"
+              href="#pricing"
+              className="rounded-md bg-indigo-700/40 px-6 py-3 text-sm font-semibold backdrop-blur hover:bg-indigo-700/50"
             >
-              {t("landing.cta.demo")}
+              {t("landing.nav.pricing")}
             </Link>
           </div>
-
-          <div className="mt-4 text-xs text-muted-foreground">
-            {t("landing.cta.footer")}
-          </div>
+          <p className="text-xs opacity-80">{t("landing.cta.footer")}</p>
         </div>
       </section>
 
@@ -420,19 +355,179 @@ export default function LandingRoot() {
               </ul>
             </div>
           </div>
-          <div className="mt-8 flex items-center justify-between border-t border-slate-200 pt-6 text-xs text-muted-foreground dark:border:white/10">
-            <div>
-              © {new Date().getFullYear()} {t("landing.brand")}.{" "}
-              {t("landing.footer.rights")}.
-            </div>
-            <div className="flex items-center gap-2">
-              <span>☀️</span> {t("landing.footer.mode")}
-            </div>
+          <div className="mt-8 flex items-center justify-center gap-3">
+            {/* Signup and trial buttons removed while closed */}
           </div>
         </div>
       </footer>
 
       <ScrollReveal />
     </main>
+  );
+}
+
+function featureItems(t: any) {
+  return [
+    {
+      key: "cards",
+      emoji: "💳",
+      title: t("landing.features.cards.title"),
+      desc: t("landing.features.cards.desc"),
+    },
+    {
+      key: "categorization",
+      emoji: "⚙️",
+      title: t("landing.features.categorization.title"),
+      desc: t("landing.features.categorization.desc"),
+    },
+    {
+      key: "budgeting",
+      emoji: "📊",
+      title: t("landing.features.budgeting.title"),
+      desc: t("landing.features.budgeting.desc"),
+    },
+    {
+      key: "alerts",
+      emoji: "🔔",
+      title: t("landing.features.alerts.title"),
+      desc: t("landing.features.alerts.desc"),
+    },
+    {
+      key: "import",
+      emoji: "📥",
+      title: t("landing.features.import.title"),
+      desc: t("landing.features.import.desc"),
+    },
+    {
+      key: "analytics",
+      emoji: "📈",
+      title: t("landing.features.analytics.title"),
+      desc: t("landing.features.analytics.desc"),
+    },
+  ];
+}
+
+// Replace dynamic env access with build-time constants
+const PLAN_PLUS_PRICE_CENTS = Number(
+  process.env.NEXT_PUBLIC_PLAN_PLUS_PRICE_PEN ?? 1999
+);
+const PLAN_PRO_PRICE_CENTS = Number(
+  process.env.NEXT_PUBLIC_PLAN_PRO_PRICE_PEN ?? 4999
+);
+function getPlanPriceCents(plan: "plus" | "pro") {
+  return plan === "plus" ? PLAN_PLUS_PRICE_CENTS : PLAN_PRO_PRICE_CENTS;
+}
+function formatPrice(cents: number) {
+  return `S/${(cents / 100).toFixed(2)}`;
+}
+
+function SubscriptionButton({
+  plan,
+  label,
+}: {
+  plan: "plus" | "pro";
+  label: string;
+}) {
+  const auth = safeUseAuth();
+  const isAuthenticated = !!auth?.isAuthenticated;
+  const user = auth?.user;
+  const router = React.useMemo(
+    () => ({ push: (url: string) => (window.location.href = url) }),
+    []
+  ); // minimal router replacement
+  const [loading, setLoading] = React.useState(false);
+  const { t } = useI18n();
+
+  async function begin() {
+    if (!isAuthenticated) {
+      try {
+        localStorage.setItem("plan_intent", plan);
+      } catch {}
+      router.push(`/signup?plan=${plan}`);
+      return;
+    }
+    if (!user?.email) {
+      alert("Usuario sin email válido");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/v1/public/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ plan, email: user.email }),
+      });
+      if (!res.ok) {
+        let detail = await res.text();
+        try {
+          detail = JSON.parse(detail).detail || detail;
+        } catch {}
+        throw new Error(detail);
+      }
+      const data = await res.json();
+      const target = data.sandbox_init_point || data.init_point;
+      if (target) {
+        window.location.href = target;
+      } else {
+        throw new Error("Respuesta inválida del servidor (sin init_point)");
+      }
+    } catch (e: any) {
+      console.error(e);
+      alert(`Checkout error: ${e.message || e}`);
+    } finally {
+      setLoading(false);
+    }
+  }
+  return (
+    <button
+      onClick={begin}
+      disabled={loading}
+      className={`w-full rounded-md ${
+        plan === "plus"
+          ? "bg-blue-600 hover:bg-blue-500"
+          : "bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-100"
+      } px-4 py-2 text-sm font-semibold text-white disabled:opacity-60`}
+    >
+      {loading ? "..." : label}
+    </button>
+  );
+}
+
+function PricingCard({
+  plan,
+  price,
+  features,
+  cta,
+  highlight,
+}: {
+  plan: string;
+  price: string;
+  features: string[];
+  cta: React.ReactNode;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-6 flex flex-col gap-4 dark:border-white/10 ${
+        highlight ? "ring-2 ring-blue-600 shadow-md" : ""
+      }`}
+    >
+      {" "}
+      <div>
+        <h3 className="text-lg font-semibold">{plan}</h3>
+        <div className="mt-1 text-3xl font-bold">
+          {price}
+          <span className="text-base font-medium text-muted-foreground">
+            /mes
+          </span>
+        </div>
+      </div>
+      <ul className="flex-1 space-y-2 text-sm text-muted-foreground">
+        {features.map((f) => (
+          <li key={f}>• {f}</li>
+        ))}
+      </ul>
+      {cta}
+    </div>
   );
 }

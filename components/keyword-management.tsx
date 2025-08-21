@@ -55,7 +55,7 @@ import {
 } from "@/components/ui/tooltip";
 import { formatDate } from "@/lib/format";
 import {
-  useCategories,
+  useCategoryList,
   useCreateKeyword,
   useCreateKeywordsBulk,
   useDeleteKeyword,
@@ -79,7 +79,7 @@ import { toast } from "sonner";
 
 export function KeywordManagement() {
   const { t } = useI18n();
-  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const { data: categories, isLoading: categoriesLoading } = useCategoryList();
   const createKeywordMutation = useCreateKeyword();
   const createKeywordsBulkMutation = useCreateKeywordsBulk();
   const updateKeywordMutation = useUpdateKeyword();
@@ -425,7 +425,7 @@ export function KeywordManagement() {
                         </Label>
                         <Input
                           id="description"
-                          value={keywordForm.description}
+                          value={keywordForm.description || ""}
                           onChange={(e) =>
                             setKeywordForm({
                               ...keywordForm,
@@ -570,7 +570,7 @@ export function KeywordManagement() {
                                         </Label>
                                         <Input
                                           id="edit-description"
-                                          value={keywordForm.description}
+                                          value={keywordForm.description || ""}
                                           onChange={(e) =>
                                             setKeywordForm({
                                               ...keywordForm,

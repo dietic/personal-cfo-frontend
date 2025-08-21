@@ -24,7 +24,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   useBudgets,
-  useCategories,
+  useCategoryList,
   useCategorySpending,
   useCreateBudget,
   useDeleteBudget,
@@ -72,7 +72,7 @@ export function BudgetCategories() {
       ),
       end_date: format(new Date(), "yyyy-MM-dd"),
     });
-  const { data: categories, isLoading: categoriesLoading } = useCategories();
+  const { data: categories, isLoading: categoriesLoading } = useCategoryList();
   const createBudgetMutation = useCreateBudget();
   const updateBudgetMutation = useUpdateBudget();
   const deleteBudgetMutation = useDeleteBudget();

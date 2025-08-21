@@ -6,15 +6,21 @@ export type ServerLocale = "es" | "en";
 
 type Messages = Record<string, string>;
 
+// Ensure compatibility whether JSON is exported as default or as a module object
+const en = ((rawEn as any)?.default ?? (rawEn as any)) as Messages;
+const es = ((rawEs as any)?.default ?? (rawEs as any)) as Messages;
+
 const MESSAGES: Record<ServerLocale, Messages> = {
-  es: rawEs as Messages,
-  en: rawEn as Messages,
+  es,
+  en,
 };
 
 export function getServerLocale(): ServerLocale {
   try {
-    const cookieStore = cookies();
-    const c = cookieStore.get("locale")?.value as ServerLocale | undefined;
+    // Prefer sync cookies() (Node runtime). In edge runtimes where cookies may be async,
+    // this will throw and we'll fall back to default.
+    const cookieStore: any = cookies() as any;
+    const c = cookieStore?.get?.("locale")?.value as ServerLocale | undefined;
     if (c === "es" || c === "en") return c;
   } catch {}
   return "es";
@@ -33,8 +39,7 @@ export function tServer(
   params?: Record<string, string | number>
 ): string {
   const locale = getServerLocale();
-  const current = MESSAGES[locale] ?? (rawEs as Messages);
-  const en = MESSAGES.en;
+  const current = MESSAGES[locale] ?? es;
   // Prefer current locale, then English, then the key itself
   const primary = (current as any)[key] as string | undefined;
   const fallback = (en as any)[key] as string | undefined;

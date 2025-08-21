@@ -14,7 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney, formatDate as intlFormatDate } from "@/lib/format";
 import { useCards, useCategoryColors, useTransactions } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
-import { parseISO } from "date-fns";
+import { isValid, parseISO } from "date-fns";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -36,15 +36,19 @@ export function RecentTransactions() {
 
   const formatDate = (dateString: string) => {
     try {
-      return intlFormatDate(parseISO(dateString), locale);
+      const d = parseISO(dateString);
+      if (!isValid(d)) return dateString;
+      return intlFormatDate(d, locale);
     } catch {
       return dateString;
     }
   };
 
   const getInitials = (merchant: string) => {
-    return merchant
+    const safe = (merchant || "?").trim();
+    return safe
       .split(" ")
+      .filter(Boolean)
       .map((word) => word[0])
       .join("")
       .toUpperCase()

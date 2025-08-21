@@ -24,6 +24,7 @@ import { Transaction } from "@/lib/types";
 import {
   addDays,
   format,
+  isValid,
   parseISO,
   startOfMonth,
   startOfYear,
@@ -97,9 +98,14 @@ export function SpendingOverview() {
     );
 
     for (const tx of allTransactions) {
+      // Guard: skip transactions without a valid date
+      if (!tx?.transaction_date || typeof tx.transaction_date !== "string") {
+        continue;
+      }
       const d = parseISO(tx.transaction_date);
+      if (!isValid(d)) continue;
       const key = format(startOfMonth(d), "yyyy-MM");
-      if (!sums.hasOwnProperty(key)) continue; // outside last 12 months
+      if (!Object.prototype.hasOwnProperty.call(sums, key)) continue; // outside last 12 months
       const raw = Math.abs(parseFloat(tx.amount));
       const ccy = (tx.currency as SupportedCurrency) || "PEN";
       const converted = rate
@@ -144,7 +150,14 @@ export function SpendingOverview() {
 
       const weekSpending = allTransactions.reduce(
         (sum: number, tx: Transaction) => {
+          if (
+            !tx?.transaction_date ||
+            typeof tx.transaction_date !== "string"
+          ) {
+            return sum;
+          }
           const txDate = parseISO(tx.transaction_date);
+          if (!isValid(txDate)) return sum;
           const isInWeek = txDate >= weekStart && txDate <= weekEnd;
           if (!isInWeek) return sum;
           const raw = Math.abs(parseFloat(tx.amount));

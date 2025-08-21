@@ -7,6 +7,7 @@ import {
 } from "@/lib/auth-constants";
 import { useI18n } from "@/lib/i18n";
 import { User, UserCreate, UserLogin } from "@/lib/types";
+import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import React, {
   createContext,
@@ -51,6 +52,7 @@ function normalizeUser(partial: Partial<User>): User {
     timezone: partial.timezone ?? "America/Lima",
     is_active: partial.is_active ?? true,
     is_admin: partial.is_admin ?? false,
+    plan_tier: partial.plan_tier ?? "free",
     created_at: partial.created_at ?? new Date().toISOString(),
     updated_at: partial.updated_at,
   };
@@ -67,6 +69,7 @@ interface AuthContextType {
   register: (data: UserCreate) => Promise<void>;
   logout: () => void;
   refreshToken: () => Promise<void>;
+  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -78,6 +81,7 @@ export function AuthProvider({
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { t } = useI18n();
+  const queryClient = useQueryClient();
 
   const isAuthenticated = !!user && apiClient.isAuthenticated();
 
@@ -151,6 +155,8 @@ export function AuthProvider({
             const emailToUse = profile.email || data.email;
             setPendingVerification(emailToUse);
             if (showToasts) toast.message(t("auth.verifyPrompt"));
+            // Clear any cached data from prior session
+            queryClient.clear();
             router.push(
               `/signup?step=otp&email=${encodeURIComponent(emailToUse)}`
             );
@@ -162,6 +168,8 @@ export function AuthProvider({
           if (status === 403 || status === 401) {
             setPendingVerification(data.email);
             if (showToasts) toast.message(t("auth.verifyPrompt"));
+            // Clear any cached data from prior session
+            queryClient.clear();
             router.push(
               `/signup?step=otp&email=${encodeURIComponent(data.email)}`
             );
@@ -189,6 +197,8 @@ export function AuthProvider({
         // Clear any pending verification flag on successful login/profile fetch
         clearPendingVerification();
         if (showToasts) toast.success(t("auth.loginSuccess"));
+        // Important: clear React Query cache so new session doesn't reuse stale data
+        queryClient.clear();
         router.push("/dashboard");
       } catch (error: any) {
         console.error("Login error:", error);
@@ -218,7 +228,7 @@ export function AuthProvider({
         setIsLoading(false);
       }
     },
-    [router, t]
+    [router, t, queryClient]
   );
 
   const register = useCallback(
@@ -246,9 +256,11 @@ export function AuthProvider({
     apiClient.logout();
     setUser(null);
     clearPendingVerification();
+    // Clear all cached queries/mutations to avoid cross-account leakage
+    queryClient.clear();
     router.push("/login");
     toast.success(t("auth.loggedOut"));
-  }, [router, t]);
+  }, [router, t, queryClient]);
 
   const refreshToken = useCallback(async () => {
     try {
@@ -259,6 +271,18 @@ export function AuthProvider({
     }
   }, [logout]);
 
+  const refreshUserProfile = useCallback(async () => {
+    try {
+      if (apiClient.isAuthenticated()) {
+        const profile = await apiClient.getUserProfile();
+        setUser(normalizeUser(profile));
+      }
+    } catch (error) {
+      console.error("Failed to refresh user profile:", error);
+      // Don't logout on profile refresh failure, just log the error
+    }
+  }, []);
+
   const value: AuthContextType = useMemo(
     () => ({
       user,
@@ -268,8 +292,18 @@ export function AuthProvider({
       register,
       logout,
       refreshToken,
+      refreshUserProfile,
     }),
-    [user, isLoading, isAuthenticated, login, register, logout, refreshToken]
+    [
+      user,
+      isLoading,
+      isAuthenticated,
+      login,
+      register,
+      logout,
+      refreshToken,
+      refreshUserProfile,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

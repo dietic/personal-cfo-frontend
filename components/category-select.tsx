@@ -14,7 +14,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { useCategories, useCategoryColors } from "@/lib/hooks";
+import { useCategoryColors, useCategoryList } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import type { Category } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,7 @@ export function CategorySelect({
 }: CategorySelectProps) {
   const [open, setOpen] = useState(false);
   const { t } = useI18n();
-  const { data: categories, isLoading } = useCategories();
+  const { data: categories, isLoading } = useCategoryList();
   const { getCategoryColor } = useCategoryColors();
 
   const selectedCategory = (categories as Category[] | undefined)?.find(

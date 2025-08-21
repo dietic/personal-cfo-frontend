@@ -30,8 +30,9 @@ function interpolate(
   return template.replace(/\{(.*?)\}/g, (_, k) => String(params[k] ?? ""));
 }
 
-const es = rawEs as Messages;
-const en = rawEn as Messages;
+// Ensure compatibility whether JSON is exported as default or as a module object
+const es = ((rawEs as any)?.default ?? (rawEs as any)) as Messages;
+const en = ((rawEn as any)?.default ?? (rawEn as any)) as Messages;
 
 const MESSAGES: Record<Locale, Messages> = {
   es,

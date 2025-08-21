@@ -7,7 +7,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { formatMoney } from "@/lib/format";
 import { useBudgetAlerts, useCards, useRecurringServices } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
-import { format, parseISO } from "date-fns";
+import { format, isValid, parseISO } from "date-fns";
 import {
   AlertCircle,
   Calendar,
@@ -65,12 +65,12 @@ export function Alerts() {
         category: alert.budget.category,
         current: formatMoney(
           Number(alert.current_spending),
-          alert.budget.currency,
+          alert.budget.currency as any,
           locale === "es" ? "es-PE" : "en-US"
         ),
         limit: formatMoney(
           Number(alert.budget.limit_amount),
-          alert.budget.currency,
+          alert.budget.currency as any,
           locale === "es" ? "es-PE" : "en-US"
         ),
       }),
@@ -83,9 +83,11 @@ export function Alerts() {
       ?.filter((card) => card.payment_due_date)
       .map((card) => {
         // Convert the stored date to a recurring monthly due date
-        // Example: If stored date is "2025-05-20", we extract day "20"
-        // and calculate the 20th of the current/next month
-        const storedDate = parseISO(card.payment_due_date!);
+        const parsed = card.payment_due_date
+          ? parseISO(card.payment_due_date)
+          : null;
+        const storedDate = parsed && isValid(parsed) ? parsed : null;
+        if (!storedDate) return null;
         const dueDayOfMonth = storedDate.getDate(); // Get the day (e.g., 20 for 20th)
 
         const today = new Date();
@@ -133,7 +135,9 @@ export function Alerts() {
   const recurringServiceAlerts =
     recurringServices
       ?.map((service) => {
-        const dueDate = parseISO(service.due_date);
+        const parsed = service?.due_date ? parseISO(service.due_date) : null;
+        const dueDate = parsed && isValid(parsed) ? parsed : null;
+        if (!dueDate) return null;
         const today = new Date();
         const daysUntilDue = Math.ceil(
           (dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
