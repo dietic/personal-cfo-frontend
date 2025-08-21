@@ -1,11 +1,10 @@
 "use client";
 
+import { DowngradeWarningModal } from "@/components/downgrade-warning-modal";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import RouteLoader from "@/components/route-loader";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
-import { UpgradeModal } from "@/components/upgrade-modal";
-import { DowngradeWarningModal } from "@/components/downgrade-warning-modal";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,11 +25,12 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { UpgradeModal } from "@/components/upgrade-modal";
 import { UserNav } from "@/components/user-nav";
+import { useToast } from "@/hooks/use-toast";
+import { apiClient } from "@/lib/api-client";
 import { useAuth } from "@/lib/auth-context";
 import { useI18n } from "@/lib/i18n";
-import { apiClient } from "@/lib/api-client";
-import { useToast } from "@/hooks/use-toast";
 import {
   BarChart3,
   CalendarClock,
@@ -57,12 +57,15 @@ export function DashboardLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAuthenticated, isLoading, user, logout, refreshUserProfile } = useAuth();
+  const { isAuthenticated, isLoading, user, logout, refreshUserProfile } =
+    useAuth();
   const { t } = useI18n();
   const { toast } = useToast();
   const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [downgradeModalOpen, setDowngradeModalOpen] = useState(false);
-  const [pendingPlanChange, setPendingPlanChange] = useState<"free" | "plus" | "pro" | null>(null);
+  const [pendingPlanChange, setPendingPlanChange] = useState<
+    "free" | "plus" | "pro" | null
+  >(null);
   const [isChangingPlan, setIsChangingPlan] = useState(false);
 
   // Development bypass for testing
@@ -160,7 +163,7 @@ export function DashboardLayout({
     const plans = ["free", "plus", "pro"];
     const currentIndex = plans.indexOf(currentPlan);
     const targetIndex = plans.indexOf(plan);
-    
+
     if (targetIndex < currentIndex) {
       // This is a downgrade - show warning modal
       setPendingPlanChange(plan);
@@ -176,10 +179,10 @@ export function DashboardLayout({
 
   const executePlanChange = async (targetPlan: "free" | "plus" | "pro") => {
     setIsChangingPlan(true);
-    
+
     try {
       const response = await apiClient.changePlan({ target_plan: targetPlan });
-      
+
       if (response.success) {
         if (response.checkout_url) {
           // Redirect to payment for upgrades
@@ -286,10 +289,12 @@ export function DashboardLayout({
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mb-2">
-                    {t(`layout.upgrade.${user?.plan_tier || "free"}.description`)}
+                    {t(
+                      `layout.upgrade.${user?.plan_tier || "free"}.description`
+                    )}
                   </p>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     className="w-full"
                     onClick={() => setUpgradeModalOpen(true)}
                   >
@@ -345,7 +350,7 @@ export function DashboardLayout({
           </main>
         </div>
       </div>
-      
+
       {/* Upgrade Modal */}
       <UpgradeModal
         open={upgradeModalOpen}
