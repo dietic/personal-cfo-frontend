@@ -25,7 +25,11 @@ export default function BillingRedirectPage() {
     const go = async () => {
       setStatus("creating");
       try {
-        const res = await fetch("/api/v1/public/subscribe", {
+        const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "").replace(
+          /\/+$/,
+          ""
+        );
+        const res = await fetch(`${API_BASE}/api/v1/public/subscribe`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ plan, email: user?.email }),

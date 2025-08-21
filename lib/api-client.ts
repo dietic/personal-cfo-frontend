@@ -57,10 +57,14 @@ import {
 } from "./types";
 
 // --- Robust API baseURL handling ---
-// To completely avoid accidental duplication like "/api/v1/api/v1/...", we force
-// Axios baseURL to be empty and rely on absolute paths per request.
-// Force empty base to prevent prefix duplication in all environments
-const API_URL = "";
+// Prefer a configurable base URL via NEXT_PUBLIC_API_BASE_URL for Vercel/production.
+// Falls back to empty string so requests use same-origin relative paths in dev with a proxy.
+const API_URL = (() => {
+  const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
+  if (!raw) return "";
+  // strip trailing slashes to avoid double slashes when joining with request paths
+  return raw.replace(/\/+$/, "");
+})();
 const TOKEN_KEY = "access_token";
 
 class APIClient {
