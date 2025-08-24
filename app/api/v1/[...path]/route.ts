@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
+export const runtime = 'nodejs';
+
 const BACKEND_URL = (() => {
   const raw =
     process.env.API_BASE_URL ||
