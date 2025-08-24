@@ -9,6 +9,11 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // Force empty API URL to use Vercel proxy
+  env: {
+    NEXT_PUBLIC_API_BASE_URL: "",
+    API_BASE_URL: "",
+  },
   experimental: {
     turbo: {
       rules: {
