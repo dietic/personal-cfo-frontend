@@ -61,9 +61,12 @@ import {
 // Falls back to empty string so requests use same-origin relative paths in dev with a proxy.
 const API_URL = (() => {
   const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
+  console.log("🔍 API_URL raw:", raw); // Debug log
   if (!raw) return "";
   // strip trailing slashes to avoid double slashes when joining with request paths
-  return raw.replace(/\/+$/, "");
+  const cleaned = raw.replace(/\/+$/, "");
+  console.log("🔍 API_URL cleaned:", cleaned); // Debug log
+  return cleaned;
 })();
 const TOKEN_KEY = "access_token";
 
@@ -82,18 +85,16 @@ class APIClient {
     this.client.interceptors.request.use((config) => {
       const token = this.getToken();
 
-      // Normalize duplicate /api or /api/v1 segments when baseURL already contains them (safety)
-      const base = (config.baseURL ??
-        this.client.defaults.baseURL ??
-        "") as string;
+      // Debug logging
+      console.log("🔍 Request config:", {
+        baseURL: config.baseURL,
+        url: config.url,
+        fullURL: `${config.baseURL}${config.url}`
+      });
+
+      // SIMPLIFIED: Only handle health endpoint special case
+      const base = (config.baseURL ?? this.client.defaults.baseURL ?? "") as string;
       if (typeof config.url === "string" && base) {
-        const hasApiV1InBase = /\/api\/v1\/?$/.test(base);
-        const hasApiInBase = /\/api\/?$/.test(base) && !hasApiV1InBase;
-        if (hasApiV1InBase && config.url.startsWith("/api/v1")) {
-          config.url = config.url.replace(/^\/api\/v1/, "");
-        } else if (hasApiInBase && config.url.startsWith("/api")) {
-          config.url = config.url.replace(/^\/api/, "");
-        }
         // Ensure health endpoints hit root when base contains /api*
         if (/^\/health(\/?|$)/.test(config.url) && /\/api(\/?|$)/.test(base)) {
           try {
