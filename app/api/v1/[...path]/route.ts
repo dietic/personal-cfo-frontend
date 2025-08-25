@@ -9,13 +9,6 @@ const BACKEND_URL = (() => {
     process.env.NEXT_PUBLIC_API_BASE ||
     process.env.API_BASE ||
     "http://personalcfo-alb-821661594.us-east-1.elb.amazonaws.com";
-  console.log('Environment variables:', {
-    API_BASE_URL: process.env.API_BASE_URL,
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-    NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE,
-    API_BASE: process.env.API_BASE,
-    raw: raw
-  });
   return raw.replace(/\/+$/, "");
 })();
 
@@ -64,16 +57,14 @@ async function proxyRequest(
     const url = new URL(req.url);
     const queryString = url.search;
     const targetUrl = `${BACKEND_URL}/api/v1/${path}${queryString}`;
-    
-    console.log('Proxy request:', { method, targetUrl, backend: BACKEND_URL });
 
     // Get the request body for non-GET requests
     let body = undefined;
     if (method !== 'GET' && method !== 'DELETE') {
       try {
         body = await req.text();
-      } catch (e) {
-        console.log('No body for request');
+      } catch {
+        // Body might be empty, that's ok
       }
     }
 
@@ -85,14 +76,11 @@ async function proxyRequest(
       }
     });
 
-    console.log('Making fetch request to:', targetUrl);
     const response = await fetch(targetUrl, {
       method,
       headers,
       body,
     });
-
-    console.log('Response received:', response.status);
 
     // Get response body
     const responseBody = await response.text();
@@ -111,19 +99,9 @@ async function proxyRequest(
       headers: responseHeaders,
     });
   } catch (error: any) {
-    console.error('Proxy error details:', {
-      message: error.message,
-      stack: error.stack,
-      cause: error.cause,
-      backend: BACKEND_URL
-    });
+    console.error('Proxy error:', error);
     return NextResponse.json(
-      { 
-        error: 'Proxy error', 
-        detail: error.message,
-        backend: BACKEND_URL,
-        stack: error.stack 
-      },
+      { error: 'Proxy error', detail: error.message },
       { status: 500 }
     );
   }
