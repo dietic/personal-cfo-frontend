@@ -570,7 +570,9 @@ class APIClient {
   async checkPDFAccessibility(file: File): Promise<{
     accessible: boolean;
     encrypted: boolean;
-    pages: number;
+    needs_password: boolean;
+    filename: string;
+    file_size: number;
     error?: string;
   }> {
     const formData = new FormData();
@@ -579,7 +581,9 @@ class APIClient {
     const response = await this.client.post<{
       accessible: boolean;
       encrypted: boolean;
-      pages: number;
+      needs_password: boolean;
+      filename: string;
+      file_size: number;
       error?: string;
     }>("/api/v1/statements/check-pdf", formData, {
       headers: {

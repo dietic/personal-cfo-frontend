@@ -132,12 +132,18 @@ export function StatementImport() {
           pdfStatus = await checkPDFMutation.mutateAsync(file);
         } catch {
           // If PDF check fails, assume it's not password protected and continue
-          pdfStatus = { accessible: true, encrypted: false, pages: 0 } as any;
+          pdfStatus = { 
+            accessible: true, 
+            encrypted: false, 
+            needs_password: false,
+            filename: file.name,
+            file_size: file.size
+          } as any;
         }
 
         setUploadProgress(20);
 
-        if (pdfStatus.encrypted && !pdfStatus.accessible) {
+        if (pdfStatus.needs_password || (pdfStatus.encrypted && !pdfStatus.accessible)) {
           setPasswordFile(file);
           setShowPasswordDialog(true);
           setIsUploading(false);
