@@ -225,7 +225,7 @@ class APIClient {
   }
 
   async refreshToken(): Promise<Token> {
-    const response = await this.client.post<Token>("/api/v1/auth/refresh");
+    const response = await this.client.post<Token>(this.normalizeUrl("/api/v1/auth/refresh"));
     this.setToken(response.data.access_token);
     return response.data;
   }
@@ -236,18 +236,17 @@ class APIClient {
 
   // User profile endpoints
   async getUserProfile(): Promise<User> {
-    const response = await this.client.get<User>("/api/v1/users/profile");
+    const response = await this.client.get<User>(this.normalizeUrl("/api/v1/users/profile"));
     return response.data;
   }
 
   async updateUserProfile(data: UserProfileUpdate): Promise<User> {
-    const response = await this.client.put<User>("/api/v1/users/profile", data);
+    const response = await this.client.put<User>(this.normalizeUrl("/api/v1/users/profile"), data);
     return response.data;
   }
 
   async changePlan(data: PlanChangeRequest): Promise<PlanChangeResponse> {
-    const response = await this.client.post<PlanChangeResponse>(
-      "/api/v1/users/plan/change",
+    const response = await this.client.post<PlanChangeResponse>(this.normalizeUrl("/api/v1/users/plan/change"),
       data
     );
     return response.data;
@@ -255,7 +254,7 @@ class APIClient {
 
   // Cards endpoints
   async getCards(): Promise<Card[]> {
-    const response = await this.client.get<Card[]>("/api/v1/cards/");
+    const response = await this.client.get<Card[]>(this.normalizeUrl("/api/v1/cards/"));
     return response.data;
   }
 
@@ -265,7 +264,7 @@ class APIClient {
   }
 
   async createCard(data: CardCreate): Promise<Card> {
-    const response = await this.client.post<Card>("/api/v1/cards/", data);
+    const response = await this.client.post<Card>(this.normalizeUrl("/api/v1/cards/"), data);
     return response.data;
   }
 
@@ -308,7 +307,7 @@ class APIClient {
       message: string;
     };
   }> {
-    const response = await this.client.get("/api/v1/categories/", {
+    const response = await this.client.get(this.normalizeUrl("/api/v1/categories/"), {
       params: { include_inactive: includeInactive },
     });
     return response.data;
@@ -321,7 +320,7 @@ class APIClient {
     plan_tier: string;
     message: string;
   }> {
-    const response = await this.client.get("/api/v1/categories/permissions");
+    const response = await this.client.get(this.normalizeUrl("/api/v1/categories/permissions"));
     return response.data;
   }
 
@@ -333,8 +332,7 @@ class APIClient {
   }
 
   async createCategory(data: CategoryCreate): Promise<Category> {
-    const response = await this.client.post<Category>(
-      "/api/v1/categories/",
+    const response = await this.client.post<Category>(this.normalizeUrl("/api/v1/categories/"),
       data
     );
     return response.data;
@@ -362,22 +360,20 @@ class APIClient {
     minimum_required: number;
     message: string;
   }> {
-    const response = await this.client.get(
-      "/api/v1/categories/validate-minimum"
+    const response = await this.client.get(this.normalizeUrl("/api/v1/categories/validate-minimum")
     );
     return response.data;
   }
 
   // Currencies endpoints
   async getCurrencies(): Promise<string[]> {
-    const response = await this.client.get<string[]>("/api/v1/currencies");
+    const response = await this.client.get<string[]>(this.normalizeUrl("/api/v1/currencies"));
     return response.data;
   }
 
   // Transactions endpoints
   async getTransactions(filters?: TransactionFilters): Promise<Transaction[]> {
-    const response = await this.client.get<Transaction[]>(
-      "/api/v1/transactions/",
+    const response = await this.client.get<Transaction[]>(this.normalizeUrl("/api/v1/transactions/"),
       {
         params: filters,
       }
@@ -393,8 +389,7 @@ class APIClient {
   }
 
   async createTransaction(data: TransactionCreate): Promise<Transaction> {
-    const response = await this.client.post<Transaction>(
-      "/api/v1/transactions/",
+    const response = await this.client.post<Transaction>(this.normalizeUrl("/api/v1/transactions/"),
       data
     );
     return response.data;
@@ -421,7 +416,7 @@ class APIClient {
     const response = await this.client.delete<{
       message: string;
       deleted_count: number;
-    }>("/api/v1/transactions/bulk", {
+    }>(this.normalizeUrl("/api/v1/transactions/bulk"), {
       data: { transaction_ids: transactionIds },
     });
     return response.data;
@@ -429,7 +424,7 @@ class APIClient {
 
   // Budgets endpoints
   async getBudgets(): Promise<Budget[]> {
-    const response = await this.client.get<Budget[]>("/api/v1/budgets/");
+    const response = await this.client.get<Budget[]>(this.normalizeUrl("/api/v1/budgets/"));
     return response.data;
   }
 
@@ -441,7 +436,7 @@ class APIClient {
   }
 
   async createBudget(data: BudgetCreate): Promise<Budget> {
-    const response = await this.client.post<Budget>("/api/v1/budgets/", data);
+    const response = await this.client.post<Budget>(this.normalizeUrl("/api/v1/budgets/"), data);
     return response.data;
   }
 
@@ -458,16 +453,14 @@ class APIClient {
   }
 
   async getBudgetAlerts(): Promise<BudgetAlert[]> {
-    const response = await this.client.get<BudgetAlert[]>(
-      "/api/v1/budgets/alerts"
+    const response = await this.client.get<BudgetAlert[]>(this.normalizeUrl("/api/v1/budgets/alerts")
     );
     return response.data;
   }
 
   // Recurring Services endpoints
   async getRecurringServices(): Promise<RecurringService[]> {
-    const response = await this.client.get<RecurringService[]>(
-      "/api/v1/recurring-services/"
+    const response = await this.client.get<RecurringService[]>(this.normalizeUrl("/api/v1/recurring-services/")
     );
     return response.data;
   }
@@ -482,8 +475,7 @@ class APIClient {
   async createRecurringService(
     data: RecurringServiceCreate
   ): Promise<RecurringService> {
-    const response = await this.client.post<RecurringService>(
-      "/api/v1/recurring-services/",
+    const response = await this.client.post<RecurringService>(this.normalizeUrl("/api/v1/recurring-services/"),
       data
     );
     return response.data;
@@ -511,8 +503,7 @@ class APIClient {
 
     const params = cardId ? { card_id: cardId } : undefined;
 
-    const response = await this.client.post<Statement>(
-      "/api/v1/statements/upload",
+    const response = await this.client.post<Statement>(this.normalizeUrl("/api/v1/statements/upload"),
       formData,
       {
         headers: {
@@ -537,8 +528,7 @@ class APIClient {
       formData.append("password", password);
     }
 
-    const response = await this.client.post<Statement>(
-      "/api/v1/statements/upload-simple",
+    const response = await this.client.post<Statement>(this.normalizeUrl("/api/v1/statements/upload-simple"),
       formData,
       {
         headers: {
@@ -568,8 +558,7 @@ class APIClient {
       formData.append("password", password);
     }
 
-    const response = await this.client.post(
-      "/api/v1/statements/upload-simple-async",
+    const response = await this.client.post(this.normalizeUrl("/api/v1/statements/upload-simple-async"),
       formData,
       {
         headers: {
@@ -599,7 +588,7 @@ class APIClient {
       filename: string;
       file_size: number;
       error?: string;
-    }>("/api/v1/statements/check-pdf", formData, {
+    }>(this.normalizeUrl("/api/v1/statements/check-pdf"), formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -626,7 +615,7 @@ class APIClient {
       success: boolean;
       message: string;
       statement_id?: string;
-    }>("/api/v1/statements/unlock-pdf", formData, {
+    }>(this.normalizeUrl("/api/v1/statements/unlock-pdf"), formData, {
       headers: {
         "Content-Type": "multipart/form-data",
       },
@@ -635,7 +624,7 @@ class APIClient {
   }
 
   async getStatements(): Promise<Statement[]> {
-    const response = await this.client.get<Statement[]>("/api/v1/statements/");
+    const response = await this.client.get<Statement[]>(this.normalizeUrl("/api/v1/statements/"));
     return response.data;
   }
 
@@ -719,8 +708,7 @@ class APIClient {
   async getCategorySpending(
     filters?: AnalyticsFilters
   ): Promise<CategorySpending[]> {
-    const response = await this.client.get<CategorySpending[]>(
-      "/api/v1/analytics/category",
+    const response = await this.client.get<CategorySpending[]>(this.normalizeUrl("/api/v1/analytics/category"),
       {
         params: filters,
       }
@@ -729,8 +717,7 @@ class APIClient {
   }
 
   async getSpendingTrends(filters?: TrendsFilters): Promise<SpendingTrend[]> {
-    const response = await this.client.get<SpendingTrend[]>(
-      "/api/v1/analytics/trends",
+    const response = await this.client.get<SpendingTrend[]>(this.normalizeUrl("/api/v1/analytics/trends"),
       {
         params: filters,
       }
@@ -739,22 +726,19 @@ class APIClient {
   }
 
   async getYearComparison(): Promise<YearComparison> {
-    const response = await this.client.get<YearComparison>(
-      "/api/v1/analytics/comparison"
+    const response = await this.client.get<YearComparison>(this.normalizeUrl("/api/v1/analytics/comparison")
     );
     return response.data;
   }
 
   async getAIInsights(): Promise<AIInsight[]> {
-    const response = await this.client.get<AIInsight[]>(
-      "/api/v1/analytics/insights"
+    const response = await this.client.get<AIInsight[]>(this.normalizeUrl("/api/v1/analytics/insights")
     );
     return response.data;
   }
 
   async getAnalyticsDashboard(): Promise<AnalyticsResponse> {
-    const response = await this.client.get<AnalyticsResponse>(
-      "/api/v1/analytics/"
+    const response = await this.client.get<AnalyticsResponse>(this.normalizeUrl("/api/v1/analytics/")
     );
     return response.data;
   }
@@ -763,22 +747,21 @@ class APIClient {
   async categorizeTransaction(
     params: CategorizeTransactionParams
   ): Promise<any> {
-    const response = await this.client.post("/api/v1/ai/categorize", null, {
+    const response = await this.client.post(this.normalizeUrl("/api/v1/ai/categorize"), null, {
       params,
     });
     return response.data;
   }
 
   async analyzeSpendingPatterns(): Promise<any> {
-    const response = await this.client.post("/api/v1/ai/analyze-spending");
+    const response = await this.client.post(this.normalizeUrl("/api/v1/ai/analyze-spending"));
     return response.data;
   }
 
   async detectTransactionAnomalies(
     params: DetectAnomaliesParams
   ): Promise<any> {
-    const response = await this.client.post(
-      "/api/v1/ai/detect-anomalies",
+    const response = await this.client.post(this.normalizeUrl("/api/v1/ai/detect-anomalies"),
       null,
       {
         params,
@@ -800,8 +783,7 @@ class APIClient {
   async createKeyword(
     data: CategoryKeywordCreate
   ): Promise<CategoryKeywordResponse> {
-    const response = await this.client.post<CategoryKeywordResponse>(
-      "/api/v1/keywords/",
+    const response = await this.client.post<CategoryKeywordResponse>(this.normalizeUrl("/api/v1/keywords/"),
       data
     );
     return response.data;
@@ -810,8 +792,7 @@ class APIClient {
   async createKeywordsBulk(
     data: CategoryKeywordsBulkCreate
   ): Promise<CategoryKeywordResponse[]> {
-    const response = await this.client.post<CategoryKeywordResponse[]>(
-      "/api/v1/keywords/bulk",
+    const response = await this.client.post<CategoryKeywordResponse[]>(this.normalizeUrl("/api/v1/keywords/bulk"),
       data
     );
     return response.data;
@@ -833,23 +814,20 @@ class APIClient {
   }
 
   async seedDefaultKeywords(): Promise<CategoryKeywordResponse[]> {
-    const response = await this.client.post<CategoryKeywordResponse[]>(
-      "/api/v1/keywords/seed-defaults"
+    const response = await this.client.post<CategoryKeywordResponse[]>(this.normalizeUrl("/api/v1/keywords/seed-defaults")
     );
     return response.data;
   }
 
   // Excluded keywords endpoints
   async getExcludedKeywords(): Promise<ExcludedKeywordListResponse> {
-    const response = await this.client.get<ExcludedKeywordListResponse>(
-      "/api/v1/user-settings/excluded-keywords/"
+    const response = await this.client.get<ExcludedKeywordListResponse>(this.normalizeUrl("/api/v1/user-settings/excluded-keywords/")
     );
     return response.data;
   }
 
   async addExcludedKeyword(keyword: string): Promise<ExcludedKeywordItem> {
-    const response = await this.client.post<ExcludedKeywordItem>(
-      "/api/v1/user-settings/excluded-keywords/",
+    const response = await this.client.post<ExcludedKeywordItem>(this.normalizeUrl("/api/v1/user-settings/excluded-keywords/"),
       { keyword }
     );
     return response.data;
@@ -862,8 +840,7 @@ class APIClient {
   }
 
   async resetExcludedKeywords(): Promise<ExcludedKeywordListResponse> {
-    const response = await this.client.post<ExcludedKeywordListResponse>(
-      "/api/v1/user-settings/excluded-keywords/reset",
+    const response = await this.client.post<ExcludedKeywordListResponse>(this.normalizeUrl("/api/v1/user-settings/excluded-keywords/reset"),
       {}
     );
     return response.data;
@@ -871,7 +848,7 @@ class APIClient {
 
   // Admin endpoints
   async adminListUsers(params: AdminUsersParams = {}): Promise<User[]> {
-    const response = await this.client.get<User[]>("/api/v1/admin/users", {
+    const response = await this.client.get<User[]>(this.normalizeUrl("/api/v1/admin/users"), {
       params: {
         limit: 25,
         sort: "created_at",
@@ -898,8 +875,7 @@ class APIClient {
     end?: string,
     tz: string = "America/Lima"
   ): Promise<SignupStatsResponse> {
-    const response = await this.client.get<SignupStatsResponse>(
-      "/api/v1/admin/stats/signups",
+    const response = await this.client.get<SignupStatsResponse>(this.normalizeUrl("/api/v1/admin/stats/signups"),
       {
         params: { start, end, tz },
       }
