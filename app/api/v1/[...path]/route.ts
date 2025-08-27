@@ -16,19 +16,6 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
-  // Debug endpoint to check environment variables
-  if (params.path[0] === 'debug-env') {
-    return NextResponse.json({
-      BACKEND_URL,
-      environment_variables: {
-        API_BASE_URL: process.env.API_BASE_URL,
-        NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
-        NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE,
-        API_BASE: process.env.API_BASE,
-      },
-      message: "Environment variables from deployed Next.js backend proxy"
-    }, { status: 200 });
-  }
   
   return proxyRequest(req, params.path, 'GET');
 }
