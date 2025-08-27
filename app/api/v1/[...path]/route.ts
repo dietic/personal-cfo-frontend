@@ -8,7 +8,7 @@ const BACKEND_URL = (() => {
     process.env.NEXT_PUBLIC_API_BASE_URL ||
     process.env.NEXT_PUBLIC_API_BASE ||
     process.env.API_BASE ||
-    "http://personalcfo-alb-821661594.us-east-1.elb.amazonaws.com";
+    "http://personalcfo-alb-1982358362.us-east-1.elb.amazonaws.com";
   return raw.replace(/\/+$/, "");
 })();
 
@@ -16,6 +16,20 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
+  // Debug endpoint to check environment variables
+  if (params.path[0] === 'debug-env') {
+    return NextResponse.json({
+      BACKEND_URL,
+      environment_variables: {
+        API_BASE_URL: process.env.API_BASE_URL,
+        NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+        NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE,
+        API_BASE: process.env.API_BASE,
+      },
+      headers: Object.fromEntries(req.headers.entries()),
+    });
+  }
+  
   return proxyRequest(req, params.path, 'GET');
 }
 
