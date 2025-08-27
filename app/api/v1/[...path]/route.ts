@@ -10,7 +10,9 @@ const BACKEND_URL = (() => {
     process.env.NEXT_PUBLIC_API_BASE ||
     process.env.API_BASE ||
     "http://personalcfo-alb-1982358362.us-east-1.elb.amazonaws.com";
-  return raw.replace(/\/+$/, "");
+  
+  // Remove trailing slashes and any /api/v1 suffix since we'll add it in the proxy function
+  return raw.replace(/\/+$/, "").replace(/\/api\/v1$/, "");
 })();
 
 export async function GET(
