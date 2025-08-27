@@ -9,10 +9,14 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
-  // Allow environment variables to be set from Vercel
+  // Environment variables configuration
   env: {
-    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || "",
-    API_BASE_URL: process.env.API_BASE_URL || "",
+    // For client-side: Always use proxy in production to avoid mixed content issues
+    NEXT_PUBLIC_API_BASE_URL: process.env.NODE_ENV === 'production' 
+      ? "/api/v1" 
+      : (process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"),
+    // For server-side: Use direct AWS backend URL
+    API_BASE_URL: process.env.API_BASE_URL || "http://personalcfo-alb-1982358362.us-east-1.elb.amazonaws.com/api/v1",
   },
   experimental: {
     turbo: {
