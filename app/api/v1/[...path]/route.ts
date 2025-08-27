@@ -59,6 +59,18 @@ async function proxyRequest(
     const queryString = url.search;
     const targetUrl = `${BACKEND_URL}/api/v1/${path}${queryString}`;
 
+    // Debug logging
+    console.log('[PROXY DEBUG]', {
+      method,
+      path,
+      BACKEND_URL,
+      targetUrl,
+      env: {
+        API_BASE_URL: process.env.API_BASE_URL,
+        NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+      }
+    });
+
     // Get the request body for non-GET requests
     let body = undefined;
     if (method !== 'GET' && method !== 'DELETE') {
