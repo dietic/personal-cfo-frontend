@@ -130,8 +130,10 @@ export function StatementImport() {
         let pdfStatus;
         try {
           pdfStatus = await checkPDFMutation.mutateAsync(file);
-        } catch {
-          // If PDF check fails, assume it's not password protected and continue
+          console.log("🔍 PDF Check Response:", pdfStatus);
+        } catch (error) {
+          // If PDF check fails, log the error and assume it's not password protected
+          console.error("🔍 PDF Check Error:", error);
           pdfStatus = { 
             accessible: true, 
             encrypted: false, 
@@ -142,6 +144,15 @@ export function StatementImport() {
         }
 
         setUploadProgress(20);
+
+        console.log("🔍 Password Dialog Check:", {
+          needs_password: pdfStatus.needs_password,
+          encrypted: pdfStatus.encrypted,
+          accessible: pdfStatus.accessible,
+          condition1: pdfStatus.needs_password,
+          condition2: (pdfStatus.encrypted && !pdfStatus.accessible),
+          shouldShowDialog: pdfStatus.needs_password || (pdfStatus.encrypted && !pdfStatus.accessible)
+        });
 
         if (pdfStatus.needs_password || (pdfStatus.encrypted && !pdfStatus.accessible)) {
           setPasswordFile(file);
