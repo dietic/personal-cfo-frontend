@@ -3,9 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs';
 
 const BACKEND_URL = (() => {
+  // For server-side proxy, prioritize server-side env vars and skip client-side ones
   const raw =
     process.env.API_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
+    (process.env.NEXT_PUBLIC_API_BASE_URL?.startsWith('http') ? process.env.NEXT_PUBLIC_API_BASE_URL : null) ||
     process.env.NEXT_PUBLIC_API_BASE ||
     process.env.API_BASE ||
     "http://personalcfo-alb-1982358362.us-east-1.elb.amazonaws.com";
