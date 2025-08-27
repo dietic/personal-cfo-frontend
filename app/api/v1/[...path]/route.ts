@@ -26,8 +26,8 @@ export async function GET(
         NEXT_PUBLIC_API_BASE: process.env.NEXT_PUBLIC_API_BASE,
         API_BASE: process.env.API_BASE,
       },
-      headers: Object.fromEntries(req.headers.entries()),
-    });
+      message: "Environment variables from deployed Next.js backend proxy"
+    }, { status: 200 });
   }
   
   return proxyRequest(req, params.path, 'GET');
