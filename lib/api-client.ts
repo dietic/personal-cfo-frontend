@@ -282,16 +282,17 @@ class APIClient {
 
   // Bank Providers endpoints
   async getBankProviders(queryParams?: string): Promise<BankProviderSimple[]> {
+    const basePath = "/api/v1/bank-providers/";
     const url = queryParams
-      ? `/api/v1/bank-providers/?${queryParams}`
-      : "/api/v1/bank-providers/";
-    const response = await this.client.get<BankProviderSimple[]>(url);
+      ? `${basePath}?${queryParams}`
+      : basePath;
+    const response = await this.client.get<BankProviderSimple[]>(this.normalizeUrl(url));
     return response.data;
   }
 
   async getBankProvider(bankId: string): Promise<BankProvider> {
     const response = await this.client.get<BankProvider>(
-      `/api/v1/bank-providers/${bankId}`
+      this.normalizeUrl(`/api/v1/bank-providers/${bankId}`)
     );
     return response.data;
   }
