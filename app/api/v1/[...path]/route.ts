@@ -16,6 +16,18 @@ export async function GET(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
+  // Special debug endpoint
+  if (params.path[0] === 'debug' && params.path[1] === 'config') {
+    return NextResponse.json({
+      BACKEND_URL,
+      params_path: params.path,
+      env: {
+        API_BASE_URL: process.env.API_BASE_URL,
+        NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL,
+        NODE_ENV: process.env.NODE_ENV,
+      }
+    });
+  }
   
   return proxyRequest(req, params.path, 'GET');
 }
