@@ -72,8 +72,12 @@ const TOKEN_KEY = "access_token";
 
 class APIClient {
   private readonly client: AxiosInstance;
+  private readonly isProxyMode: boolean;
 
   constructor() {
+    // Check if we're in proxy mode (baseURL is just /api/v1)
+    this.isProxyMode = API_URL === "/api/v1";
+    
     this.client = axios.create({
       baseURL: API_URL,
       headers: {
@@ -179,10 +183,20 @@ class APIClient {
     return !!this.getToken();
   }
 
+  // Helper method to normalize URLs for proxy vs direct mode
+  private normalizeUrl(path: string): string {
+    if (this.isProxyMode) {
+      // In proxy mode, strip /api/v1 prefix since baseURL already includes it
+      return path.replace(/^\/api\/v1/, '');
+    }
+    // In direct mode, keep the full path
+    return path;
+  }
+
   // Authentication endpoints
   async register(data: UserCreate): Promise<User> {
     const response = await this.client.post<User>(
-      "/api/v1/auth/register",
+      this.normalizeUrl("/api/v1/auth/register"),
       data
     );
     return response.data;
