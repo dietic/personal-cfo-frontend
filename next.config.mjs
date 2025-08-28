@@ -11,10 +11,8 @@ const nextConfig = {
   },
   // Environment variables configuration
   env: {
-    // For client-side: Always use proxy in production to avoid mixed content issues
-    NEXT_PUBLIC_API_BASE_URL: process.env.NODE_ENV === 'production' 
-      ? "/api/v1" 
-      : (process.env.NEXT_PUBLIC_API_BASE_URL || "/api/v1"),
+    // For client-side: Use direct API URL in production
+    NEXT_PUBLIC_API_BASE_URL: process.env.NEXT_PUBLIC_API_BASE_URL || "https://api.personal-cfo.io/api/v1",
     // For server-side: Use direct AWS backend URL
     API_BASE_URL: process.env.API_BASE_URL || "https://api.personal-cfo.io",
   },
