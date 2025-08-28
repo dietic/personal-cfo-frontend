@@ -3,13 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = 'nodejs';
 
 const BACKEND_URL = (() => {
-  // For server-side proxy, prioritize server-side env vars and skip client-side ones
+  // For server-side proxy, use environment variables
   const raw =
     process.env.API_BASE_URL ||
     (process.env.NEXT_PUBLIC_API_BASE_URL?.startsWith('http') ? process.env.NEXT_PUBLIC_API_BASE_URL : null) ||
     process.env.NEXT_PUBLIC_API_BASE ||
-    process.env.API_BASE ||
-    "http://personalcfo-alb-1982358362.us-east-1.elb.amazonaws.com";
+    process.env.API_BASE;
+  
+  if (!raw) {
+    throw new Error('API_BASE_URL environment variable is required for the API proxy. Please set it in your Vercel environment variables or .env.local file.');
+  }
   
   // Remove trailing slashes and any /api/v1 suffix since we'll add it in the proxy function
   return raw.replace(/\/+$/, "").replace(/\/api\/v1$/, "");

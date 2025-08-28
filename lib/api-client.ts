@@ -56,16 +56,21 @@ import {
   YearComparison,
 } from "./types";
 
-// --- Robust API baseURL handling ---
-// Prefer a configurable base URL via NEXT_PUBLIC_API_BASE_URL for Vercel/production.
-// Falls back to empty string so requests use same-origin relative paths in dev with a proxy.
+// --- API baseURL handling ---
+// Uses NEXT_PUBLIC_API_BASE_URL environment variable for the API base URL
+// This should be set in Vercel environment variables for production
 const API_URL = (() => {
   const raw = process.env.NEXT_PUBLIC_API_BASE_URL;
-  console.log("🔍 API_URL raw:", raw); // Debug log
-  if (!raw) return "";
-  // strip trailing slashes to avoid double slashes when joining with request paths
+  
+  // In development, you can use a relative URL like '/api/v1' to use the Next.js proxy
+  // In production, this should be set to your actual backend API URL
+  if (!raw) {
+    console.warn("NEXT_PUBLIC_API_BASE_URL is not set. Using empty string (same-origin requests)");
+    return "";
+  }
+  
+  // Strip trailing slashes to avoid double slashes when joining with request paths
   const cleaned = raw.replace(/\/+$/, "");
-  console.log("🔍 API_URL cleaned:", cleaned); // Debug log
   return cleaned;
 })();
 const TOKEN_KEY = "access_token";
@@ -89,12 +94,14 @@ class APIClient {
     this.client.interceptors.request.use((config) => {
       const token = this.getToken();
 
-      // Debug logging
-      console.log("🔍 Request config:", {
-        baseURL: config.baseURL,
-        url: config.url,
-        fullURL: `${config.baseURL}${config.url}`
-      });
+      // Debug logging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        console.log("🔍 Request config:", {
+          baseURL: config.baseURL,
+          url: config.url,
+          fullURL: `${config.baseURL}${config.url}`
+        });
+      }
 
       // SIMPLIFIED: Only handle health endpoint special case
       const base = (config.baseURL ?? this.client.defaults.baseURL ?? "") as string;
