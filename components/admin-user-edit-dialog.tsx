@@ -22,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAdminUpdateUser } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { User, UserTypeEnum } from "@/lib/types";
+import { useAuth } from "@/lib/auth-context";
 import { useState, useEffect } from "react";
 import { Edit3, Save, X, UserCog, Shield, Zap, Crown, UserCheck, UserX } from "lucide-react";
 
@@ -37,6 +38,7 @@ export function AdminUserEditDialog({
   onOpenChange,
 }: AdminUserEditDialogProps) {
   const { t } = useI18n();
+  const { user: currentUser } = useAuth();
   const updateUser = useAdminUpdateUser();
   
   const [isAdmin, setIsAdmin] = useState(false);
@@ -53,15 +55,22 @@ export function AdminUserEditDialog({
   }, [user, open]);
 
   const handleSave = () => {
-    if (!user) return;
+    if (!user || !currentUser) return;
+    
+    // Build update data - exclude admin status if current user is editing themselves
+    const updateData: any = {
+      plan_tier: planTier,
+      is_active: isActive,
+    };
+    
+    // Only include admin status if current user is not editing themselves
+    if (user.id !== currentUser.id) {
+      updateData.is_admin = isAdmin;
+    }
     
     updateUser.mutate({
       userId: user.id,
-      updateData: {
-        is_admin: isAdmin,
-        plan_tier: planTier,
-        is_active: isActive,
-      },
+      updateData,
     }, {
       onSuccess: () => {
         onOpenChange(false);
@@ -130,30 +139,32 @@ export function AdminUserEditDialog({
             </div>
           </div>
 
-          {/* Permissions Section */}
-          <div className="space-y-4 rounded-lg border p-4">
-            <h3 className="text-sm font-medium flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              {t("admin.editUser.permissions")}
-            </h3>
-            
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <Label htmlFor="is-admin" className="text-sm font-medium">
-                  {t("admin.editUser.isAdmin")}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {isAdmin ? t("admin.editUser.adminDescription") : t("admin.editUser.userDescription")}
-                </p>
+          {/* Permissions Section - Hide admin toggle if editing self */}
+          {user && currentUser && user.id !== currentUser.id && (
+            <div className="space-y-4 rounded-lg border p-4">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                {t("admin.editUser.permissions")}
+              </h3>
+              
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="is-admin" className="text-sm font-medium">
+                    {t("admin.editUser.isAdmin")}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {isAdmin ? t("admin.editUser.adminDescription") : t("admin.editUser.userDescription")}
+                  </p>
+                </div>
+                <Switch
+                  id="is-admin"
+                  checked={isAdmin}
+                  onCheckedChange={setIsAdmin}
+                  className="data-[state=checked]:bg-blue-600"
+                />
               </div>
-              <Switch
-                id="is-admin"
-                checked={isAdmin}
-                onCheckedChange={setIsAdmin}
-                className="data-[state=checked]:bg-blue-600"
-              />
             </div>
-          </div>
+          )}
 
           {/* Subscription Plan Section */}
           <div className="space-y-4 rounded-lg border p-4">
