@@ -18,7 +18,7 @@ export interface User {
   // Admin flag (RBAC)
   is_admin: boolean;
   // User plan tier
-  plan_tier: "free" | "plus" | "pro" | "admin";
+  plan_tier: "free" | "plus" | "pro";
   created_at: string;
   updated_at?: string;
 }
@@ -46,14 +46,14 @@ export interface Token {
 }
 
 export interface PlanChangeRequest {
-  target_plan: "free" | "plus" | "pro" | "admin";
+  target_plan: "free" | "plus" | "pro";
 }
 
 export interface PlanChangeResponse {
   success: boolean;
   message: string;
   checkout_url?: string;
-  current_plan: "free" | "plus" | "pro" | "admin";
+  current_plan: "free" | "plus" | "pro";
 }
 
 export interface Category {
@@ -460,4 +460,10 @@ export interface OTPVerifyRequest {
 
 export interface OTPResendRequest {
   email: string;
+}
+
+export enum UserTypeEnum {
+  FREE = "free",
+  PLUS = "plus", 
+  PRO = "pro"
 }

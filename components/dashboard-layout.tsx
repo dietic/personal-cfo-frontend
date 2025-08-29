@@ -277,7 +277,7 @@ export function DashboardLayout({
             </SidebarMenu>
 
             {/* Dynamic upgrade section based on user plan */}
-            {user?.plan_tier !== "admin" && (
+            {!user?.is_admin && (
               <div className="mt-6 px-4">
                 <div className="rounded-lg bg-muted p-3">
                   <div className="flex items-center gap-3 mb-2">

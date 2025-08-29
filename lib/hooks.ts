@@ -1179,6 +1179,59 @@ export function useToggleUserActive() {
   });
 }
 
+export function useAdminUpdateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      userId,
+      updateData,
+    }: {
+      userId: string;
+      updateData: { is_admin?: boolean; plan_tier?: string; is_active?: boolean };
+    }) => apiClient.adminUpdateUser(userId, updateData),
+    onMutate: async ({
+      userId,
+      updateData,
+    }: {
+      userId: string;
+      updateData: { is_admin?: boolean; plan_tier?: string; is_active?: boolean };
+    }) => {
+      // Cancel all admin user queries (with any params)
+      await queryClient.cancelQueries({ queryKey: ["admin", "users"] });
+      const prev = queryClient.getQueriesData<User[]>({
+        queryKey: ["admin", "users"],
+      });
+      // Optimistic update across all cached admin user lists
+      prev.forEach(([key, users]: [QueryKey, User[] | undefined]) => {
+        if (!users) return;
+        const updated = users.map((u: User) =>
+          u.id === userId ? { ...u, ...updateData } : u
+        );
+        queryClient.setQueryData<User[]>(key, updated);
+      });
+      return { prev } as { prev: Array<[QueryKey, User[] | undefined]> };
+    },
+    onError: (
+      _err: any,
+      _vars: { userId: string; updateData: any },
+      context?: { prev: Array<[QueryKey, User[] | undefined]> }
+    ) => {
+      // Rollback
+      context?.prev?.forEach(([key, data]) => {
+        if (data) queryClient.setQueryData<User[]>(key, data);
+      });
+      toast.error(tInstant("admin.userUpdateFailed"));
+    },
+    onSuccess: (_data: User) => {
+      toast.success(tInstant("admin.userUpdated"));
+    },
+    onSettled: () => {
+      // Invalidate all admin user queries regardless of params
+      queryClient.invalidateQueries({ queryKey: ["admin", "users"] });
+    },
+  });
+}
+
 export function useAdminSignupStats(
   start?: string,
   end?: string,

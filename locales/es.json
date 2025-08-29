@@ -86,6 +86,7 @@
   "common.error": "Error",
   "common.unknown": "Desconocido",
   "common.redirectingToLogin": "Redirigiendo al inicio de sesión...",
+  "common.save": "Guardar",
 
   "sidebar.toggle": "Alternar barra lateral",
 
@@ -682,8 +683,6 @@
   "layout.upgrade.plus.description": "Mejora a Pro para límites ilimitados y funciones avanzadas.",
   "layout.upgrade.pro.title": "Plan Pro",
   "layout.upgrade.pro.description": "Ya tienes acceso completo a todas las funciones.",
-  "layout.upgrade.admin.title": "Plan Admin",
-  "layout.upgrade.admin.description": "Acceso completo de administrador del sistema.",
   "layout.upgrade.button": "Ver planes",
 
   "upgrade.title": "Elige tu plan",
@@ -936,6 +935,7 @@
   "excludedKeywords.deleteFailed": "No se pudo eliminar la palabra",
   "excludedKeywords.resetSuccess": "Restablecido a predeterminados",
   "excludedKeywords.resetFailed": "No se pudo restablecer",
+  "excludedKeywords.remove": "Quitar",
 
   "admin.title": "Administración",
   "admin.users.title": "Usuarios",
@@ -958,6 +958,23 @@
   "admin.pagination.previous": "Anterior",
   "admin.pagination.next": "Siguiente",
   "admin.pagination.page": "Página {page}",
+  "admin.cannotChangeOwn": "No puedes modificar tu propia cuenta",
+  "admin.actions.edit": "Editar",
+  "admin.editUser.title": "Editar Usuario",
+  "admin.editUser.description": "Actualizar permisos y plan para {email}",
+  "admin.editUser.isAdmin": "Es Administrador",
+  "admin.editUser.planTier": "Nivel de Plan",
+  "admin.editUser.selectPlan": "Seleccionar plan",
+  "admin.editUser.isActive": "Está Activo",
+  "admin.editUser.accountStatus": "Estado de Cuenta",
+  "admin.editUser.permissions": "Permisos",
+  "admin.editUser.subscriptionPlan": "Plan de Suscripción",
+  "admin.editUser.activeDescription": "Usuario puede acceder a la plataforma",
+  "admin.editUser.inactiveDescription": "Cuenta de usuario desactivada",
+  "admin.editUser.adminDescription": "Acceso administrativo completo",
+  "admin.editUser.userDescription": "Permisos de usuario estándar",
+  "admin.userUpdated": "Usuario actualizado exitosamente",
+  "admin.userUpdateFailed": "Error al actualizar usuario",
 
   "theme.toggle": "Cambiar tema",
   "theme.light": "Claro",
@@ -1062,5 +1079,9 @@
   "profile.danger.cancel": "Cancelar",
   "profile.danger.confirmDelete": "Eliminar cuenta",
   "profile.danger.deleteRequested": "Solicitud de eliminación enviada",
-  "profile.danger.deleteFailed": "No se pudo solicitar la eliminación de la cuenta"
+  "profile.danger.deleteFailed": "No se pudo solicitar la eliminación de la cuenta",
+
+  "plans.free": "Gratis",
+  "plans.plus": "Plus",
+  "plans.pro": "Pro"
 }

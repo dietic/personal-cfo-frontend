@@ -266,7 +266,7 @@ class APIClient {
   }
 
   async getCard(cardId: string): Promise<Card> {
-    const response = await this.client.get<Card>(`/api/v1/cards/${cardId}`);
+    const response = await this.client.get<Card>(this.normalizeUrl(`/api/v1/cards/${cardId}`));
     return response.data;
   }
 
@@ -277,14 +277,14 @@ class APIClient {
 
   async updateCard(cardId: string, data: CardUpdate): Promise<Card> {
     const response = await this.client.put<Card>(
-      `/api/v1/cards/${cardId}`,
+      this.normalizeUrl(`/api/v1/cards/${cardId}`),
       data
     );
     return response.data;
   }
 
   async deleteCard(cardId: string): Promise<void> {
-    await this.client.delete(`/api/v1/cards/${cardId}`);
+    await this.client.delete(this.normalizeUrl(`/api/v1/cards/${cardId}`));
   }
 
   // Bank Providers endpoints
@@ -334,7 +334,7 @@ class APIClient {
 
   async getCategory(categoryId: string): Promise<Category> {
     const response = await this.client.get<Category>(
-      `/api/v1/categories/${categoryId}`
+      this.normalizeUrl(`/api/v1/categories/${categoryId}`)
     );
     return response.data;
   }
@@ -351,14 +351,14 @@ class APIClient {
     data: CategoryUpdate
   ): Promise<Category> {
     const response = await this.client.put<Category>(
-      `/api/v1/categories/${categoryId}`,
+      this.normalizeUrl(`/api/v1/categories/${categoryId}`),
       data
     );
     return response.data;
   }
 
   async deleteCategory(categoryId: string): Promise<void> {
-    await this.client.delete(`/api/v1/categories/${categoryId}`);
+    await this.client.delete(this.normalizeUrl(`/api/v1/categories/${categoryId}`));
   }
 
   // Categories validation endpoint (working fallback)
@@ -391,7 +391,7 @@ class APIClient {
 
   async getTransaction(transactionId: string): Promise<Transaction> {
     const response = await this.client.get<Transaction>(
-      `/api/v1/transactions/${transactionId}`
+      this.normalizeUrl(`/api/v1/transactions/${transactionId}`)
     );
     return response.data;
   }
@@ -408,14 +408,14 @@ class APIClient {
     data: TransactionUpdate
   ): Promise<Transaction> {
     const response = await this.client.put<Transaction>(
-      `/api/v1/transactions/${transactionId}`,
+      this.normalizeUrl(`/api/v1/transactions/${transactionId}`),
       data
     );
     return response.data;
   }
 
   async deleteTransaction(transactionId: string): Promise<void> {
-    await this.client.delete(`/api/v1/transactions/${transactionId}`);
+    await this.client.delete(this.normalizeUrl(`/api/v1/transactions/${transactionId}`));
   }
 
   async deleteTransactionsBulk(
@@ -438,7 +438,7 @@ class APIClient {
 
   async getBudget(budgetId: string): Promise<Budget> {
     const response = await this.client.get<Budget>(
-      `/api/v1/budgets/${budgetId}`
+      this.normalizeUrl(`/api/v1/budgets/${budgetId}`)
     );
     return response.data;
   }
@@ -450,14 +450,14 @@ class APIClient {
 
   async updateBudget(budgetId: string, data: BudgetUpdate): Promise<Budget> {
     const response = await this.client.put<Budget>(
-      `/api/v1/budgets/${budgetId}`,
+      this.normalizeUrl(`/api/v1/budgets/${budgetId}`),
       data
     );
     return response.data;
   }
 
   async deleteBudget(budgetId: string): Promise<void> {
-    await this.client.delete(`/api/v1/budgets/${budgetId}`);
+    await this.client.delete(this.normalizeUrl(`/api/v1/budgets/${budgetId}`));
   }
 
   async getBudgetAlerts(): Promise<BudgetAlert[]> {
@@ -475,7 +475,7 @@ class APIClient {
 
   async getRecurringService(serviceId: string): Promise<RecurringService> {
     const response = await this.client.get<RecurringService>(
-      `/api/v1/recurring-services/${serviceId}`
+      this.normalizeUrl(`/api/v1/recurring-services/${serviceId}`)
     );
     return response.data;
   }
@@ -494,14 +494,14 @@ class APIClient {
     data: RecurringServiceUpdate
   ): Promise<RecurringService> {
     const response = await this.client.put<RecurringService>(
-      `/api/v1/recurring-services/${serviceId}`,
+      this.normalizeUrl(`/api/v1/recurring-services/${serviceId}`),
       data
     );
     return response.data;
   }
 
   async deleteRecurringService(serviceId: string): Promise<void> {
-    await this.client.delete(`/api/v1/recurring-services/${serviceId}`);
+    await this.client.delete(this.normalizeUrl(`/api/v1/recurring-services/${serviceId}`));
   }
 
   // Statements endpoints
@@ -645,7 +645,7 @@ class APIClient {
       message: string;
       transactions_deleted: number;
       statement_id: string;
-    }>(`/api/v1/statements/${statementId}`);
+    }>(this.normalizeUrl(`/api/v1/statements/${statementId}`));
     return response.data;
   }
 
@@ -654,7 +654,7 @@ class APIClient {
     cardId: string
   ): Promise<StatementProcess> {
     const response = await this.client.post<StatementProcess>(
-      `/api/v1/statements/${statementId}/process`,
+      this.normalizeUrl(`/api/v1/statements/${statementId}/process`),
       null,
       {
         params: { card_id: cardId },
@@ -667,7 +667,7 @@ class APIClient {
     statementId: string
   ): Promise<StatementStatusResponse> {
     const response = await this.client.get<StatementStatusResponse>(
-      `/api/v1/statements/status/${statementId}`
+      this.normalizeUrl(`/api/v1/statements/status/${statementId}`)
     );
     return response.data;
   }
@@ -677,7 +677,7 @@ class APIClient {
     data: ExtractionRequest
   ): Promise<ExtractionResponse> {
     const response = await this.client.post<ExtractionResponse>(
-      `/api/v1/statements/${statementId}/extract`,
+      this.normalizeUrl(`/api/v1/statements/${statementId}/extract`),
       data
     );
     return response.data;
@@ -688,7 +688,7 @@ class APIClient {
     data: CategorizationRequest
   ): Promise<CategorizationResponse> {
     const response = await this.client.post<CategorizationResponse>(
-      `/api/v1/statements/${statementId}/categorize`,
+      this.normalizeUrl(`/api/v1/statements/${statementId}/categorize`),
       data
     );
     return response.data;
@@ -699,7 +699,7 @@ class APIClient {
     data: CategorizationRequest
   ): Promise<CategorizationResponse> {
     const response = await this.client.post<CategorizationResponse>(
-      `/api/v1/statements/${statementId}/recategorize`,
+      this.normalizeUrl(`/api/v1/statements/${statementId}/recategorize`),
       data
     );
     return response.data;
@@ -707,7 +707,7 @@ class APIClient {
 
   async retryStatement(statementId: string): Promise<any> {
     const response = await this.client.post(
-      `/api/v1/statements/${statementId}/retry`
+      this.normalizeUrl(`/api/v1/statements/${statementId}/retry`)
     );
     return response.data;
   }
@@ -783,7 +783,7 @@ class APIClient {
     categoryId: string
   ): Promise<CategoryKeywordResponse[]> {
     const response = await this.client.get<CategoryKeywordResponse[]>(
-      `/api/v1/keywords/by-category/${categoryId}`
+      this.normalizeUrl(`/api/v1/keywords/by-category/${categoryId}`)
     );
     return response.data;
   }
@@ -811,14 +811,14 @@ class APIClient {
     data: CategoryKeywordUpdate
   ): Promise<CategoryKeywordResponse> {
     const response = await this.client.put<CategoryKeywordResponse>(
-      `/api/v1/keywords/${keywordId}`,
+      this.normalizeUrl(`/api/v1/keywords/${keywordId}`),
       data
     );
     return response.data;
   }
 
   async deleteKeyword(keywordId: string): Promise<void> {
-    await this.client.delete(`/api/v1/keywords/${keywordId}`);
+    await this.client.delete(this.normalizeUrl(`/api/v1/keywords/${keywordId}`));
   }
 
   async seedDefaultKeywords(): Promise<CategoryKeywordResponse[]> {
@@ -843,7 +843,7 @@ class APIClient {
 
   async deleteExcludedKeyword(keywordId: string): Promise<void> {
     await this.client.delete(
-      `/api/v1/user-settings/excluded-keywords/${keywordId}`
+      this.normalizeUrl(`/api/v1/user-settings/excluded-keywords/${keywordId}`)
     );
   }
 
@@ -872,8 +872,19 @@ class APIClient {
     isActive: boolean
   ): Promise<ToggleUserActiveResponse> {
     const response = await this.client.patch<ToggleUserActiveResponse>(
-      `/api/v1/admin/users/${userId}`,
+      this.normalizeUrl(`/api/v1/admin/users/${userId}`),
       { is_active: isActive }
+    );
+    return response.data;
+  }
+
+  async adminUpdateUser(
+    userId: string,
+    updateData: { is_admin?: boolean; plan_tier?: string; is_active?: boolean }
+  ): Promise<User> {
+    const response = await this.client.put<User>(
+      this.normalizeUrl(`/api/v1/admin/users/${userId}`),
+      updateData
     );
     return response.data;
   }

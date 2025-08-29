@@ -2,12 +2,8 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -19,16 +15,15 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { formatDate } from "@/lib/format";
 import {
-  useAdminSignupStats,
   useAdminUsers,
-  useToggleUserActive,
 } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
-import { AdminUsersParams, SignupStatsPoint, User } from "@/lib/types";
+import { AdminUsersParams, User } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { Area, AreaChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { toast } from "sonner";
+import { AdminUserEditDialog } from "@/components/admin-user-edit-dialog";
+import { Edit3, Power, UserCheck, UserX, Search, ChevronLeft, ChevronRight, Shield, Crown, Zap } from "lucide-react";
 
 export default function AdminPage() {
   const { user, isLoading } = useAuth();
@@ -52,6 +47,10 @@ export default function AdminPage() {
   const limit = 25;
   const offset = (page - 1) * limit;
 
+  // Edit dialog state
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+
   const params: AdminUsersParams = useMemo(
     () => ({
       q: q || undefined,
@@ -64,44 +63,49 @@ export default function AdminPage() {
   );
 
   const { data: users = [], isFetching } = useAdminUsers(params);
-  const toggleUser = useToggleUserActive();
 
   // Simple guess: if we got less than limit, we're at last page
   const isLastPage = users.length < limit;
 
-  const handleToggle = (u: User) => {
-    if (u.id === user?.id || u.id === "current-user") {
-      toast.error(t("admin.cannotChangeOwn"));
-      return;
-    }
-    toggleUser.mutate({ userId: u.id, isActive: !u.is_active });
+  const handleEdit = (u: User) => {
+    setEditingUser(u);
+    setIsEditDialogOpen(true);
   };
 
-  // Signup stats chart
-  const { data: stats } = useAdminSignupStats();
-  const chartData: SignupStatsPoint[] = stats?.data ?? [];
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{t("admin.title")}</h1>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Shield className="h-6 w-6 text-primary" />
+            {t("admin.title")}
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage user accounts and permissions
+          </p>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <Card className="lg:col-span-2">
+      <div className="grid grid-cols-1 gap-6">
+        <Card>
           <CardHeader>
             <CardTitle>{t("admin.users.title")}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-2 mb-4">
-              <Input
-                placeholder={t("admin.search.placeholder")}
-                value={q}
-                onChange={(e) => {
-                  setPage(1);
-                  setQ(e.target.value);
-                }}
-              />
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder={t("admin.search.placeholder")}
+                  value={q}
+                  onChange={(e) => {
+                    setPage(1);
+                    setQ(e.target.value);
+                  }}
+                  className="pl-10"
+                />
+              </div>
             </div>
 
             <div className="rounded-md border">
@@ -112,6 +116,7 @@ export default function AdminPage() {
                     <TableHead>{t("admin.table.name")}</TableHead>
                     <TableHead>{t("admin.table.status")}</TableHead>
                     <TableHead>{t("admin.table.admin")}</TableHead>
+                    <TableHead>Plan</TableHead>
                     <TableHead>{t("admin.table.created")}</TableHead>
                     <TableHead className="text-right">
                       {t("admin.table.actions")}
@@ -126,40 +131,69 @@ export default function AdminPage() {
                         {u.name || `${u.first_name ?? ""} ${u.last_name ?? ""}`}
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                            u.is_active
-                              ? "bg-green-100 text-green-700"
-                              : "bg-red-100 text-red-700"
-                          }`}
+                        <Badge 
+                          variant={u.is_active ? "default" : "destructive"}
+                          className="whitespace-nowrap"
                         >
-                          {u.is_active
-                            ? t("admin.status.active")
-                            : t("admin.status.inactive")}
-                        </span>
+                          {u.is_active ? (
+                            <>
+                              <UserCheck className="h-3 w-3 mr-1" />
+                              {t("admin.status.active")}
+                            </>
+                          ) : (
+                            <>
+                              <UserX className="h-3 w-3 mr-1" />
+                              {t("admin.status.inactive")}
+                            </>
+                          )}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         {u.is_admin ? t("admin.yes") : t("admin.no")}
                       </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant="outline" 
+                          className="whitespace-nowrap capitalize"
+                        >
+                          {u.plan_tier === "free" ? (
+                            <>
+                              <Zap className="h-3 w-3 mr-1 text-muted-foreground" />
+                              Free
+                            </>
+                          ) : u.plan_tier === "plus" ? (
+                            <>
+                              <Zap className="h-3 w-3 mr-1 text-blue-500" />
+                              Plus
+                            </>
+                          ) : (
+                            <>
+                              <Crown className="h-3 w-3 mr-1 text-purple-500" />
+                              Pro
+                            </>
+                          )}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{formatDate(u.created_at)}</TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          variant={u.is_active ? "destructive" : "default"}
-                          onClick={() => handleToggle(u)}
-                          disabled={toggleUser.isPending}
-                        >
-                          {u.is_active
-                            ? t("admin.actions.deactivate")
-                            : t("admin.actions.activate")}
-                        </Button>
+                        <div className="flex items-center justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleEdit(u)}
+                            className="h-8 w-8 p-0"
+                            title={t("admin.actions.edit")}
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
                   {users.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground"
                       >
                         {isFetching ? t("admin.loading") : t("admin.noUsers")}
@@ -175,7 +209,9 @@ export default function AdminPage() {
                 variant="outline"
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
+                className="gap-1"
               >
+                <ChevronLeft className="h-4 w-4" />
                 {t("admin.pagination.previous")}
               </Button>
               <span className="text-sm text-muted-foreground">
@@ -185,56 +221,22 @@ export default function AdminPage() {
                 variant="outline"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={isLastPage}
+                className="gap-1"
               >
                 {t("admin.pagination.next")}
+                <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t("admin.chart.signupsPerDay")}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ChartContainer
-              config={{
-                users: {
-                  label: t("admin.chart.signups"),
-                  color: "hsl(var(--primary))",
-                },
-              }}
-              className="h-64"
-            >
-              <AreaChart data={chartData}>
-                <CartesianGrid vertical={false} strokeDasharray="3 3" />
-                <XAxis
-                  dataKey="day"
-                  tickLine={false}
-                  axisLine={false}
-                  minTickGap={24}
-                />
-                <YAxis
-                  allowDecimals={false}
-                  width={24}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <ChartTooltip
-                  cursor={false}
-                  content={<ChartTooltipContent />}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="count"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary)/.2)"
-                />
-              </AreaChart>
-            </ChartContainer>
-          </CardContent>
-        </Card>
       </div>
+
+      <AdminUserEditDialog
+        user={editingUser}
+        open={isEditDialogOpen}
+        onOpenChange={setIsEditDialogOpen}
+      />
     </div>
   );
 }

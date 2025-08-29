@@ -26,6 +26,7 @@
   "common.error": "Error",
   "common.unknown": "Unknown",
   "common.loading": "Loading…",
+  "common.save": "Save",
 
   "budgetProgress.title": "Budget Progress",
   "budgetProgress.description": "Your monthly budget utilization",
@@ -271,6 +272,7 @@
   "excludedKeywords.deleteFailed": "Failed to delete keyword",
   "excludedKeywords.resetSuccess": "Reset to defaults",
   "excludedKeywords.resetFailed": "Failed to reset",
+  "excludedKeywords.remove": "Remove",
 
   "transactions.bulkDelete.title": "Delete Multiple Transactions",
   "transactions.bulkDelete.description": "Are you sure you want to delete {count} selected transaction(s)? This action cannot be undone.",
@@ -368,8 +370,6 @@
   "layout.upgrade.plus.description": "Upgrade to Pro for unlimited limits and advanced features.",
   "layout.upgrade.pro.title": "Pro Plan",
   "layout.upgrade.pro.description": "You have full access to all features.",
-  "layout.upgrade.admin.title": "Admin Plan",
-  "layout.upgrade.admin.description": "Full system administrator access.",
   "layout.upgrade.button": "View plans",
 
   "upgrade.title": "Choose your plan",
@@ -415,6 +415,23 @@
   "admin.title": "Admin Panel",
   "admin.users.title": "Users",
   "admin.yes": "Yes",
+  "admin.cannotChangeOwn": "You cannot modify your own account",
+  "admin.actions.edit": "Edit",
+  "admin.editUser.title": "Edit User",
+  "admin.editUser.description": "Update user permissions and plan for {email}",
+  "admin.editUser.isAdmin": "Is Admin",
+  "admin.editUser.planTier": "Plan Tier",
+  "admin.editUser.selectPlan": "Select plan",
+  "admin.editUser.isActive": "Is Active",
+  "admin.editUser.accountStatus": "Account Status",
+  "admin.editUser.permissions": "Permissions",
+  "admin.editUser.subscriptionPlan": "Subscription Plan",
+  "admin.editUser.activeDescription": "User can access the platform",
+  "admin.editUser.inactiveDescription": "User account is deactivated",
+  "admin.editUser.adminDescription": "Full administrative access",
+  "admin.editUser.userDescription": "Standard user permissions",
+  "admin.userUpdated": "User updated successfully",
+  "admin.userUpdateFailed": "Failed to update user",
   "creditCard.balance": "Balance",
   "creditCard.due": "Due",
   "creditCard.limit": "Limit",
@@ -1049,5 +1066,9 @@
   "profile.danger.cancel": "Cancel",
   "profile.danger.confirmDelete": "Delete account",
   "profile.danger.deleteRequested": "Account deletion requested",
-  "profile.danger.deleteFailed": "Failed to request account deletion"
+  "profile.danger.deleteFailed": "Failed to request account deletion",
+
+  "plans.free": "Free",
+  "plans.plus": "Plus",
+  "plans.pro": "Pro"
 }
