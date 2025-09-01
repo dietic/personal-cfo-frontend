@@ -30,6 +30,10 @@ import {
   ExcludedKeywordListResponse,
   ExtractionRequest,
   ExtractionResponse,
+  Income,
+  IncomeCreate,
+  IncomeFilters,
+  IncomeUpdate,
   OTPResendRequest,
   OTPVerifyRequest,
   PlanChangeRequest,
@@ -899,6 +903,77 @@ class APIClient {
         params: { start, end, tz },
       }
     );
+    return response.data;
+  }
+
+  // Income endpoints
+  async getIncomes(filters?: IncomeFilters): Promise<Income[]> {
+    const response = await this.client.get<Income[]>(this.normalizeUrl("/api/v1/incomes"), {
+      params: filters,
+    });
+    return response.data;
+  }
+
+  async createIncome(income: IncomeCreate): Promise<Income> {
+    const response = await this.client.post<Income>(
+      this.normalizeUrl("/api/v1/incomes"),
+      income
+    );
+    return response.data;
+  }
+
+  async getIncome(incomeId: string): Promise<Income> {
+    const response = await this.client.get<Income>(
+      this.normalizeUrl(`/api/v1/incomes/${incomeId}`)
+    );
+    return response.data;
+  }
+
+  async updateIncome(incomeId: string, update: IncomeUpdate): Promise<Income> {
+    const response = await this.client.put<Income>(
+      this.normalizeUrl(`/api/v1/incomes/${incomeId}`),
+      update
+    );
+    return response.data;
+  }
+
+  async deleteIncome(incomeId: string): Promise<{ message: string }> {
+    const response = await this.client.delete<{ message: string }>(
+      this.normalizeUrl(`/api/v1/incomes/${incomeId}`)
+    );
+    return response.data;
+  }
+
+  async getRecurringIncomeSummary(): Promise<{
+    total_recurring_incomes: number;
+    total_monthly_amount: number;
+    recurring_incomes: Income[];
+  }> {
+    const response = await this.client.get<{
+      total_recurring_incomes: number;
+      total_monthly_amount: number;
+      recurring_incomes: Income[];
+    }>(this.normalizeUrl("/api/v1/incomes/recurring/summary"));
+    return response.data;
+  }
+
+  async getNonRecurringIncomeSummary(
+    startDate?: string,
+    endDate?: string
+  ): Promise<{
+    total_non_recurring_incomes: number;
+    total_amount: number;
+    non_recurring_incomes: Income[];
+  }> {
+    const params = new URLSearchParams();
+    if (startDate) params.append("start_date", startDate);
+    if (endDate) params.append("end_date", endDate);
+    
+    const response = await this.client.get<{
+      total_non_recurring_incomes: number;
+      total_amount: number;
+      non_recurring_incomes: Income[];
+    }>(this.normalizeUrl(`/api/v1/incomes/non-recurring/summary${params.toString() ? `?${params.toString()}` : ""}`));
     return response.data;
   }
 

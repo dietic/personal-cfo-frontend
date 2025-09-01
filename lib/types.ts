@@ -467,3 +467,46 @@ export enum UserTypeEnum {
   PLUS = "plus", 
   PRO = "pro"
 }
+
+// Income types
+export interface Income {
+  id: string;
+  user_id: string;
+  amount: string;
+  currency: string;
+  description: string;
+  income_date: string;
+  is_recurring: boolean;
+  recurring_day?: number | null;
+  category?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface IncomeCreate {
+  amount: NumStr;
+  currency?: string;
+  description: string;
+  income_date: string;
+  is_recurring?: boolean;
+  recurring_day?: number | null;
+  category?: string | null;
+}
+
+export interface IncomeUpdate {
+  amount?: NumStr | null;
+  currency?: string | null;
+  description?: string | null;
+  income_date?: string | null;
+  is_recurring?: boolean | null;
+  recurring_day?: number | null;
+  category?: string | null;
+}
+
+export interface IncomeFilters {
+  skip?: number;
+  limit?: number;
+  start_date?: string;
+  end_date?: string;
+  is_recurring?: boolean;
+}

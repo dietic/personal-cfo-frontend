@@ -104,6 +104,14 @@ export function CategoriesManagement() {
       return;
     }
 
+    // Validate category name is not restricted
+    const restrictedNames = ["income", "ingreso"];
+    const categoryName = formData.name.trim().toLowerCase();
+    if (restrictedNames.includes(categoryName)) {
+      toast.error(t("category.errors.restrictedName"));
+      return;
+    }
+
     try {
       await createMutation.mutateAsync(formData);
       setShowCreateDialog(false);
@@ -117,6 +125,14 @@ export function CategoriesManagement() {
   const handleUpdateCategory = async () => {
     if (!editingCategory || !formData.name.trim()) {
       toast.error(t("category.errors.nameRequired"));
+      return;
+    }
+
+    // Validate category name is not restricted
+    const restrictedNames = ["income", "ingreso"];
+    const categoryName = formData.name.trim().toLowerCase();
+    if (restrictedNames.includes(categoryName)) {
+      toast.error(t("category.errors.restrictedName"));
       return;
     }
 

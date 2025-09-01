@@ -35,6 +35,7 @@ import {
   BarChart3,
   CalendarClock,
   CreditCard,
+  DollarSign,
   FileText,
   LayoutDashboard,
   Loader2,
@@ -133,6 +134,7 @@ export function DashboardLayout({
       icon: Receipt,
       href: "/transactions",
     },
+    { title: t("layout.menu.incomes"), icon: DollarSign, href: "/incomes" },
     { title: t("layout.menu.statements"), icon: FileText, href: "/statements" },
     {
       title: t("layout.menu.services"),
