@@ -89,13 +89,23 @@ async function proxyRequest(
       }
     });
 
-    // Get the request body for non-GET requests
-    let body = undefined;
+    // Get the request body and content type
+    const contentType = req.headers.get('content-type') || '';
+    let body: BodyInit | undefined = undefined;
+    
     if (method !== 'GET' && method !== 'DELETE') {
-      try {
-        body = await req.text();
-      } catch {
-        // Body might be empty, that's ok
+      // Handle multipart/form-data (file uploads) specially
+      if (contentType.includes('multipart/form-data')) {
+        // For file uploads, we need to preserve the raw form data
+        const formData = await req.formData();
+        body = formData;
+      } else {
+        // For other content types, read as text
+        try {
+          body = await req.text();
+        } catch {
+          // Body might be empty, that's ok
+        }
       }
     }
 
@@ -106,6 +116,12 @@ async function proxyRequest(
         headers[key] = value;
       }
     });
+
+    // For file uploads, let fetch handle the content-type automatically
+    if (contentType.includes('multipart/form-data') && body instanceof FormData) {
+      // Don't set content-type header for FormData, let fetch set it with boundary
+      delete headers['content-type'];
+    }
 
     const response = await fetch(targetUrl, {
       method,
