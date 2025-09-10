@@ -294,7 +294,12 @@ export function BudgetCategories() {
                   <div key={budget.id} className="space-y-2">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium">{budget.category}</span>
+                        <div className="flex items-center gap-2">
+                          {budget.category_emoji && (
+                            <span className="text-base">{budget.category_emoji}</span>
+                          )}
+                          <span className="font-medium">{budget.category}</span>
+                        </div>
                         <Badge variant={status.variant} className="text-xs">
                           {status.label}
                         </Badge>
@@ -384,7 +389,12 @@ export function BudgetCategories() {
                   ) : categories && categories.length > 0 ? (
                     categories.map((category) => (
                       <SelectItem key={category.id} value={category.name}>
-                        {category.name}
+                        <div className="flex items-center gap-2">
+                          {category.emoji && (
+                            <span className="text-base">{category.emoji}</span>
+                          )}
+                          {category.name}
+                        </div>
                       </SelectItem>
                     ))
                   ) : (
@@ -500,7 +510,12 @@ export function BudgetCategories() {
                   ) : categories && categories.length > 0 ? (
                     categories.map((category) => (
                       <SelectItem key={category.id} value={category.name}>
-                        {category.name}
+                        <div className="flex items-center gap-2">
+                          {category.emoji && (
+                            <span className="text-base">{category.emoji}</span>
+                          )}
+                          {category.name}
+                        </div>
                       </SelectItem>
                     ))
                   ) : (

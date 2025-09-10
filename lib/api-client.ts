@@ -43,6 +43,7 @@ import {
   RecurringServiceUpdate,
   SignupStatsResponse,
   SpendingTrend,
+  MonthlyCategoryBreakdown,
   Statement,
   StatementProcess,
   StatementStatusResponse,
@@ -256,6 +257,11 @@ class APIClient {
     return response.data;
   }
 
+  async changePassword(data: UserPasswordUpdate): Promise<{ message: string }> {
+    const response = await this.client.put<{ message: string }>(this.normalizeUrl("/api/v1/users/password"), data);
+    return response.data;
+  }
+
   async changePlan(data: PlanChangeRequest): Promise<PlanChangeResponse> {
     const response = await this.client.post<PlanChangeResponse>(this.normalizeUrl("/api/v1/users/plan/change"),
       data
@@ -309,7 +315,7 @@ class APIClient {
   }
 
   // Categories endpoints
-  async getCategories(includeInactive: boolean = false): Promise<{
+  async getCategories(includeInactive: boolean = false, includeSystem: boolean = false): Promise<{
     categories: Category[];
     permissions: {
       can_create_categories: boolean;
@@ -320,7 +326,7 @@ class APIClient {
     };
   }> {
     const response = await this.client.get(this.normalizeUrl("/api/v1/categories/"), {
-      params: { include_inactive: includeInactive },
+      params: { include_inactive: includeInactive, include_system: includeSystem },
     });
     return response.data;
   }
@@ -737,6 +743,15 @@ class APIClient {
     return response.data;
   }
 
+  async getMonthlyCategoryBreakdown(filters?: TrendsFilters): Promise<MonthlyCategoryBreakdown[]> {
+    const response = await this.client.get<MonthlyCategoryBreakdown[]>(this.normalizeUrl("/api/v1/analytics/monthly-categories"),
+      {
+        params: filters,
+      }
+    );
+    return response.data;
+  }
+
   async getYearComparison(): Promise<YearComparison> {
     const response = await this.client.get<YearComparison>(this.normalizeUrl("/api/v1/analytics/comparison")
     );
@@ -827,6 +842,50 @@ class APIClient {
 
   async seedDefaultKeywords(): Promise<CategoryKeywordResponse[]> {
     const response = await this.client.post<CategoryKeywordResponse[]>(this.normalizeUrl("/api/v1/keywords/seed-defaults")
+    );
+    return response.data;
+  }
+
+  // AI Keyword Generation endpoints
+  async generateAIKeywords(categoryId: string, clearExisting: boolean = false): Promise<{
+    message: string;
+    keywords_added: number;
+    category_id: string;
+    category_name: string;
+    task_id?: string;
+  }> {
+    const response = await this.client.post(
+      this.normalizeUrl(`/api/v1/keywords/generate-ai-keywords/${categoryId}`),
+      { clear_existing: clearExisting }
+    );
+    return response.data;
+  }
+
+  async getTaskStatus(taskId: string): Promise<{
+    task_id: string;
+    status: string;
+    result?: {
+      keywords_added: number;
+      category_name: string;
+    };
+    successful?: boolean;
+  }> {
+    const response = await this.client.get(
+      this.normalizeUrl(`/api/v1/keywords/task-status/${taskId}`)
+    );
+    return response.data;
+  }
+
+  async getAIUsageStats(): Promise<{
+    current_usage: number;
+    monthly_limit: number;
+    last_used: string | null;
+    reset_at: string | null;
+    remaining: number;
+    plan_tier: string;
+  }> {
+    const response = await this.client.get(
+      this.normalizeUrl("/api/v1/keywords/ai-usage-stats")
     );
     return response.data;
   }

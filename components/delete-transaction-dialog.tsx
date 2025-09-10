@@ -69,6 +69,9 @@ export function DeleteTransactionDialog({
           {transaction.category && (
             <p>
               <strong>{t("transactions.info.categoryLabel")}:</strong>{" "}
+              {transaction.category_emoji && (
+                <span className="mr-1">{transaction.category_emoji}</span>
+              )}
               {transaction.category}
             </p>
           )}

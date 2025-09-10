@@ -59,9 +59,11 @@ import {
   useCreateKeyword,
   useCreateKeywordsBulk,
   useDeleteKeyword,
+  useGenerateAIKeywords,
   useKeywordsByCategory,
   useSeedDefaultKeywords,
   useUpdateKeyword,
+  useAIUsageStats,
 } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { CategoryKeywordCreate, CategoryKeywordResponse } from "@/lib/types";
@@ -85,13 +87,17 @@ export function KeywordManagement() {
   const updateKeywordMutation = useUpdateKeyword();
   const deleteKeywordMutation = useDeleteKeyword();
   const seedDefaultKeywordsMutation = useSeedDefaultKeywords();
+  const generateAIKeywordsMutation = useGenerateAIKeywords();
+  const { data: aiUsageStats } = useAIUsageStats();
 
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [showBulkAddDialog, setShowBulkAddDialog] = useState(false);
+  const [showAIWarningDialog, setShowAIWarningDialog] = useState(false);
   const [editingKeyword, setEditingKeyword] =
     useState<CategoryKeywordResponse | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [processingCategories, setProcessingCategories] = useState<Set<string>>(new Set());
 
   // Single keyword form state
   const [keywordForm, setKeywordForm] = useState<CategoryKeywordCreate>({
@@ -109,6 +115,23 @@ export function KeywordManagement() {
   const selectedCategory = categories?.find(
     (cat) => cat.id === selectedCategoryId
   );
+
+  // Debug: Log category data to understand button visibility
+  if (selectedCategory && process.env.NODE_ENV === 'development') {
+    console.log('Selected category:', {
+      id: selectedCategory.id,
+      name: selectedCategory.name,
+      is_default: selectedCategory.is_default,
+      user_id: selectedCategory.user_id
+    });
+    console.log('AI Usage Stats:', aiUsageStats);
+    console.log('Button should show:', 
+      aiUsageStats && 
+      aiUsageStats.plan_tier !== "free" && 
+      selectedCategory && 
+      !selectedCategory.is_default
+    );
+  }
 
   const filteredKeywords =
     keywords?.filter(
@@ -195,6 +218,49 @@ export function KeywordManagement() {
     }
   };
 
+  const handleGenerateAIKeywords = async (clearExisting: boolean = false) => {
+    if (!selectedCategoryId) {
+      toast.error(t("keywords.errors.selectCategory"));
+      return;
+    }
+    
+    // Add category to processing set
+    setProcessingCategories(prev => new Set(prev).add(selectedCategoryId));
+    
+    try {
+      await generateAIKeywordsMutation.mutateAsync({ 
+        categoryId: selectedCategoryId, 
+        clearExisting 
+      });
+      setShowAIWarningDialog(false);
+    } catch (error) {
+      // Error handled by mutation
+      setShowAIWarningDialog(false);
+    } finally {
+      // Remove category from processing set
+      setProcessingCategories(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(selectedCategoryId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleGenerateAIKeywordsClick = () => {
+    if (!selectedCategoryId) {
+      toast.error(t("keywords.errors.selectCategory"));
+      return;
+    }
+    
+    // Check if category has existing keywords and show warning dialog
+    if (keywords && keywords.length > 0) {
+      setShowAIWarningDialog(true);
+    } else {
+      // No existing keywords, proceed directly
+      handleGenerateAIKeywords(false);
+    }
+  };
+
   const resetKeywordForm = () => {
     setKeywordForm({
       category_id: "",
@@ -264,6 +330,9 @@ export function KeywordManagement() {
                             backgroundColor: category.color || "#64748b",
                           }}
                         />
+                        {category.emoji && (
+                          <span className="text-base">{category.emoji}</span>
+                        )}
                         {category.name}
                       </div>
                     </SelectItem>
@@ -272,28 +341,47 @@ export function KeywordManagement() {
               </Select>
             </div>
             <div className="flex gap-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      onClick={handleSeedDefaultKeywords}
-                      disabled={seedDefaultKeywordsMutation.isPending}
-                      variant="outline"
-                      className="flex items-center gap-2"
-                    >
-                      {seedDefaultKeywordsMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4" />
-                      )}
-                      {t("keywords.seedDefaults")}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{t("keywords.seedTooltip")}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              
+              {/* AI Keyword Generation Button - Only for Plus/Pro users and non-default categories */}
+              {aiUsageStats && aiUsageStats.plan_tier !== "free" && selectedCategory && !selectedCategory.is_default && (
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        onClick={handleGenerateAIKeywordsClick}
+                        disabled={generateAIKeywordsMutation.isPending || 
+                                 (aiUsageStats && aiUsageStats.remaining <= 0) ||
+                                 processingCategories.has(selectedCategoryId)}
+                        variant="outline"
+                        className="flex items-center gap-2"
+                      >
+                        {generateAIKeywordsMutation.isPending || processingCategories.has(selectedCategoryId) ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Sparkles className="h-4 w-4" />
+                        )}
+                        {processingCategories.has(selectedCategoryId) 
+                          ? t("keywords.generatingAI") 
+                          : t("keywords.generateAI")
+                        }
+                        {aiUsageStats && (
+                          <span className="text-xs ml-1">
+                            ({aiUsageStats.remaining}/{aiUsageStats.monthly_limit})
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        {aiUsageStats && aiUsageStats.remaining <= 0 
+                          ? t("keywords.aiLimitReached")
+                          : t("keywords.generateAITooltip")
+                        }
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
             </div>
           </div>
 
@@ -339,7 +427,11 @@ export function KeywordManagement() {
                   onOpenChange={setShowBulkAddDialog}
                 >
                   <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      disabled={processingCategories.has(selectedCategoryId)}
+                    >
                       <Plus className="h-4 w-4" />
                       {t("keywords.addBulk")}
                     </Button>
@@ -370,7 +462,10 @@ export function KeywordManagement() {
                     <DialogFooter>
                       <Button
                         variant="outline"
-                        onClick={() => setShowBulkAddDialog(false)}
+                        onClick={() => {
+                          setShowBulkAddDialog(false);
+                          setBulkKeywordsText("");
+                        }}
                       >
                         {t("common.cancel")}
                       </Button>
@@ -388,7 +483,10 @@ export function KeywordManagement() {
 
                 <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
                   <DialogTrigger asChild>
-                    <Button size="sm">
+                    <Button 
+                      size="sm"
+                      disabled={processingCategories.has(selectedCategoryId)}
+                    >
                       <Plus className="h-4 w-4" />
                       {t("keywords.add")}
                     </Button>
@@ -439,7 +537,10 @@ export function KeywordManagement() {
                     <DialogFooter>
                       <Button
                         variant="outline"
-                        onClick={() => setShowAddDialog(false)}
+                        onClick={() => {
+                          setShowAddDialog(false);
+                          resetKeywordForm();
+                        }}
                       >
                         {t("common.cancel")}
                       </Button>
@@ -526,83 +627,13 @@ export function KeywordManagement() {
                             </TableCell>
                             <TableCell>
                               <div className="flex gap-2">
-                                <Dialog>
-                                  <DialogTrigger asChild>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => openEditDialog(keyword)}
-                                    >
-                                      <Edit3 className="h-4 w-4" />
-                                    </Button>
-                                  </DialogTrigger>
-                                  <DialogContent>
-                                    <DialogHeader>
-                                      <DialogTitle>
-                                        {t("keywords.edit.title")}
-                                      </DialogTitle>
-                                      <DialogDescription>
-                                        {t("keywords.edit.description")}
-                                      </DialogDescription>
-                                    </DialogHeader>
-                                    <div className="space-y-4">
-                                      <div>
-                                        <Label htmlFor="edit-keyword">
-                                          {t("keywords.form.keyword")}
-                                        </Label>
-                                        <Input
-                                          id="edit-keyword"
-                                          value={keywordForm.keyword}
-                                          onChange={(e) =>
-                                            setKeywordForm({
-                                              ...keywordForm,
-                                              keyword: e.target.value,
-                                            })
-                                          }
-                                          placeholder={t(
-                                            "keywords.form.keywordPlaceholder"
-                                          )}
-                                        />
-                                      </div>
-                                      <div>
-                                        <Label htmlFor="edit-description">
-                                          {t("keywords.form.description")}
-                                        </Label>
-                                        <Input
-                                          id="edit-description"
-                                          value={keywordForm.description || ""}
-                                          onChange={(e) =>
-                                            setKeywordForm({
-                                              ...keywordForm,
-                                              description: e.target.value,
-                                            })
-                                          }
-                                          placeholder={t(
-                                            "keywords.placeholder.description"
-                                          )}
-                                        />
-                                      </div>
-                                    </div>
-                                    <DialogFooter>
-                                      <Button
-                                        variant="outline"
-                                        onClick={() => setEditingKeyword(null)}
-                                      >
-                                        {t("common.cancel")}
-                                      </Button>
-                                      <Button
-                                        onClick={handleUpdateKeyword}
-                                        disabled={
-                                          updateKeywordMutation.isPending
-                                        }
-                                      >
-                                        {updateKeywordMutation.isPending
-                                          ? t("common.updating")
-                                          : t("keywords.edit.submit")}
-                                      </Button>
-                                    </DialogFooter>
-                                  </DialogContent>
-                                </Dialog>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => openEditDialog(keyword)}
+                                >
+                                  <Edit3 className="h-4 w-4" />
+                                </Button>
 
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
@@ -651,6 +682,111 @@ export function KeywordManagement() {
           </CardContent>
         </Card>
       )}
+
+      {/* Single Edit Dialog */}
+      <Dialog open={!!editingKeyword} onOpenChange={(open) => {
+        if (!open) {
+          setEditingKeyword(null);
+          resetKeywordForm();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {t("keywords.edit.title")}
+            </DialogTitle>
+            <DialogDescription>
+              {t("keywords.edit.description")}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-keyword">
+                {t("keywords.form.keyword")}
+              </Label>
+              <Input
+                id="edit-keyword"
+                value={keywordForm.keyword}
+                onChange={(e) =>
+                  setKeywordForm({
+                    ...keywordForm,
+                    keyword: e.target.value,
+                  })
+                }
+                placeholder={t(
+                  "keywords.form.keywordPlaceholder"
+                )}
+              />
+            </div>
+            <div>
+              <Label htmlFor="edit-description">
+                {t("keywords.form.description")}
+              </Label>
+              <Input
+                id="edit-description"
+                value={keywordForm.description || ""}
+                onChange={(e) =>
+                  setKeywordForm({
+                    ...keywordForm,
+                    description: e.target.value,
+                  })
+                }
+                placeholder={t(
+                  "keywords.placeholder.description"
+                )}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditingKeyword(null)}
+            >
+              {t("common.cancel")}
+            </Button>
+            <Button
+              onClick={handleUpdateKeyword}
+              disabled={
+                updateKeywordMutation.isPending
+              }
+            >
+              {updateKeywordMutation.isPending
+                ? t("common.updating")
+                : t("keywords.edit.submit")}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Warning Dialog */}
+      <AlertDialog open={showAIWarningDialog} onOpenChange={setShowAIWarningDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("keywords.aiWarning.title")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("keywords.aiWarning.description", {
+                count: String(keywords?.length || 0),
+                name: selectedCategory?.name || ""
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleGenerateAIKeywords(false)}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              {t("keywords.aiWarning.keepExisting")}
+            </AlertDialogAction>
+            <AlertDialogAction
+              onClick={() => handleGenerateAIKeywords(true)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              {t("keywords.aiWarning.clearExisting")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
   useExchangeRate,
   useSpendingTrends,
   useTransactions,
+  useCategoryColors,
 } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import type { AnalyticsFilters, TrendsFilters } from "@/lib/types";
@@ -56,6 +57,7 @@ export function SpendingTrends({
     isLoading: categoryLoading,
     error: categoryError,
   } = useCategorySpending(analyticsFilters);
+  const { getCategoryColor } = useCategoryColors();
 
   // Transactions for monthly conversion
   const { data: allTransactions } = useTransactions({});
@@ -150,14 +152,6 @@ export function SpendingTrends({
     }));
   }, [categoryData, trendData, rate, currency]);
 
-  const categoryColors = [
-    "hsl(var(--primary))",
-    "hsl(var(--destructive))",
-    "hsl(var(--secondary))",
-    "hsl(var(--muted-foreground))",
-    "hsl(142, 76%, 36%)",
-    "hsl(262, 83%, 58%)",
-  ];
 
   // currency symbol handled by formatMoney
 
@@ -210,6 +204,7 @@ export function SpendingTrends({
             <Button
               variant={currency === "PEN" ? "default" : "outline"}
               size="sm"
+              className="h-7 px-2 text-xs"
               onClick={() => setCurrency("PEN")}
             >
               PEN
@@ -217,6 +212,7 @@ export function SpendingTrends({
             <Button
               variant={currency === "USD" ? "default" : "outline"}
               size="sm"
+              className="h-7 px-2 text-xs"
               onClick={() => setCurrency("USD")}
             >
               USD
@@ -301,7 +297,7 @@ export function SpendingTrends({
                         key={category}
                         type="monotone"
                         dataKey={category}
-                        stroke={categoryColors[index % categoryColors.length]}
+                        stroke={getCategoryColor(category)}
                       />
                     ))}
                 </LineChart>

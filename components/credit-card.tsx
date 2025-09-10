@@ -1,8 +1,7 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatDate } from "@/lib/format";
 import { useI18n } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { AlertTriangle, Calendar } from "lucide-react";
@@ -13,11 +12,7 @@ interface CreditCardProps {
     id: string | number;
     name: string;
     type: string;
-    lastFour: string;
-    balance?: number; // Made optional since backend doesn't provide it directly
-    limit?: number;
     dueDate?: string;
-    utilization?: number;
     alerts: Array<{ type: string; message: string }>;
     network?: "visa" | "mastercard" | "amex" | "discover";
     color?: string;
@@ -54,11 +49,6 @@ export function CreditCard({ card, className }: CreditCardProps) {
     }
   };
 
-  // Format card number with spaces
-  const formatCardNumber = () => {
-    const hidden = card.network === "amex" ? "•••• •••••• " : "•••• •••• •••• ";
-    return hidden + card.lastFour;
-  };
 
   return (
     <div
@@ -100,37 +90,31 @@ export function CreditCard({ card, className }: CreditCardProps) {
               )}
             </div>
 
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-7 bg-yellow-300/90 rounded-md"></div>
-                {card.network && (
-                  <div className="ml-auto">
-                    {card.network === "visa" && (
-                      <div className="text-white font-bold italic text-xl">
-                        VISA
-                      </div>
-                    )}
-                    {card.network === "mastercard" && (
-                      <div className="flex">
-                        <div className="w-6 h-6 bg-red-500 rounded-full opacity-80"></div>
-                        <div className="w-6 h-6 bg-yellow-500 rounded-full -ml-3 opacity-80"></div>
-                      </div>
-                    )}
-                    {card.network === "amex" && (
-                      <div className="text-white font-bold text-xl">AMEX</div>
-                    )}
-                    {card.network === "discover" && (
-                      <div className="text-white font-bold text-lg">
-                        DISCOVER
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="font-mono text-lg tracking-wider">
-                {formatCardNumber()}
-              </div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-7 bg-yellow-300/90 rounded-md"></div>
+              {card.network && (
+                <div className="ml-auto">
+                  {card.network === "visa" && (
+                    <div className="text-white font-bold italic text-xl">
+                      VISA
+                    </div>
+                  )}
+                  {card.network === "mastercard" && (
+                    <div className="flex">
+                      <div className="w-6 h-6 bg-red-500 rounded-full opacity-80"></div>
+                      <div className="w-6 h-6 bg-yellow-500 rounded-full -ml-3 opacity-80"></div>
+                    </div>
+                  )}
+                  {card.network === "amex" && (
+                    <div className="text-white font-bold text-xl">AMEX</div>
+                  )}
+                  {card.network === "discover" && (
+                    <div className="text-white font-bold text-lg">
+                      DISCOVER
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -147,42 +131,6 @@ export function CreditCard({ card, className }: CreditCardProps) {
             <div className="w-full h-10 bg-black/30 -mx-5 mt-4"></div>
 
             <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span>{t("creditCard.balance")}</span>
-                <span className="font-medium">
-                  {formatMoney(card.balance || 0, "PEN")}
-                </span>
-              </div>
-
-              {card.limit !== undefined && (
-                <div className="flex justify-between text-sm">
-                  <span>{t("creditCard.limit")}</span>
-                  <span className="font-medium">
-                    {formatMoney(card.limit || 0, "PEN")}
-                  </span>
-                </div>
-              )}
-
-              {card.utilization !== undefined && (
-                <div>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span>{t("creditCard.utilization")}</span>
-                    <span>{card.utilization}%</span>
-                  </div>
-                  <Progress
-                    value={card.utilization}
-                    className="h-2 bg-white/20"
-                    indicatorClassName={`${
-                      card.utilization > 70
-                        ? "bg-red-400"
-                        : card.utilization > 30
-                        ? "bg-amber-400"
-                        : "bg-green-400"
-                    }`}
-                  />
-                </div>
-              )}
-
               {card.dueDate && (
                 <div className="flex items-center gap-1 text-xs mt-1">
                   <Calendar className="h-3 w-3" />

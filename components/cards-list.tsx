@@ -76,11 +76,7 @@ function transformCard(backendCard: BackendCard, useBrandedColors: boolean) {
     id: backendCard.id,
     name: backendCard.card_name,
     type: "Credit Card", // Simplified since we removed card types
-    lastFour: "****", // Simple identifier, not critical for expense tracking
-    balance: 0, // Backend doesn't provide balance directly - would need to calculate from transactions
-    limit: 5000, // Default limit - could be added to backend later
     dueDate: backendCard.payment_due_date || undefined,
-    utilization: 0, // Would need to calculate from transactions
     alerts: [], // For future alerts implementation
     network: "visa" as const, // Default network since we removed network providers
     color: getCardGradient(),
@@ -171,7 +167,7 @@ export function CardsList() {
                   {card.name}
                 </CardTitle>
                 <CardDescription>
-                  {card.type} •••• {card.lastFour}
+                  {card.type}
                 </CardDescription>
               </div>
               <DropdownMenu>

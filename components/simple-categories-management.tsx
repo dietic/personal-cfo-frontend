@@ -29,6 +29,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,6 +64,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { HexColorPicker } from "react-colorful";
 
 const DEFAULT_COLORS = [
   "#ef4444", // red
@@ -101,9 +107,14 @@ export function SimpleCategoriesManagement({
   const [formData, setFormData] = useState<CategoryCreate>({
     name: "",
     color: DEFAULT_COLORS[0],
+    emoji: "",
     keywords: [],
     is_active: true,
   });
+  const [showCustomColorPicker, setShowCustomColorPicker] = useState(false);
+  const [tempColor, setTempColor] = useState(DEFAULT_COLORS[0]);
+
+  const isDefaultColor = (color: string) => DEFAULT_COLORS.includes(color);
 
   const handleCreateCategory = async () => {
     if (!formData.name.trim()) {
@@ -115,6 +126,7 @@ export function SimpleCategoriesManagement({
       await createMutation.mutateAsync({
         name: formData.name,
         color: formData.color,
+        emoji: formData.emoji || undefined, // Don't send empty string
         is_active: formData.is_active,
         // Remove keywords from category creation
       });
@@ -138,6 +150,7 @@ export function SimpleCategoriesManagement({
         data: {
           name: formData.name,
           color: formData.color,
+          emoji: formData.emoji || undefined, // Don't send empty string
           is_active: formData.is_active,
           // Remove keywords from category update
         } as CategoryUpdate,
@@ -163,6 +176,7 @@ export function SimpleCategoriesManagement({
     setFormData({
       name: "",
       color: DEFAULT_COLORS[0],
+      emoji: "",
       keywords: [],
       is_active: true,
     });
@@ -173,6 +187,7 @@ export function SimpleCategoriesManagement({
     setFormData({
       name: category.name,
       color: category.color || DEFAULT_COLORS[0],
+      emoji: category.emoji || "",
       keywords: [],
       is_active: category.is_active,
     });
@@ -290,21 +305,126 @@ export function SimpleCategoriesManagement({
                     />
                   </div>
                   <div>
+                    <Label htmlFor="emoji">
+                      {t("categories.form.emoji")}
+                    </Label>
+                    <Input
+                      id="emoji"
+                      value={formData.emoji || ""}
+                      onChange={(e) =>
+                        setFormData({ ...formData, emoji: e.target.value })
+                      }
+                      placeholder={t("categories.form.emojiPlaceholder")}
+                      maxLength={10}
+                    />
+                  </div>
+                  <div>
                     <Label>{t("simpleCategories.form.color")}</Label>
-                    <div className="flex gap-2 flex-wrap">
+                    <div className="flex gap-2 flex-wrap items-center">
                       {DEFAULT_COLORS.map((color) => (
                         <button
                           key={color}
                           type="button"
                           className={`w-8 h-8 rounded-full border-2 ${
                             formData.color === color
-                              ? "border-gray-900"
+                              ? "border-gray-900 ring-2 ring-offset-2 ring-gray-900"
                               : "border-gray-300"
                           }`}
                           style={{ backgroundColor: color }}
                           onClick={() => setFormData({ ...formData, color })}
                         />
                       ))}
+                      
+                      {/* Custom Color Picker - Only show if current color is not a default */}
+                      {!isDefaultColor(formData.color) && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-gray-400 ring-2 ring-offset-2 ring-gray-900"
+                              title="Custom color"
+                              style={{ backgroundColor: formData.color }}
+                              onClick={() => setTempColor(formData.color)}
+                            />
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-4" align="start">
+                            <div className="space-y-4">
+                              <HexColorPicker
+                                color={tempColor}
+                                onChange={setTempColor}
+                                className="!w-full !h-32"
+                              />
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-6 h-6 rounded border"
+                                  style={{ backgroundColor: tempColor }}
+                                />
+                                <Input
+                                  value={tempColor}
+                                  onChange={(e) => setTempColor(e.target.value)}
+                                  className="h-8 text-xs"
+                                  placeholder="#000000"
+                                />
+                              </div>
+                              <Button
+                                onClick={() => {
+                                  setFormData({ ...formData, color: tempColor });
+                                  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                }}
+                                className="w-full"
+                              >
+                                {t("common.apply")}
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
+                      
+                      {/* Add Custom Color Button - Only show if current color is a default */}
+                      {isDefaultColor(formData.color) && (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-gray-400"
+                              title="Add custom color"
+                              onClick={() => setTempColor(formData.color)}
+                            >
+                              <div className="w-4 h-4 rounded-full bg-gradient-to-r from-red-400 to-blue-500" />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-4" align="start">
+                            <div className="space-y-4">
+                              <HexColorPicker
+                                color={tempColor}
+                                onChange={setTempColor}
+                                className="!w-full !h-32"
+                              />
+                              <div className="flex items-center gap-2">
+                                <div
+                                  className="w-6 h-6 rounded border"
+                                  style={{ backgroundColor: tempColor }}
+                                />
+                                <Input
+                                  value={tempColor}
+                                  onChange={(e) => setTempColor(e.target.value)}
+                                  className="h-8 text-xs"
+                                  placeholder="#000000"
+                                />
+                              </div>
+                              <Button
+                                onClick={() => {
+                                  setFormData({ ...formData, color: tempColor });
+                                  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                }}
+                                className="w-full"
+                              >
+                                {t("common.apply")}
+                              </Button>
+                            </div>
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -343,6 +463,7 @@ export function SimpleCategoriesManagement({
                     <TableHead>
                       {t("simpleCategories.table.category")}
                     </TableHead>
+                    <TableHead>{t("categories.table.emoji")}</TableHead>
                     <TableHead>{t("simpleCategories.table.status")}</TableHead>
                     <TableHead>{t("simpleCategories.table.created")}</TableHead>
                     <TableHead className="w-[100px]">
@@ -365,6 +486,11 @@ export function SimpleCategoriesManagement({
                         </div>
                       </TableCell>
                       <TableCell>
+                        {category.emoji && (
+                          <span className="text-lg">{category.emoji}</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
                         <Badge
                           variant={category.is_active ? "default" : "secondary"}
                         >
@@ -377,7 +503,7 @@ export function SimpleCategoriesManagement({
                       <TableCell>
                         <div className="flex gap-2">
                           {canEdit && (category.can_modify !== false) ? (
-                            <Dialog>
+                            <Dialog open={editingCategory?.id === category.id} onOpenChange={(open) => !open && setEditingCategory(null)}>
                               <DialogTrigger asChild>
                                 <Button
                                   variant="outline"
@@ -416,17 +542,34 @@ export function SimpleCategoriesManagement({
                                   />
                                 </div>
                                 <div>
+                                  <Label htmlFor="edit-emoji">
+                                    {t("categories.form.emoji")}
+                                  </Label>
+                                  <Input
+                                    id="edit-emoji"
+                                    value={formData.emoji || ""}
+                                    onChange={(e) =>
+                                      setFormData({
+                                        ...formData,
+                                        emoji: e.target.value,
+                                      })
+                                    }
+                                    placeholder={t("categories.form.emojiPlaceholder")}
+                                    maxLength={10}
+                                  />
+                                </div>
+                                <div>
                                   <Label>
                                     {t("simpleCategories.form.color")}
                                   </Label>
-                                  <div className="flex gap-2 flex-wrap">
+                                  <div className="flex gap-2 flex-wrap items-center">
                                     {DEFAULT_COLORS.map((color) => (
                                       <button
                                         key={color}
                                         type="button"
                                         className={`w-8 h-8 rounded-full border-2 ${
                                           formData.color === color
-                                            ? "border-gray-900"
+                                            ? "border-gray-900 ring-2 ring-offset-2 ring-gray-900"
                                             : "border-gray-300"
                                         }`}
                                         style={{ backgroundColor: color }}
@@ -435,6 +578,97 @@ export function SimpleCategoriesManagement({
                                         }
                                       />
                                     ))}
+                                    
+                                    {/* Custom Color Picker - Only show if current color is not a default */}
+                                    {!isDefaultColor(formData.color) && (
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center hover:border-gray-400 ring-2 ring-offset-2 ring-gray-900"
+                                            title="Custom color"
+                                            style={{ backgroundColor: formData.color }}
+                                            onClick={() => setTempColor(formData.color)}
+                                          />
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-4" align="start">
+                                          <div className="space-y-4">
+                                            <HexColorPicker
+                                              color={tempColor}
+                                              onChange={setTempColor}
+                                              className="!w-full !h-32"
+                                            />
+                                            <div className="flex items-center gap-2">
+                                              <div
+                                                className="w-6 h-6 rounded border"
+                                                style={{ backgroundColor: tempColor }}
+                                              />
+                                              <Input
+                                                value={tempColor}
+                                                onChange={(e) => setTempColor(e.target.value)}
+                                                className="h-8 text-xs"
+                                                placeholder="#000000"
+                                              />
+                                            </div>
+                                            <Button
+                                              onClick={() => {
+                                                setFormData({ ...formData, color: tempColor });
+                                                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                              }}
+                                              className="w-full"
+                                            >
+                                              {t("common.apply")}
+                                            </Button>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                    )}
+                                    
+                                    {/* Add Custom Color Button - Only show if current color is a default */}
+                                    {isDefaultColor(formData.color) && (
+                                      <Popover>
+                                        <PopoverTrigger asChild>
+                                          <button
+                                            type="button"
+                                            className="w-8 h-8 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center hover:border-gray-400"
+                                            title="Add custom color"
+                                            onClick={() => setTempColor(formData.color)}
+                                          >
+                                            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-red-400 to-blue-500" />
+                                          </button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-4" align="start">
+                                          <div className="space-y-4">
+                                            <HexColorPicker
+                                              color={tempColor}
+                                              onChange={setTempColor}
+                                              className="!w-full !h-32"
+                                            />
+                                            <div className="flex items-center gap-2">
+                                              <div
+                                                className="w-6 h-6 rounded border"
+                                                style={{ backgroundColor: tempColor }}
+                                              />
+                                              <Input
+                                                value={tempColor}
+                                                onChange={(e) => setTempColor(e.target.value)}
+                                                className="h-8 text-xs"
+                                                placeholder="#000000"
+                                              />
+                                            </div>
+                                            <Button
+                                              onClick={() => {
+                                                setFormData({ ...formData, color: tempColor });
+                                                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+                                              }}
+                                              className="w-full"
+                                            >
+                                              {t("common.apply")}
+                                            </Button>
+                                          </div>
+                                        </PopoverContent>
+                                      </Popover>
+                                    )}
                                   </div>
                                 </div>
                               </div>

@@ -34,9 +34,10 @@ export function getUserDisplayName(user: User | null): string {
     return user.name;
   }
 
-  // Extract name from email as fallback
+  // Extract name from email as fallback and truncate if too long
   const emailName = user.email.split("@")[0];
-  return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+  const formattedName = emailName.charAt(0).toUpperCase() + emailName.slice(1);
+  return formattedName.length > 20 ? formattedName.slice(0, 20) + "..." : formattedName;
 }
 
 /**

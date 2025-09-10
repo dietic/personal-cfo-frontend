@@ -51,7 +51,7 @@ const transactionSchema = z.object({
   category: z.string().min(1, "transactions.form.categoryRequired"),
   transaction_date: z.string().min(1, "transactions.form.dateRequired"),
   card_id: z.string().min(1, "transactions.form.cardRequired"),
-  description: z.string().optional(),
+  description: z.string(),
 });
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -83,7 +83,7 @@ export function AddTransactionDialog() {
       const transactionData: TransactionCreate = {
         ...data,
         amount: data.amount.toString(),
-        description: data.description || undefined,
+        description: data.description,
       };
 
       await createTransaction.mutateAsync(transactionData);
@@ -213,7 +213,12 @@ export function AddTransactionDialog() {
                     <SelectContent>
                       {categories?.map((category) => (
                         <SelectItem key={category.id} value={category.name}>
-                          {category.name}
+                          <div className="flex items-center gap-2">
+                            {category.emoji && (
+                              <span className="text-base">{category.emoji}</span>
+                            )}
+                            {category.name}
+                          </div>
                         </SelectItem>
                       ))}
                     </SelectContent>

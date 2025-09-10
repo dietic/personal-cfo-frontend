@@ -57,6 +57,9 @@ export function CategorySelect({
         >
           {selectedCategory ? (
             <span className="flex items-center gap-2">
+              {selectedCategory.emoji && (
+                <span className="text-base">{selectedCategory.emoji}</span>
+              )}
               <div
                 className="w-3 h-3 rounded-full"
                 style={{
@@ -95,6 +98,9 @@ export function CategorySelect({
                     }}
                   >
                     <div className="flex items-center gap-2 flex-1">
+                      {category.emoji && (
+                        <span className="text-base">{category.emoji}</span>
+                      )}
                       <div
                         className="w-3 h-3 rounded-full"
                         style={{

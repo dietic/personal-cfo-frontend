@@ -56,10 +56,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDate as formatDateIntl, formatMoney } from "@/lib/format";
+import { formatDate as formatDateIntl, formatNumber, formatMoney } from "@/lib/format";
 import {
   useCards,
   useCategoryColors,
+  useCategories,
   useTransactions,
   useUpdateTransaction,
 } from "@/lib/hooks";
@@ -73,7 +74,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 interface TransactionsListProps {
   filters?: TransactionFilters;
@@ -88,15 +89,16 @@ export function TransactionsList({
 }: TransactionsListProps) {
   const [searchQuery, setSearchQuery] = useState(externalSearchQuery || "");
   const [selectedTransactions, setSelectedTransactions] = useState<string[]>(
-    []
+    [],
   );
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<Transaction | null>(null);
   const [editingCategory, setEditingCategory] = useState("");
   const [editingDescription, setEditingDescription] = useState("");
-  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
-  const [descriptionDialogOpen, setDescriptionDialogOpen] = useState(false);
+  const [editingMerchant, setEditingMerchant] = useState("");
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [validationError, setValidationError] = useState("");
   const { t, locale } = useI18n();
 
   // Pagination state
@@ -105,8 +107,9 @@ export function TransactionsList({
 
   const { data: transactions, isLoading, error } = useTransactions(filters);
   const { data: cards } = useCards();
+  const { data: categories } = useCategories();
   const updateTransactionMutation = useUpdateTransaction();
-  const { getCategoryBadgeStyle } = useCategoryColors();
+  const { getCategoryBadgeStyle, getCategoryEmoji } = useCategoryColors();
 
   // Update search query when external search query changes
   useEffect(() => {
@@ -120,12 +123,12 @@ export function TransactionsList({
     cards?.reduce(
       (
         acc: Record<string, string>,
-        card: { id: string; card_name: string }
+        card: { id: string; card_name: string },
       ) => {
         acc[card.id] = card.card_name;
         return acc;
       },
-      {} as Record<string, string>
+      {} as Record<string, string>,
     ) || {};
 
   // Filter transactions based on search query and currency
@@ -154,7 +157,7 @@ export function TransactionsList({
   const endIndex = startIndex + itemsPerPage;
   const paginatedTransactions = filteredTransactions.slice(
     startIndex,
-    endIndex
+    endIndex,
   );
 
   // Reset to first page when filters change
@@ -192,7 +195,7 @@ export function TransactionsList({
       setSelectedTransactions((prev: string[]) => [...prev, transactionId]);
     } else {
       setSelectedTransactions((prev: string[]) =>
-        prev.filter((id: string) => id !== transactionId)
+        prev.filter((id: string) => id !== transactionId),
       );
     }
   };
@@ -201,7 +204,7 @@ export function TransactionsList({
     if (checked) {
       // Select all transactions on the current page
       const currentPageIds = paginatedTransactions.map(
-        (t: Transaction) => t.id
+        (t: Transaction) => t.id,
       );
       setSelectedTransactions((prev: string[]) => [
         ...prev.filter((id: string) => !currentPageIds.includes(id)), // Keep selections from other pages
@@ -210,17 +213,17 @@ export function TransactionsList({
     } else {
       // Deselect all transactions on the current page
       const currentPageIds = paginatedTransactions.map(
-        (t: Transaction) => t.id
+        (t: Transaction) => t.id,
       );
       setSelectedTransactions((prev: string[]) =>
-        prev.filter((id: string) => !currentPageIds.includes(id))
+        prev.filter((id: string) => !currentPageIds.includes(id)),
       );
     }
   };
 
   const getSelectedTransactions = () => {
     return filteredTransactions.filter((t: Transaction) =>
-      selectedTransactions.includes(t.id)
+      selectedTransactions.includes(t.id),
     );
   };
 
@@ -234,46 +237,40 @@ export function TransactionsList({
     setSelectedTransactions([]);
   };
 
-  // Handler functions for editing
-  const handleEditCategory = (transaction: Transaction) => {
+  // Handler function for unified editing
+  const handleEditTransaction = (transaction: Transaction) => {
     setEditingTransaction(transaction);
     setEditingCategory(transaction.category || "");
-    setCategoryDialogOpen(true);
-  };
-
-  const handleEditDescription = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
     setEditingDescription(transaction.description || "");
-    setDescriptionDialogOpen(true);
+    setEditingMerchant(transaction.merchant || "");
+    setEditDialogOpen(true);
   };
 
-  const handleSaveCategory = async () => {
+  const handleSaveTransaction = async () => {
     if (!editingTransaction) return;
 
-    try {
-      await updateTransactionMutation.mutateAsync({
-        transactionId: editingTransaction.id,
-        data: { category: editingCategory },
-      });
-      setCategoryDialogOpen(false);
-      setEditingTransaction(null);
-    } catch (error) {
-      console.error("Failed to update category:", error);
+    // Validate required fields
+    if (!editingMerchant.trim()) {
+      setValidationError(t("transactions.validation.merchantRequired"));
+      return;
     }
-  };
 
-  const handleSaveDescription = async () => {
-    if (!editingTransaction) return;
+    setValidationError("");
 
     try {
       await updateTransactionMutation.mutateAsync({
         transactionId: editingTransaction.id,
-        data: { description: editingDescription },
+        data: { 
+          category: editingCategory,
+          description: editingDescription,
+          merchant: editingMerchant
+        },
       });
-      setDescriptionDialogOpen(false);
+      setEditDialogOpen(false);
       setEditingTransaction(null);
+      setValidationError("");
     } catch (error) {
-      console.error("Failed to update description:", error);
+      console.error("Failed to update transaction:", error);
     }
   };
 
@@ -400,27 +397,27 @@ export function TransactionsList({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[50px]">
+                    <TableHead className="w-12">
                       <Checkbox
                         checked={
                           paginatedTransactions.length > 0 &&
                           paginatedTransactions.every((transaction) =>
-                            selectedTransactions.includes(transaction.id)
+                            selectedTransactions.includes(transaction.id),
                           )
                         }
                         onCheckedChange={handleSelectAll}
                         aria-label={t("transactions.aria.selectAllPage")}
                       />
                     </TableHead>
-                    <TableHead>{t("transactions.table.merchant")}</TableHead>
-                    <TableHead>{t("transactions.table.date")}</TableHead>
-                    <TableHead>{t("transactions.table.category")}</TableHead>
-                    <TableHead>{t("transactions.table.card")}</TableHead>
-                    <TableHead>{t("transactions.table.currency")}</TableHead>
-                    <TableHead className="text-right">
+                    <TableHead className="min-w-[200px]">{t("transactions.table.description")}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t("transactions.table.date")}</TableHead>
+                    <TableHead className="whitespace-nowrap w-[1%]">{t("transactions.table.category")}</TableHead>
+                    <TableHead className="min-w-[120px]">{t("transactions.table.card")}</TableHead>
+                    <TableHead className="whitespace-nowrap text-center">{t("transactions.table.currency")}</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">
                       {t("transactions.table.amount")}
                     </TableHead>
-                    <TableHead className="w-[80px]"></TableHead>
+                    <TableHead className="w-16"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -429,12 +426,12 @@ export function TransactionsList({
                       <TableCell>
                         <Checkbox
                           checked={selectedTransactions.includes(
-                            transaction.id
+                            transaction.id,
                           )}
                           onCheckedChange={(checked) =>
                             handleSelectTransaction(
                               transaction.id,
-                              checked as boolean
+                              checked as boolean,
                             )
                           }
                           aria-label={t("transactions.aria.selectTransaction", {
@@ -451,30 +448,25 @@ export function TransactionsList({
                           </Avatar>
                           <div>
                             <p className="font-medium">
-                              {transaction.description &&
-                              transaction.description !== transaction.merchant
-                                ? transaction.description
-                                : transaction.merchant}
+                              {transaction.description || transaction.merchant}
                             </p>
-                            {transaction.description &&
-                              transaction.description !==
-                                transaction.merchant &&
-                              transaction.merchant && (
-                                <p className="text-xs text-muted-foreground">
-                                  {transaction.merchant}
-                                </p>
-                              )}
+                            {transaction.description && transaction.merchant && (
+                              <p className="text-xs text-muted-foreground">
+                                {transaction.merchant}
+                              </p>
+                            )}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         {formatDateIntl(transaction.transaction_date, locale)}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap w-[1%]">
                         {transaction.category ? (
                           <Badge
                             variant="secondary"
                             style={getCategoryBadgeStyle(transaction.category)}
+                            className="px-2 py-1 h-6 text-xs"
                           >
                             {transaction.category}
                           </Badge>
@@ -484,21 +476,20 @@ export function TransactionsList({
                           </span>
                         )}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="min-w-[120px]">
                         {cardMap[transaction.card_id] ||
                           t("transactions.unknownCard")}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center whitespace-nowrap">
                         <Badge variant="outline" className="text-xs">
                           {transaction.currency}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-medium">
+                      <TableCell className="text-right font-medium whitespace-nowrap">
                         -
-                        {formatMoney(
+                        {formatNumber(
                           parseFloat(transaction.amount),
-                          transaction.currency as any,
-                          locale
+                          locale,
                         )}
                       </TableCell>
                       <TableCell>
@@ -513,31 +504,47 @@ export function TransactionsList({
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <Dialog
-                              open={categoryDialogOpen}
-                              onOpenChange={setCategoryDialogOpen}
+                              open={editDialogOpen}
+                              onOpenChange={setEditDialogOpen}
                             >
                               <DialogTrigger asChild>
                                 <DropdownMenuItem
                                   onSelect={(e) => {
                                     e.preventDefault();
-                                    handleEditCategory(transaction);
+                                    handleEditTransaction(transaction);
                                   }}
                                   className="flex items-center gap-2"
                                 >
                                   <Tag className="h-4 w-4" />
-                                  {t("transactions.editCategory")}
+                                  {t("transactions.editTransaction")}
                                 </DropdownMenuItem>
                               </DialogTrigger>
-                              <DialogContent>
+                              <DialogContent className="max-w-md">
                                 <DialogHeader>
                                   <DialogTitle>
-                                    {t("transactions.editCategoryTitle")}
+                                    {t("transactions.editTransactionTitle")}
                                   </DialogTitle>
                                   <DialogDescription>
-                                    {t("transactions.editCategoryDesc")}
+                                    {t("transactions.editTransactionDesc")}
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="grid gap-4 py-4">
+                                  <div className="grid gap-2">
+                                    <Label htmlFor="merchant">
+                                      {t("transactions.merchantLabel")}
+                                    </Label>
+                                    <Input
+                                      id="merchant"
+                                      value={editingMerchant}
+                                      onChange={(e) =>
+                                        setEditingMerchant(e.target.value)
+                                      }
+                                      placeholder={t(
+                                        "transactions.merchantPlaceholder",
+                                      )}
+                                    />
+                                  </div>
+                                  
                                   <div className="grid gap-2">
                                     <Label htmlFor="category">
                                       {t("transactions.categoryLabel")}
@@ -546,91 +553,11 @@ export function TransactionsList({
                                       value={editingCategory}
                                       onValueChange={setEditingCategory}
                                       placeholder={t(
-                                        "transactions.searchCategoryPlaceholder"
+                                        "transactions.searchCategoryPlaceholder",
                                       )}
                                     />
                                   </div>
-                                  {editingTransaction && (
-                                    <div className="text-sm text-muted-foreground">
-                                      <p>
-                                        <strong>
-                                          {t(
-                                            "transactions.info.transactionLabel"
-                                          )}
-                                          :
-                                        </strong>{" "}
-                                        {editingTransaction.merchant}
-                                      </p>
-                                      <p>
-                                        <strong>
-                                          {t("transactions.info.amountLabel")}:
-                                        </strong>{" "}
-                                        {formatMoney(
-                                          parseFloat(editingTransaction.amount),
-                                          editingTransaction.currency as any,
-                                          locale
-                                        )}
-                                      </p>
-                                      <p>
-                                        <strong>
-                                          {t(
-                                            "transactions.info.currentCategoryLabel"
-                                          )}
-                                          :
-                                        </strong>{" "}
-                                        {editingTransaction.category || "—"}
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                                <DialogFooter>
-                                  <Button
-                                    variant="outline"
-                                    onClick={() => setCategoryDialogOpen(false)}
-                                  >
-                                    {t("common.cancel")}
-                                  </Button>
-                                  <Button
-                                    type="submit"
-                                    onClick={handleSaveCategory}
-                                    disabled={
-                                      updateTransactionMutation.isPending
-                                    }
-                                  >
-                                    {updateTransactionMutation.isPending
-                                      ? t("common.saving")
-                                      : t("common.saveChanges")}
-                                  </Button>
-                                </DialogFooter>
-                              </DialogContent>
-                            </Dialog>
-
-                            <Dialog
-                              open={descriptionDialogOpen}
-                              onOpenChange={setDescriptionDialogOpen}
-                            >
-                              <DialogTrigger asChild>
-                                <DropdownMenuItem
-                                  onSelect={(e) => {
-                                    e.preventDefault();
-                                    handleEditDescription(transaction);
-                                  }}
-                                  className="flex items-center gap-2"
-                                >
-                                  <MessageSquare className="h-4 w-4" />
-                                  {t("transactions.editDescription")}
-                                </DropdownMenuItem>
-                              </DialogTrigger>
-                              <DialogContent>
-                                <DialogHeader>
-                                  <DialogTitle>
-                                    {t("transactions.editDescriptionTitle")}
-                                  </DialogTitle>
-                                  <DialogDescription>
-                                    {t("transactions.editDescriptionDesc")}
-                                  </DialogDescription>
-                                </DialogHeader>
-                                <div className="grid gap-4 py-4">
+                                  
                                   <div className="grid gap-2">
                                     <Label htmlFor="description">
                                       {t("transactions.descriptionLabel")}
@@ -642,22 +569,14 @@ export function TransactionsList({
                                         setEditingDescription(e.target.value)
                                       }
                                       placeholder={t(
-                                        "transactions.descriptionPlaceholder"
+                                        "transactions.descriptionPlaceholder",
                                       )}
-                                      rows={3}
+                                      rows={2}
                                     />
                                   </div>
+                                  
                                   {editingTransaction && (
-                                    <div className="text-sm text-muted-foreground">
-                                      <p>
-                                        <strong>
-                                          {t(
-                                            "transactions.info.transactionLabel"
-                                          )}
-                                          :
-                                        </strong>{" "}
-                                        {editingTransaction.merchant}
-                                      </p>
+                                    <div className="text-sm text-muted-foreground space-y-1">
                                       <p>
                                         <strong>
                                           {t("transactions.info.amountLabel")}:
@@ -665,31 +584,40 @@ export function TransactionsList({
                                         {formatMoney(
                                           parseFloat(editingTransaction.amount),
                                           editingTransaction.currency as any,
-                                          locale
+                                          locale,
                                         )}
                                       </p>
+                                      <p>
+                                        <strong>
+                                          {t("transactions.info.dateLabel")}:
+                                        </strong>{" "}
+                                        {formatDateIntl(editingTransaction.transaction_date, locale)}
+                                      </p>
+                                    </div>
+                                  )}
+                                  {validationError && (
+                                    <div className="text-sm text-red-600 dark:text-red-400">
+                                      {validationError}
                                     </div>
                                   )}
                                 </div>
                                 <DialogFooter>
                                   <Button
                                     variant="outline"
-                                    onClick={() =>
-                                      setDescriptionDialogOpen(false)
-                                    }
+                                    onClick={() => setEditDialogOpen(false)}
                                   >
                                     {t("common.cancel")}
                                   </Button>
                                   <Button
                                     type="submit"
-                                    onClick={handleSaveDescription}
+                                    onClick={handleSaveTransaction}
                                     disabled={
                                       updateTransactionMutation.isPending
                                     }
                                   >
                                     {updateTransactionMutation.isPending
                                       ? t("common.saving")
-                                      : t("transactions.saveDescription")}
+                                      : t("common.saveChanges")}
                                   </Button>
                                 </DialogFooter>
                               </DialogContent>

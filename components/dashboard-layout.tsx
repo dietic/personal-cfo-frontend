@@ -5,7 +5,7 @@ import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import RouteLoader from "@/components/route-loader";
 import { ThemeToggleButton } from "@/components/theme-toggle-button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -235,18 +235,18 @@ export function DashboardLayout({
           <SidebarContent className="px-2 py-4">
             <div className="mb-4 px-4">
               <div className="flex items-center gap-3 mb-1">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage
-                    src="/placeholder.svg?height=32&width=32"
-                    alt={t("layout.user")}
-                  />
-                  <AvatarFallback>
-                    {user?.email?.charAt(0).toUpperCase() || "U"}
+                <Avatar className="h-8 w-8 bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-xs font-semibold">
+                    {user?.first_name && user?.last_name 
+                      ? `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase()
+                      : user?.email?.charAt(0).toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex flex-col">
                   <span className="font-medium text-sm">
-                    {user?.email?.split("@")[0] || t("layout.user")}
+                    {user?.first_name && user?.last_name 
+                      ? `${user.first_name} ${user.last_name}`
+                      : user?.email?.split("@")[0]?.slice(0, 20) + (user?.email?.split("@")[0]?.length > 20 ? "..." : "") || t("layout.user")}
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {t("layout.account.personal")}

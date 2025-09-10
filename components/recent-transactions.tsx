@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { formatMoney, formatDate as intlFormatDate } from "@/lib/format";
+import { formatNumber, formatDate as intlFormatDate } from "@/lib/format";
 import { useCards, useCategoryColors, useTransactions } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { isValid, parseISO } from "date-fns";
@@ -166,18 +166,22 @@ export function RecentTransactions() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <Badge
-                    variant="secondary"
-                    style={getCategoryBadgeStyle(transaction.category)}
-                  >
-                    {transaction.category || t("transactions.uncategorized")}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {transaction.category_emoji && (
+                      <span className="text-base">{transaction.category_emoji}</span>
+                    )}
+                    <Badge
+                      variant="secondary"
+                      style={getCategoryBadgeStyle(transaction.category)}
+                    >
+                      {transaction.category || t("transactions.uncategorized")}
+                    </Badge>
+                  </div>
                   <div className="text-right">
                     <span className="font-medium">
                       -
-                      {formatMoney(
+                      {formatNumber(
                         Number(transaction.amount),
-                        transaction.currency as any,
                         locale
                       )}
                     </span>

@@ -45,7 +45,7 @@ export function TransactionsFilter({
 
   // Fetch real data
   const { data: cards } = useCards();
-  const { data: categories } = useCategoryList();
+  const { data: categories } = useCategoryList(false, true);
   const { data: currencies } = useCurrencies();
 
   // Initialize filters with initial values - only run once

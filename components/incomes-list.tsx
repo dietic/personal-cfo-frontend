@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
 import { useToast } from "@/hooks/use-toast";
@@ -36,8 +36,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MoreHorizontal, Edit, Trash2, Calendar, DollarSign, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
+import { useDeleteIncomesBulk } from "@/lib/hooks";
 
 interface IncomesListProps {
   filters?: IncomeFilters;
@@ -46,16 +48,20 @@ interface IncomesListProps {
 export function IncomesList({ filters = {} }: IncomesListProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [incomeToDelete, setIncomeToDelete] = useState<Income | null>(null);
   const [incomeToEdit, setIncomeToEdit] = useState<Income | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedIncomes, setSelectedIncomes] = useState<Set<string>>(new Set());
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   
   // Filter state - now managed by IncomesFilter component
   const [activeFilters, setActiveFilters] = useState<IncomeFilters>({});
-  
+
   const { toast } = useToast();
   const { t } = useI18n();
   const queryClient = useQueryClient();
+  const bulkDeleteMutation = useDeleteIncomesBulk();
   
   // Combine external filters with active filters
   const combinedFilters = {
@@ -76,6 +82,41 @@ export function IncomesList({ filters = {} }: IncomesListProps) {
     queryKey: ["incomes", combinedFilters],
     queryFn: () => apiClient.getIncomes(combinedFilters),
   });
+
+  // Derived helpers for selection
+  const allSelectedOnPage = useMemo(
+    () =>
+      incomes.length > 0 &&
+      incomes.every((income: Income) => selectedIncomes.has(income.id)),
+    [incomes, selectedIncomes]
+  );
+  const someSelectedOnPage = useMemo(
+    () =>
+      incomes.some((income: Income) => selectedIncomes.has(income.id)) &&
+      !allSelectedOnPage,
+    [incomes, selectedIncomes, allSelectedOnPage]
+  );
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedIncomes((prev: Set<string>) => {
+      const next = new Set(prev);
+      if (checked) {
+        incomes.forEach((income: Income) => next.add(income.id));
+      } else {
+        incomes.forEach((income: Income) => next.delete(income.id));
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectOne = (id: string, checked: boolean) => {
+    setSelectedIncomes((prev: Set<string>) => {
+      const next = new Set(prev);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  };
 
   const {
     data: recurringIncomeSummary,
@@ -134,6 +175,29 @@ export function IncomesList({ filters = {} }: IncomesListProps) {
       });
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Bulk delete handler
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIncomes);
+    if (ids.length === 0) return;
+
+    try {
+      const res = await bulkDeleteMutation.mutateAsync(ids);
+      // Remove only successfully deleted from selection
+      setSelectedIncomes((prev: Set<string>) => {
+        const next = new Set(prev);
+        res.successIds.forEach((sid: string) => next.delete(sid));
+        return next;
+      });
+      // Refresh the incomes list
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+      queryClient.invalidateQueries({ queryKey: ["recurring-income-summary"] });
+      queryClient.invalidateQueries({ queryKey: ["non-recurring-income-summary"] });
+      setBulkDeleteDialogOpen(false);
+    } catch (e) {
+      // Error toasts handled in hook
     }
   };
 
@@ -292,8 +356,23 @@ export function IncomesList({ filters = {} }: IncomesListProps) {
 
       {/* Incomes Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>{t("incomes.list.title")}</CardTitle>
+          {selectedIncomes.size > 0 && (
+            <Button
+              variant="destructive"
+              onClick={() => setBulkDeleteDialogOpen(true)}
+              disabled={bulkDeleteMutation.isPending}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              {bulkDeleteMutation.isPending
+                ? t("common.deleting")
+                : t("incomes.bulkDelete.selected", {
+                    count: selectedIncomes.size,
+                  })}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {incomes.length === 0 ? (
@@ -306,6 +385,19 @@ export function IncomesList({ filters = {} }: IncomesListProps) {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-10">
+                    <Checkbox
+                      checked={
+                        allSelectedOnPage
+                          ? true
+                          : someSelectedOnPage
+                          ? "indeterminate"
+                          : false
+                      }
+                      onCheckedChange={(v) => toggleSelectAll(Boolean(v))}
+                      aria-label={t("incomes.aria.selectAllPage")}
+                    />
+                  </TableHead>
                   <TableHead>{t("incomes.table.description")}</TableHead>
                   <TableHead>{t("incomes.table.amount")}</TableHead>
                   <TableHead>{t("incomes.table.date")}</TableHead>
@@ -316,6 +408,17 @@ export function IncomesList({ filters = {} }: IncomesListProps) {
               <TableBody>
                 {incomes.map((income) => (
                   <TableRow key={income.id}>
+                    <TableCell className="w-10">
+                      <Checkbox
+                        checked={selectedIncomes.has(income.id)}
+                        onCheckedChange={(v) =>
+                          toggleSelectOne(income.id, Boolean(v))
+                        }
+                        aria-label={t("incomes.aria.selectIncome", {
+                          description: income.description,
+                        })}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {income.description}
                     </TableCell>
@@ -407,6 +510,41 @@ export function IncomesList({ filters = {} }: IncomesListProps) {
         onOpenChange={setEditDialogOpen}
         income={incomeToEdit}
       />
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog open={bulkDeleteDialogOpen} onOpenChange={setBulkDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("incomes.bulkDelete.confirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("incomes.bulkDelete.confirmDescription", {
+                count: selectedIncomes.size,
+              })}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="text-sm text-muted-foreground">
+            <p className="text-amber-600 font-medium">
+              ⚠️ {t("incomes.bulkDelete.warning")}
+            </p>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteMutation.isPending}>
+              {t("common.cancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDelete}
+              disabled={bulkDeleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleteMutation.isPending
+                ? t("incomes.bulkDelete.deleting")
+                : t("incomes.bulkDelete.confirm")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

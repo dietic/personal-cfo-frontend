@@ -93,6 +93,7 @@ export function CategoriesManagement() {
   const [formData, setFormData] = useState<CategoryCreate>({
     name: "",
     color: DEFAULT_COLORS[0],
+    emoji: "",
     keywords: [],
     is_active: true,
   });
@@ -104,6 +105,15 @@ export function CategoriesManagement() {
       return;
     }
 
+    // Validate emoji format (single emoji character or empty)
+    if (formData.emoji && formData.emoji.trim()) {
+      const emojiRegex = /^\p{Emoji}$/u;
+      if (!emojiRegex.test(formData.emoji.trim())) {
+        toast.error(t("category.errors.invalidEmoji"));
+        return;
+      }
+    }
+
     // Validate category name is not restricted
     const restrictedNames = ["income", "ingreso"];
     const categoryName = formData.name.trim().toLowerCase();
@@ -113,7 +123,10 @@ export function CategoriesManagement() {
     }
 
     try {
-      await createMutation.mutateAsync(formData);
+      await createMutation.mutateAsync({
+        ...formData,
+        emoji: formData.emoji || undefined, // Don't send empty string
+      });
       setShowCreateDialog(false);
       resetForm();
       // Success toast handled by hook
@@ -128,6 +141,15 @@ export function CategoriesManagement() {
       return;
     }
 
+    // Validate emoji format (single emoji character or empty)
+    if (formData.emoji && formData.emoji.trim()) {
+      const emojiRegex = /^\p{Emoji}$/u;
+      if (!emojiRegex.test(formData.emoji.trim())) {
+        toast.error(t("category.errors.invalidEmoji"));
+        return;
+      }
+    }
+
     // Validate category name is not restricted
     const restrictedNames = ["income", "ingreso"];
     const categoryName = formData.name.trim().toLowerCase();
@@ -139,7 +161,10 @@ export function CategoriesManagement() {
     try {
       await updateMutation.mutateAsync({
         categoryId: editingCategory.id,
-        data: formData as CategoryUpdate,
+        data: {
+          ...formData,
+          emoji: formData.emoji || undefined, // Don't send empty string
+        } as CategoryUpdate,
       });
       setEditingCategory(null);
       resetForm();
@@ -162,6 +187,7 @@ export function CategoriesManagement() {
     setFormData({
       name: "",
       color: DEFAULT_COLORS[0],
+      emoji: "",
       keywords: [],
       is_active: true,
     });
@@ -193,6 +219,7 @@ export function CategoriesManagement() {
     setFormData({
       name: category.name,
       color: category.color || DEFAULT_COLORS[0],
+      emoji: category.emoji || "",
       keywords: category.keywords || [],
       is_active: category.is_active,
     });
@@ -296,6 +323,18 @@ export function CategoriesManagement() {
                       setFormData({ ...formData, name: e.target.value })
                     }
                     placeholder={t("categories.form.placeholder")}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="emoji">{t("categories.form.emoji")}</Label>
+                  <Input
+                    id="emoji"
+                    value={formData.emoji || ""}
+                    onChange={(e) =>
+                      setFormData({ ...formData, emoji: e.target.value })
+                    }
+                    placeholder={t("categories.form.emojiPlaceholder")}
+                    maxLength={10}
                   />
                 </div>
                 <div className="space-y-2">
@@ -408,6 +447,7 @@ export function CategoriesManagement() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead>{t("categories.table.emoji")}</TableHead>
                 <TableHead>{t("categories.table.name")}</TableHead>
                 <TableHead>{t("categories.table.color")}</TableHead>
                 <TableHead>{t("categories.table.keywords")}</TableHead>
@@ -418,7 +458,14 @@ export function CategoriesManagement() {
             <TableBody>
               {categories.map((category) => (
                 <TableRow key={category.id}>
-                  <TableCell className="font-medium">{category.name}</TableCell>
+                  <TableCell>
+                    {category.emoji && (
+                      <span className="text-lg">{category.emoji}</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="font-medium">
+                    {category.name}
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <div
@@ -505,6 +552,23 @@ export function CategoriesManagement() {
                                     name: e.target.value,
                                   })
                                 }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor="edit-emoji">
+                                {t("categories.form.emoji")}
+                              </Label>
+                              <Input
+                                id="edit-emoji"
+                                value={formData.emoji || ""}
+                                onChange={(e) =>
+                                  setFormData({
+                                    ...formData,
+                                    emoji: e.target.value,
+                                  })
+                                }
+                                placeholder={t("categories.form.emojiPlaceholder")}
+                                maxLength={10}
                               />
                             </div>
                             <div className="space-y-2">

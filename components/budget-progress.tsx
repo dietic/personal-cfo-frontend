@@ -140,7 +140,12 @@ export function BudgetProgress() {
           processedBudgets.map((category: ProcessedBudget) => (
             <div key={category.id} className="space-y-1">
               <div className="flex justify-between text-sm">
-                <span className="capitalize">{category.name}</span>
+                <span className="capitalize flex items-center gap-2">
+                  {category.emoji && (
+                    <span className="text-base">{category.emoji}</span>
+                  )}
+                  {category.name}
+                </span>
                 <span className="font-medium">
                   {formatCurrency(
                     category.spent,

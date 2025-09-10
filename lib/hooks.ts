@@ -29,6 +29,7 @@ import {
   TrendsFilters,
   User,
   UserProfileUpdate,
+  UserPasswordUpdate,
 } from "@/lib/types";
 import {
   useMutation,
@@ -67,6 +68,8 @@ export const queryKeys = {
       ["analytics", "category", filters] as const,
     trends: (filters?: TrendsFilters) =>
       ["analytics", "trends", filters] as const,
+    monthlyCategories: (filters?: TrendsFilters) =>
+      ["analytics", "monthly-categories", filters] as const,
     yearComparison: ["analytics", "comparison"] as const,
     insights: ["analytics", "insights"] as const,
   },
@@ -98,6 +101,56 @@ export function useUpdateUserProfile() {
     onError: (error: any) => {
       const message =
         error.response?.data?.detail || tInstant("profile.updateFailed");
+      toast.error(message);
+    },
+  });
+}
+
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: (data: UserPasswordUpdate) => apiClient.changePassword(data),
+    onSuccess: () => {
+      toast.success(tInstant("profile.password.changed"));
+    },
+    onError: (error: any) => {
+      console.error("Password change error:", error);
+      console.error("Error response status:", error.response?.status);
+      console.error("Error response headers:", error.response?.headers);
+      console.error("Error response data:", error.response?.data);
+      console.error("Error response data type:", typeof error.response?.data);
+      console.error("Error message:", error.message);
+      
+      let message = tInstant("profile.password.failed");
+      
+      // Check if this is a network error (no response)
+      if (!error.response) {
+        message = tInstant("profile.password.networkError");
+        console.error("Network error - request may not have reached backend");
+      }
+      // Handle different error response formats
+      else if (error.response?.data) {
+        const responseData = error.response.data;
+        
+        if (typeof responseData === 'string') {
+          message = responseData;
+        } else if (responseData.detail && typeof responseData.detail === 'string') {
+          message = responseData.detail;
+        } else if (responseData.message && typeof responseData.message === 'string') {
+          message = responseData.message;
+        } else if (typeof responseData === 'object') {
+          // Try to stringify the object for debugging
+          try {
+            message = JSON.stringify(responseData);
+          } catch (e) {
+            console.error("Could not stringify error response:", e);
+          }
+        } else {
+          console.error("Unhandled error response format:", responseData);
+        }
+      } else if (error.message && typeof error.message === 'string') {
+        message = error.message;
+      }
+      
       toast.error(message);
     },
   });
@@ -557,6 +610,64 @@ export function useDeleteStatementsBulk() {
   });
 }
 
+// Bulk delete incomes
+export function useDeleteIncomesBulk() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (incomeIds: string[]) => {
+      let successCount = 0;
+      const failedIds: string[] = [];
+      const successIds: string[] = [];
+
+      for (const id of incomeIds) {
+        try {
+          await apiClient.deleteIncome(id);
+          successCount += 1;
+          successIds.push(id);
+        } catch (_err) {
+          failedIds.push(id);
+        }
+      }
+
+      const failureCount = failedIds.length;
+      return {
+        successCount,
+        failureCount,
+        total: incomeIds.length,
+        failedIds,
+        successIds,
+      };
+    },
+    onSuccess: (result: any) => {
+      queryClient.invalidateQueries({ queryKey: ["incomes"] });
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["analytics"] });
+
+      if (result.successCount > 0) {
+        toast.success(
+          tInstant("income.bulkDeleted", {
+            success: String(result.successCount),
+          })
+        );
+      }
+      if (result.failureCount > 0) {
+        toast.warning(
+          tInstant("income.bulkFailed", {
+            failed: String(result.failureCount),
+            total: String(result.total),
+          })
+        );
+      }
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || tInstant("income.bulkDeleteFailed");
+      toast.error(message);
+    },
+  });
+}
+
 export function useUploadStatement() {
   const queryClient = useQueryClient();
 
@@ -819,6 +930,13 @@ export function useSpendingTrends(filters?: TrendsFilters) {
   });
 }
 
+export function useMonthlyCategoryBreakdown(filters?: TrendsFilters) {
+  return useQuery({
+    queryKey: queryKeys.analytics.monthlyCategories(filters),
+    queryFn: () => apiClient.getMonthlyCategoryBreakdown(filters),
+  });
+}
+
 export function useYearComparison() {
   return useQuery({
     queryKey: queryKeys.analytics.yearComparison,
@@ -886,15 +1004,15 @@ export function useDetectTransactionAnomalies() {
 export function useCategories(includeInactive: boolean = false) {
   return useQuery({
     queryKey: [...queryKeys.categories, { includeInactive }],
-    queryFn: () => apiClient.getCategories(includeInactive),
+    queryFn: () => apiClient.getCategories(includeInactive, false),
   });
 }
 
 // Returns only the array of categories (for selectors, dropdowns, etc.)
-export function useCategoryList(includeInactive: boolean = false) {
+export function useCategoryList(includeInactive: boolean = false, includeSystem: boolean = false) {
   return useQuery({
-    queryKey: [...queryKeys.categories, { includeInactive }, "list"],
-    queryFn: () => apiClient.getCategories(includeInactive),
+    queryKey: [...queryKeys.categories, { includeInactive, includeSystem }, "list"],
+    queryFn: () => apiClient.getCategories(includeInactive, includeSystem),
     select: (data) => data.categories,
   });
 }
@@ -922,6 +1040,11 @@ export function useCategoryColors() {
   const getCategoryColor = (categoryName?: string | null) => {
     if (!categoryName || !categories) return "#64748b"; // Default color
 
+    // Special handling for Income category
+    if (categoryName.toLowerCase() === "income") {
+      return "#4f46e5"; // Modern indigo color
+    }
+
     const category = categories.find((cat: any) => cat.name === categoryName);
     return category?.color || "#64748b"; // Default color if not found
   };
@@ -935,9 +1058,22 @@ export function useCategoryColors() {
     };
   };
 
+  const getCategoryEmoji = (categoryName?: string | null) => {
+    if (!categoryName || !categories) return null;
+
+    // Special handling for Income category
+    if (categoryName.toLowerCase() === "income") {
+      return "💰"; // Stack of dollar bills emoji
+    }
+
+    const category = categories.find((cat: any) => cat.name === categoryName);
+    return category?.emoji || null;
+  };
+
   return {
     getCategoryColor,
     getCategoryBadgeStyle,
+    getCategoryEmoji,
     categories,
   };
 }
@@ -1121,6 +1257,85 @@ export function useSeedDefaultKeywords() {
         error.response?.data?.detail || tInstant("keyword.seedDefaultsFailed");
       toast.error(message);
     },
+  });
+}
+
+// AI Keyword Generation Hooks
+export function useGenerateAIKeywords() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ categoryId, clearExisting }: { categoryId: string; clearExisting?: boolean }) => {
+      const response = await apiClient.generateAIKeywords(categoryId, clearExisting);
+      
+      // If this is a background task, start polling for completion
+      if (response.task_id) {
+        return await pollTaskCompletion(response.task_id, categoryId, queryClient);
+      }
+      
+      return response;
+    },
+    onSuccess: (data, { categoryId }) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
+      queryClient.invalidateQueries({ 
+        queryKey: queryKeys.keywordsByCategory(categoryId) 
+      });
+      queryClient.invalidateQueries({ queryKey: ["ai-usage-stats"] });
+      toast.success(data.message || "AI keywords generated successfully");
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || tInstant("keyword.aiGenerationFailed");
+      toast.error(message);
+    },
+  });
+}
+
+async function pollTaskCompletion(taskId: string, categoryId: string, queryClient: QueryClient) {
+  const maxAttempts = 60; // 5 minutes max (5 seconds * 60 = 300 seconds)
+  const delay = 5000; // 5 seconds between polls
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, delay));
+    
+    try {
+      const taskStatus = await apiClient.getTaskStatus(taskId);
+      
+      if (taskStatus.status === 'SUCCESS') {
+        // Task completed successfully
+        queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
+        queryClient.invalidateQueries({ 
+          queryKey: queryKeys.keywordsByCategory(categoryId) 
+        });
+        queryClient.invalidateQueries({ queryKey: ["ai-usage-stats"] });
+        
+        return {
+          message: `Generated ${taskStatus.result?.keywords_added || 0} AI keywords`,
+          keywords_added: taskStatus.result?.keywords_added || 0,
+          category_id: categoryId,
+          category_name: taskStatus.result?.category_name || ""
+        };
+      }
+      
+      if (taskStatus.status === 'FAILURE') {
+        throw new Error("AI keyword generation failed in background");
+      }
+      
+      // Task still running, continue polling
+    } catch (error) {
+      console.error("Error polling task status:", error);
+      // Continue polling on error (might be temporary network issue)
+    }
+  }
+  
+  throw new Error("AI keyword generation timed out");
+}
+
+export function useAIUsageStats() {
+  return useQuery({
+    queryKey: ["ai-usage-stats"],
+    queryFn: () => apiClient.getAIUsageStats(),
+    staleTime: 30000, // 30 seconds
   });
 }
 

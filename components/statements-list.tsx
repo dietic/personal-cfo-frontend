@@ -48,7 +48,6 @@ import { useI18n } from "@/lib/i18n";
 import { CategorizationRequest, Statement } from "@/lib/types";
 import { format, parseISO } from "date-fns";
 import {
-  Download,
   FileText,
   Loader2,
   MoreHorizontal,
@@ -597,13 +596,6 @@ export function StatementsList() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="flex items-center gap-2"
-                            disabled={true} // Download functionality can be implemented later
-                          >
-                            <Download className="h-4 w-4" />
-                            {t("statements.menu.download")}
-                          </DropdownMenuItem>
 
                           {/* Recategorize option - only show for completed statements */}
                           {statement.extraction_status === "completed" &&

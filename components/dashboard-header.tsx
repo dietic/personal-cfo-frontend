@@ -1,12 +1,10 @@
 "use client";
 
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Card, CardContent } from "@/components/ui/card";
 import { useUserProfile } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { getUserInitials } from "@/lib/utils";
-import { Upload } from "lucide-react";
 
 export function DashboardHeader() {
   const { data: user } = useUserProfile();
@@ -18,12 +16,8 @@ export function DashboardHeader() {
       <CardContent className="p-6">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex items-center gap-4">
-            <Avatar className="h-14 w-14">
-              <AvatarImage
-                src="/placeholder.svg?height=56&width=56"
-                alt="User"
-              />
-              <AvatarFallback>{userInitials}</AvatarFallback>
+            <Avatar className="h-14 w-14 bg-primary text-primary-foreground">
+              <AvatarFallback className="text-lg font-semibold">{userInitials}</AvatarFallback>
             </Avatar>
             <div>
               <h1 className="text-2xl font-bold">
@@ -33,12 +27,6 @@ export function DashboardHeader() {
                 {t("dashboard.whatsHappening")}
               </p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              {t("dashboard.importStatement")}
-            </Button>
           </div>
         </div>
       </CardContent>

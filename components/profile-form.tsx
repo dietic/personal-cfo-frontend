@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,12 +25,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
-import { useUpdateUserProfile, useUserProfile } from "@/lib/hooks";
+import { useChangePassword, useUpdateUserProfile, useUserProfile } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { formatDistanceToNow, parseISO } from "date-fns";
 import {
   Calendar,
-  Camera,
   Download,
   Eye,
   EyeOff,
@@ -47,6 +46,7 @@ export function ProfileForm() {
   const { logout } = useAuth();
   const { data: user, isLoading } = useUserProfile();
   const updateProfileMutation = useUpdateUserProfile();
+  const changePasswordMutation = useChangePassword();
   const [isEditing, setIsEditing] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -97,8 +97,11 @@ export function ProfileForm() {
     }
 
     try {
-      // Since backend doesn't have password change endpoint yet, just show success
-      toast.success(t("profile.password.changed"));
+      await changePasswordMutation.mutateAsync({
+        current_password: formData.currentPassword,
+        new_password: formData.newPassword,
+        confirm_new_password: formData.confirmPassword,
+      });
       setFormData({
         ...formData,
         currentPassword: "",
@@ -106,7 +109,7 @@ export function ProfileForm() {
         confirmPassword: "",
       });
     } catch (error) {
-      toast.error(t("profile.password.failed"));
+      // Error handling is done in the mutation
     }
   };
 
@@ -174,26 +177,15 @@ export function ProfileForm() {
               <CardDescription>{t("profile.info.description")}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Profile Picture */}
+              {/* Profile Avatar with Initials */}
               <div className="flex items-center gap-4">
-                <Avatar className="h-20 w-20">
-                  <AvatarImage
-                    src="/placeholder.svg?height=80&width=80"
-                    alt={t("profile.photo.alt")}
-                  />
-                  <AvatarFallback className="text-lg">
-                    {user?.email?.charAt(0).toUpperCase() || "U"}
+                <Avatar className="h-20 w-20 bg-primary text-primary-foreground">
+                  <AvatarFallback className="text-lg font-semibold">
+                    {user?.first_name && user?.last_name 
+                      ? `${user.first_name.charAt(0)}${user.last_name.charAt(0)}`.toUpperCase()
+                      : user?.email?.charAt(0).toUpperCase() || "U"}
                   </AvatarFallback>
                 </Avatar>
-                <div className="space-y-2">
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Camera className="h-4 w-4" />
-                    {t("profile.photo.change")}
-                  </Button>
-                  <p className="text-xs text-muted-foreground">
-                    {t("profile.photo.help")}
-                  </p>
-                </div>
               </div>
 
               {/* Account Status */}
@@ -398,8 +390,13 @@ export function ProfileForm() {
                 </div>
               </div>
 
-              <Button onClick={handleChangePassword}>
-                {t("profile.password.update")}
+              <Button 
+                onClick={handleChangePassword}
+                disabled={changePasswordMutation.isPending}
+              >
+                {changePasswordMutation.isPending 
+                  ? t("profile.password.updating") 
+                  : t("profile.password.update")}
               </Button>
             </CardContent>
           </Card>

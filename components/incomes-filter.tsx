@@ -43,21 +43,13 @@ export function IncomesFilter({
   // Initialize filters with initial values - only run once
   useEffect(() => {
     if (!initializedRef.current) {
-      // Set default to current month if no dates provided
-      if (!initialFilters.start_date && !initialFilters.end_date) {
-        const today = new Date();
-        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-        const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-        
-        setStartDate(firstDayOfMonth);
-        setEndDate(lastDayOfMonth);
-      } else {
-        if (initialFilters.start_date) {
-          setStartDate(parseISO(initialFilters.start_date));
-        }
-        if (initialFilters.end_date) {
-          setEndDate(parseISO(initialFilters.end_date));
-        }
+      // Only set dates if they are explicitly provided in initialFilters
+      // No default dates - "no filters" means "show all"
+      if (initialFilters.start_date) {
+        setStartDate(parseISO(initialFilters.start_date));
+      }
+      if (initialFilters.end_date) {
+        setEndDate(parseISO(initialFilters.end_date));
       }
       
       if (initialFilters.is_recurring !== undefined) {

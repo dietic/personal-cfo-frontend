@@ -35,6 +35,14 @@ export async function GET(
     });
   }
   
+  // If using direct backend connection (not proxy mode), bypass proxy
+  if (process.env.NEXT_PUBLIC_API_BASE_URL?.includes('localhost:8000')) {
+    return NextResponse.json(
+      { error: 'Proxy bypassed - using direct backend connection' },
+      { status: 404 }
+    );
+  }
+  
   return proxyRequest(req, params.path, 'GET');
 }
 
@@ -42,6 +50,14 @@ export async function POST(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
+  // If using direct backend connection (not proxy mode), bypass proxy
+  if (process.env.NEXT_PUBLIC_API_BASE_URL?.includes('localhost:8000')) {
+    return NextResponse.json(
+      { error: 'Proxy bypassed - using direct backend connection' },
+      { status: 404 }
+    );
+  }
+  
   return proxyRequest(req, params.path, 'POST');
 }
 
@@ -49,6 +65,14 @@ export async function PUT(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
+  // If using direct backend connection (not proxy mode), bypass proxy
+  if (process.env.NEXT_PUBLIC_API_BASE_URL?.includes('localhost:8000')) {
+    return NextResponse.json(
+      { error: 'Proxy bypassed - using direct backend connection' },
+      { status: 404 }
+    );
+  }
+  
   return proxyRequest(req, params.path, 'PUT');
 }
 
@@ -56,6 +80,14 @@ export async function DELETE(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
+  // If using direct backend connection (not proxy mode), bypass proxy
+  if (process.env.NEXT_PUBLIC_API_BASE_URL?.includes('localhost:8000')) {
+    return NextResponse.json(
+      { error: 'Proxy bypassed - using direct backend connection' },
+      { status: 404 }
+    );
+  }
+  
   return proxyRequest(req, params.path, 'DELETE');
 }
 
@@ -63,6 +95,14 @@ export async function PATCH(
   req: NextRequest,
   { params }: { params: { path: string[] } }
 ) {
+  // If using direct backend connection (not proxy mode), bypass proxy
+  if (process.env.NEXT_PUBLIC_API_BASE_URL?.includes('localhost:8000')) {
+    return NextResponse.json(
+      { error: 'Proxy bypassed - using direct backend connection' },
+      { status: 404 }
+    );
+  }
+  
   return proxyRequest(req, params.path, 'PATCH');
 }
 

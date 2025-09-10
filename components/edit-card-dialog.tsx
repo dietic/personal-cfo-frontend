@@ -36,8 +36,6 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
   const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState<CardUpdate>({
     card_name: card.card_name,
-    card_type: card.card_type || "",
-    network_provider: card.network_provider || "",
     bank_provider_id: card.bank_provider_id || "", // Updated field name
     payment_due_date: card.payment_due_date || "",
   });
@@ -98,55 +96,6 @@ export function EditCardDialog({ card, children }: EditCardDialogProps) {
                 placeholder={t("card.form.namePlaceholder")}
                 required
               />
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="card_type" className="text-right">
-                {t("card.form.type")}
-              </Label>
-              <Select
-                value={formData.card_type || ""}
-                onValueChange={(value) => handleInputChange("card_type", value)}
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue placeholder={t("card.form.typePlaceholder")} />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Credit Card">
-                    {t("card.form.typeCredit")}
-                  </SelectItem>
-                  <SelectItem value="Debit Card">
-                    {t("card.form.typeDebit")}
-                  </SelectItem>
-                  <SelectItem value="Charge Card">
-                    {t("card.form.typeCharge")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="network_provider" className="text-right">
-                {t("card.form.network")}
-              </Label>
-              <Select
-                value={formData.network_provider || ""}
-                onValueChange={(value) =>
-                  handleInputChange("network_provider", value)
-                }
-              >
-                <SelectTrigger className="col-span-3">
-                  <SelectValue
-                    placeholder={t("card.form.networkPlaceholder")}
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Visa">Visa</SelectItem>
-                  <SelectItem value="Mastercard">Mastercard</SelectItem>
-                  <SelectItem value="American Express">
-                    American Express
-                  </SelectItem>
-                  <SelectItem value="Discover">Discover</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
             <div className="grid grid-cols-4 items-center gap-4">
               <Label htmlFor="bank_provider_id" className="text-right">

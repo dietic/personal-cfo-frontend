@@ -30,6 +30,12 @@ export interface UserProfileUpdate {
   timezone?: string;
 }
 
+export interface UserPasswordUpdate {
+  current_password: string;
+  new_password: string;
+  confirm_new_password: string;
+}
+
 export interface UserCreate {
   email: string;
   password: string;
@@ -60,6 +66,7 @@ export interface Category {
   id: string;
   name: string;
   color?: string | null;
+  emoji?: string | null;
   keywords?: string[] | null;
   is_active: boolean;
   is_default?: boolean;
@@ -72,6 +79,7 @@ export interface Category {
 export interface CategoryCreate {
   name: string;
   color?: string | null;
+  emoji?: string | null;
   keywords?: string[] | null;
   is_active?: boolean;
 }
@@ -79,6 +87,7 @@ export interface CategoryCreate {
 export interface CategoryUpdate {
   name?: string | null;
   color?: string | null;
+  emoji?: string | null;
   keywords?: string[] | null;
   is_active?: boolean | null;
 }
@@ -287,6 +296,11 @@ export interface SpendingTrend {
   amount: string;
 }
 
+export interface MonthlyCategoryBreakdown {
+  month: string;
+  categories: Record<string, Record<string, string>>; // category_name -> { currency -> amount }
+}
+
 export interface YearComparison {
   current_year: number;
   previous_year: number;
@@ -328,6 +342,10 @@ export interface AnalyticsFilters {
 
 export interface TrendsFilters {
   months?: number;
+  start_date?: string;
+  end_date?: string;
+  period?: 'monthly' | 'weekly';
+  month?: string; // Format: "YYYY-MM"
 }
 
 // AI API interfaces

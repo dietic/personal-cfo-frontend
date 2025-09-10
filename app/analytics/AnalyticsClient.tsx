@@ -2,10 +2,11 @@
 
 import { AnalyticsDateFilter } from "@/components/analytics-date-filter";
 import ExchangeRateNote from "@/components/exchange-rate-note";
-import { MonthlyComparison } from "@/components/monthly-comparison";
+import { MonthlySpendingChart } from "@/components/monthly-spending-chart";
+import { CategoryTrendsChart } from "@/components/category-trends-chart";
+import { MonthlyCategoryChart } from "@/components/monthly-category-chart";
 import { PageHeader } from "@/components/page-header";
 import { SpendingByCategory } from "@/components/spending-by-category";
-import { SpendingTrends } from "@/components/spending-trends";
 import { useI18n } from "@/lib/i18n";
 import type { AnalyticsFilters, TrendsFilters } from "@/lib/types";
 import { useCallback, useState } from "react";
@@ -16,15 +17,16 @@ export default function AnalyticsClient() {
     {}
   );
   const [trendsFilters, setTrendsFilters] = useState<TrendsFilters>({
-    months: 12,
+    months: new Date().getMonth() + 1, // Current month number (YTD)
   });
 
   const handleDateRangeChange = useCallback(
     (startDate?: string, endDate?: string) => {
-      setAnalyticsFilters({
+      setAnalyticsFilters(prev => ({
+        ...prev,
         start_date: startDate,
         end_date: endDate,
-      });
+      }));
     },
     []
   );
@@ -38,19 +40,13 @@ export default function AnalyticsClient() {
 
       <ExchangeRateNote />
 
-      <AnalyticsDateFilter
-        onDateRangeChange={handleDateRangeChange}
-        className="mb-4"
-      />
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <SpendingByCategory filters={analyticsFilters} />
-        <MonthlyComparison filters={trendsFilters} />
+        <MonthlySpendingChart trendsFilters={trendsFilters} />
       </div>
 
-      <SpendingTrends
+      <CategoryTrendsChart
         trendsFilters={trendsFilters}
-        analyticsFilters={analyticsFilters}
       />
     </div>
   );
