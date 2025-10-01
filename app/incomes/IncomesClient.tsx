@@ -2,7 +2,7 @@
 
 import { PageHeader } from "@/components/page-header";
 import { IncomesList } from "@/components/incomes-list";
-import { AddIncomeDialog } from "@/components/add-income-dialog";
+import { AddTransactionUnifiedDialog } from "@/components/add-transaction-unified-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { tInstant, useI18n } from "@/lib/i18n";
@@ -28,7 +28,7 @@ export default function IncomesClient() {
         description={t("incomes.page.description")}
         action={
           <div className="flex gap-2">
-            <AddIncomeDialog />
+            <AddTransactionUnifiedDialog defaultType="income" />
           </div>
         }
       />

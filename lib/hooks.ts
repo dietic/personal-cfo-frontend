@@ -1152,6 +1152,15 @@ export function useCategoriesValidation() {
   });
 }
 
+// Categories keyword validation hook
+export function useCategoriesKeywordsValidation() {
+  return useQuery({
+    queryKey: ["categories", "keywords-validation"],
+    queryFn: () => apiClient.validateCategoriesMinimumKeywords(),
+    staleTime: 30000, // 30 seconds
+  });
+}
+
 // Keywords Hooks
 export function useKeywordsByCategory(categoryId: string) {
   return useQuery({

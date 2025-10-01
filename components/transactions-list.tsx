@@ -486,7 +486,7 @@ export function TransactionsList({
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right font-medium whitespace-nowrap">
-                        -
+                        {transaction.category && transaction.category.toLowerCase().includes("income") ? "" : "-"}
                         {formatNumber(
                           parseFloat(transaction.amount),
                           locale,

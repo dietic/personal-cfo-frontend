@@ -1,6 +1,6 @@
 "use client";
 
-import { AddTransactionDialog } from "@/components/add-transaction-dialog";
+import { AddTransactionUnifiedDialog } from "@/components/add-transaction-unified-dialog";
 import ExchangeRateNote from "@/components/exchange-rate-note";
 import { ImportStatementDialog } from "@/components/import-statement-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -66,7 +66,7 @@ function TransactionsPageContent() {
         description={t("transactions.page.description")}
         action={
           <div className="flex gap-2">
-            <AddTransactionDialog />
+            <AddTransactionUnifiedDialog />
             <ImportStatementDialog />
           </div>
         }

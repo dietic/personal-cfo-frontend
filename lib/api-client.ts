@@ -383,6 +383,25 @@ class APIClient {
     return response.data;
   }
 
+  // Categories keyword validation endpoint
+  async validateCategoriesMinimumKeywords(): Promise<{
+    has_minimum_keywords: boolean;
+    min_keywords_required: number;
+    insufficient_categories: Array<{
+      category_id: string;
+      category_name: string;
+      current_keywords: number;
+      required_keywords: number;
+    }>;
+    total_categories: number;
+    valid_categories: number;
+    message: string;
+  }> {
+    const response = await this.client.get(this.normalizeUrl("/api/v1/categories/validate-minimum-keywords")
+    );
+    return response.data;
+  }
+
   // Currencies endpoints
   async getCurrencies(): Promise<string[]> {
     const response = await this.client.get<string[]>(this.normalizeUrl("/api/v1/currencies"));

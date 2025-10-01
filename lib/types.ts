@@ -493,6 +493,7 @@ export interface Income {
   amount: string;
   currency: string;
   description: string;
+  source: string;
   income_date: string;
   is_recurring: boolean;
   recurring_day?: number | null;
@@ -505,6 +506,7 @@ export interface IncomeCreate {
   amount: NumStr;
   currency?: string;
   description: string;
+  source: string;
   income_date: string;
   is_recurring?: boolean;
   recurring_day?: number | null;
@@ -515,6 +517,7 @@ export interface IncomeUpdate {
   amount?: NumStr | null;
   currency?: string | null;
   description?: string | null;
+  source?: string | null;
   income_date?: string | null;
   is_recurring?: boolean | null;
   recurring_day?: number | null;

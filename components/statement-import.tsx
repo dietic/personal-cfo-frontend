@@ -31,6 +31,7 @@ import {
   useStatements,
   useStatementStatus,
   useUploadStatementAsync,
+  useCategoriesKeywordsValidation,
 } from "@/lib/hooks";
 import { useI18n } from "@/lib/i18n";
 import { useQueryClient } from "@tanstack/react-query";
@@ -66,6 +67,9 @@ export function StatementImport() {
   const { refetch: refetchStatements } = useStatements();
   const uploadAsyncMutation = useUploadStatementAsync();
   const checkPDFMutation = useCheckPDFAccessibility();
+  const { data: keywordValidation } = useCategoriesKeywordsValidation();
+
+  const hasSufficientKeywords = keywordValidation?.has_minimum_keywords ?? true;
 
   // Status polling for processing statements
   const { data: statusData } = useStatementStatus(
@@ -104,6 +108,12 @@ export function StatementImport() {
       if (acceptedFiles.length === 0) return;
 
       const file = acceptedFiles[0];
+
+      // Check if categories have sufficient keywords
+      if (!hasSufficientKeywords) {
+        toast.error("Please configure at least 20 keywords for each category before uploading statements.");
+        return;
+      }
 
       // Validate file type
       if (!file.name.toLowerCase().endsWith(".pdf")) {
@@ -213,6 +223,7 @@ export function StatementImport() {
       refetchStatements,
       router,
       t,
+      hasSufficientKeywords,
     ]
   );
 
@@ -274,6 +285,7 @@ export function StatementImport() {
       "application/pdf": [".pdf"],
     },
     multiple: false,
+    disabled: !hasSufficientKeywords,
   });
 
   return (
@@ -312,15 +324,26 @@ export function StatementImport() {
           {/* File Upload Area */}
           <div
             {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-              isDragActive
-                ? "border-primary bg-primary/5"
-                : "border-muted-foreground/25 hover:border-primary/50"
+            className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+              !hasSufficientKeywords
+                ? "border-gray-300 bg-gray-50 cursor-not-allowed"
+                : isDragActive
+                ? "border-primary bg-primary/5 cursor-pointer"
+                : "border-muted-foreground/25 hover:border-primary/50 cursor-pointer"
             }`}
           >
             <input {...getInputProps()} />
-            <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            {isDragActive ? (
+            <FileText className={`h-12 w-12 mx-auto mb-4 ${
+              !hasSufficientKeywords ? "text-gray-400" : "text-muted-foreground"
+            }`} />
+            {!hasSufficientKeywords ? (
+              <div>
+                <p className="text-lg mb-2 text-gray-500">Upload Disabled</p>
+                <p className="text-sm text-gray-400">
+                  Configure at least 20 keywords for each category to enable upload
+                </p>
+              </div>
+            ) : isDragActive ? (
               <p className="text-lg">{t("import.drop.active")}</p>
             ) : (
               <div>
