@@ -47,6 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Tooltip,
   TooltipContent,
@@ -59,6 +60,7 @@ import {
   useCreateKeyword,
   useCreateKeywordsBulk,
   useDeleteKeyword,
+  useDeleteKeywordsBulk,
   useGenerateAIKeywords,
   useKeywordsByCategory,
   useSeedDefaultKeywords,
@@ -76,7 +78,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 export function KeywordManagement() {
@@ -86,6 +88,7 @@ export function KeywordManagement() {
   const createKeywordsBulkMutation = useCreateKeywordsBulk();
   const updateKeywordMutation = useUpdateKeyword();
   const deleteKeywordMutation = useDeleteKeyword();
+  const deleteKeywordsBulkMutation = useDeleteKeywordsBulk();
   const seedDefaultKeywordsMutation = useSeedDefaultKeywords();
   const generateAIKeywordsMutation = useGenerateAIKeywords();
   const { data: aiUsageStats } = useAIUsageStats();
@@ -98,6 +101,8 @@ export function KeywordManagement() {
     useState<CategoryKeywordResponse | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [processingCategories, setProcessingCategories] = useState<Set<string>>(new Set());
+  const [selectedKeywordIds, setSelectedKeywordIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   // Single keyword form state
   const [keywordForm, setKeywordForm] = useState<CategoryKeywordCreate>({
@@ -116,6 +121,48 @@ export function KeywordManagement() {
     (cat) => cat.id === selectedCategoryId
   );
 
+  const filteredKeywords =
+    keywords?.filter(
+      (keyword) =>
+        keyword.keyword.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        keyword.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    ) || [];
+
+  const visibleKeywordIds = filteredKeywords.map((keyword) => keyword.id);
+  const selectedCount = selectedKeywordIds.size;
+  const allVisibleSelected =
+    visibleKeywordIds.length > 0 &&
+    visibleKeywordIds.every((id) => selectedKeywordIds.has(id));
+  const someVisibleSelected =
+    selectedCount > 0 && visibleKeywordIds.some((id) => selectedKeywordIds.has(id));
+
+  useEffect(() => {
+    setSelectedKeywordIds(new Set());
+  }, [selectedCategoryId]);
+
+  useEffect(() => {
+    if (!keywords) {
+      setSelectedKeywordIds(new Set());
+      return;
+    }
+    setSelectedKeywordIds((prev) => {
+      const availableIds = new Set(keywords.map((kw) => kw.id));
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (availableIds.has(id)) {
+          next.add(id);
+        }
+      });
+      return next;
+    });
+  }, [keywords]);
+
+  useEffect(() => {
+    if (selectedCount === 0 && showBulkDeleteDialog) {
+      setShowBulkDeleteDialog(false);
+    }
+  }, [selectedCount, showBulkDeleteDialog]);
+
   // Debug: Log category data to understand button visibility
   if (selectedCategory && process.env.NODE_ENV === 'development') {
     console.log('Selected category:', {
@@ -133,12 +180,46 @@ export function KeywordManagement() {
     );
   }
 
-  const filteredKeywords =
-    keywords?.filter(
-      (keyword) =>
-        keyword.keyword.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        keyword.description?.toLowerCase().includes(searchQuery.toLowerCase())
-    ) || [];
+  const toggleKeywordSelection = (keywordId: string, checked: boolean) => {
+    setSelectedKeywordIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(keywordId);
+      } else {
+        next.delete(keywordId);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = (checked: boolean) => {
+    setSelectedKeywordIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        filteredKeywords.forEach((keyword) => next.add(keyword.id));
+      } else {
+        filteredKeywords.forEach((keyword) => next.delete(keyword.id));
+      }
+      return next;
+    });
+  };
+
+  const handleBulkDeleteKeywords = async () => {
+    if (selectedKeywordIds.size === 0) {
+      return;
+    }
+
+    try {
+      await deleteKeywordsBulkMutation.mutateAsync({
+        keywordIds: Array.from(selectedKeywordIds),
+        categoryId: selectedCategoryId,
+      });
+      setSelectedKeywordIds(new Set());
+      setShowBulkDeleteDialog(false);
+    } catch (error) {
+      // Error handled by mutation toast
+    }
+  };
 
   const handleCreateKeyword = async () => {
     if (!keywordForm.keyword.trim()) {
@@ -205,6 +286,14 @@ export function KeywordManagement() {
   const handleDeleteKeyword = async (keywordId: string) => {
     try {
       await deleteKeywordMutation.mutateAsync(keywordId);
+      setSelectedKeywordIds((prev) => {
+        if (!prev.has(keywordId)) {
+          return prev;
+        }
+        const next = new Set(prev);
+        next.delete(keywordId);
+        return next;
+      });
     } catch (error) {
       // Error handled by mutation
     }
@@ -340,12 +429,11 @@ export function KeywordManagement() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex gap-2">
-              
-              {/* AI Keyword Generation Button - Only for Plus/Pro users and non-default categories */}
-              {aiUsageStats && aiUsageStats.plan_tier !== "free" && selectedCategory && !selectedCategory.is_default && (
-                <TooltipProvider>
-                  <Tooltip>
+              <div className="flex flex-wrap items-center gap-2 justify-end">
+                {/* AI Keyword Generation Button - Only for Plus/Pro users and non-default categories */}
+                {aiUsageStats && aiUsageStats.plan_tier !== "free" && selectedCategory && !selectedCategory.is_default && (
+                  <TooltipProvider>
+                    <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
                         onClick={handleGenerateAIKeywordsClick}
@@ -414,11 +502,6 @@ export function KeywordManagement() {
                   {t("keywords.metrics.count", {
                     count: String(keywords?.length || 0),
                   })}
-                  {keywords && keywords.length < 10 && (
-                    <span className="text-orange-600 ml-2">
-                      {t("keywords.metrics.recommended")}
-                    </span>
-                  )}
                 </CardDescription>
               </div>
               <div className="flex gap-2">
@@ -593,10 +676,103 @@ export function KeywordManagement() {
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-md border">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="text-xs text-muted-foreground">
+                        {t("keywords.metrics.count", {
+                          count: String(filteredKeywords.length),
+                        })}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {selectedCount > 0 && (
+                          <Badge variant="secondary">
+                            {t("keywords.bulkDelete.selectedCount", {
+                              count: selectedCount,
+                            })}
+                          </Badge>
+                        )}
+                        <AlertDialog
+                          open={showBulkDeleteDialog}
+                          onOpenChange={setShowBulkDeleteDialog}
+                        >
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              disabled={
+                                selectedCount === 0 ||
+                                deleteKeywordsBulkMutation.isPending
+                              }
+                            >
+                              {deleteKeywordsBulkMutation.isPending ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                              {t("keywords.bulkDelete.action")}
+                              {selectedCount > 0 && (
+                                <span className="ml-1 text-xs">
+                                  ({selectedCount})
+                                </span>
+                              )}
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                {t("keywords.bulkDelete.confirmTitle", {
+                                  count: selectedCount,
+                                })}
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                {t("keywords.bulkDelete.confirmDescription")}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel
+                                disabled={deleteKeywordsBulkMutation.isPending}
+                              >
+                                {t("common.cancel")}
+                              </AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={handleBulkDeleteKeywords}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                disabled={deleteKeywordsBulkMutation.isPending}
+                              >
+                                {deleteKeywordsBulkMutation.isPending
+                                  ? t("common.deleting")
+                                  : t("keywords.bulkDelete.action")}
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                    <div className="rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={
+                                allVisibleSelected
+                                  ? true
+                                  : someVisibleSelected
+                                  ? "indeterminate"
+                                  : false
+                              }
+                              onCheckedChange={(value) =>
+                                toggleSelectAll(Boolean(value))
+                              }
+                              aria-label={t(
+                                "keywords.bulkDelete.selectAll"
+                              )}
+                              disabled={
+                                filteredKeywords.length === 0 ||
+                                deleteKeywordsBulkMutation.isPending
+                              }
+                            />
+                          </TableHead>
                           <TableHead>{t("keywords.table.keyword")}</TableHead>
                           <TableHead>
                             {t("keywords.table.description")}
@@ -610,6 +786,22 @@ export function KeywordManagement() {
                       <TableBody>
                         {filteredKeywords.map((keyword) => (
                           <TableRow key={keyword.id}>
+                            <TableCell className="w-10">
+                              <Checkbox
+                                checked={selectedKeywordIds.has(keyword.id)}
+                                onCheckedChange={(value) =>
+                                  toggleKeywordSelection(
+                                    keyword.id,
+                                    Boolean(value)
+                                  )
+                                }
+                                aria-label={t(
+                                  "keywords.bulkDelete.selectKeyword",
+                                  { keyword: keyword.keyword }
+                                )}
+                                disabled={deleteKeywordsBulkMutation.isPending}
+                              />
+                            </TableCell>
                             <TableCell>
                               <Badge variant="secondary">
                                 {keyword.keyword}
@@ -675,6 +867,7 @@ export function KeywordManagement() {
                         ))}
                       </TableBody>
                     </Table>
+                    </div>
                   </div>
                 )}
               </>

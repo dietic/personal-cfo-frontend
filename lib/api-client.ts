@@ -383,24 +383,7 @@ class APIClient {
     return response.data;
   }
 
-  // Categories keyword validation endpoint
-  async validateCategoriesMinimumKeywords(): Promise<{
-    has_minimum_keywords: boolean;
-    min_keywords_required: number;
-    insufficient_categories: Array<{
-      category_id: string;
-      category_name: string;
-      current_keywords: number;
-      required_keywords: number;
-    }>;
-    total_categories: number;
-    valid_categories: number;
-    message: string;
-  }> {
-    const response = await this.client.get(this.normalizeUrl("/api/v1/categories/validate-minimum-keywords")
-    );
-    return response.data;
-  }
+  // Removed categories minimum-keywords validation endpoint per request
 
   // Currencies endpoints
   async getCurrencies(): Promise<string[]> {
@@ -857,6 +840,18 @@ class APIClient {
 
   async deleteKeyword(keywordId: string): Promise<void> {
     await this.client.delete(this.normalizeUrl(`/api/v1/keywords/${keywordId}`));
+  }
+
+  async deleteKeywordsBulk(
+    keywordIds: string[]
+  ): Promise<{ message: string; deleted_count: number }> {
+    const response = await this.client.delete<{
+      message: string;
+      deleted_count: number;
+    }>(this.normalizeUrl("/api/v1/keywords/bulk"), {
+      data: { keyword_ids: keywordIds },
+    });
+    return response.data;
   }
 
   async seedDefaultKeywords(): Promise<CategoryKeywordResponse[]> {

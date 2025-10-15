@@ -1152,14 +1152,7 @@ export function useCategoriesValidation() {
   });
 }
 
-// Categories keyword validation hook
-export function useCategoriesKeywordsValidation() {
-  return useQuery({
-    queryKey: ["categories", "keywords-validation"],
-    queryFn: () => apiClient.validateCategoriesMinimumKeywords(),
-    staleTime: 30000, // 30 seconds
-  });
-}
+// Removed categories minimum-keywords validation hook per request
 
 // Keywords Hooks
 export function useKeywordsByCategory(categoryId: string) {
@@ -1246,6 +1239,34 @@ export function useDeleteKeyword() {
     onError: (error: any) => {
       const message =
         error.response?.data?.detail || tInstant("keyword.deleteFailed");
+      toast.error(message);
+    },
+  });
+}
+
+export function useDeleteKeywordsBulk() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      keywordIds,
+      categoryId,
+    }: {
+      keywordIds: string[];
+      categoryId?: string;
+    }) => apiClient.deleteKeywordsBulk(keywordIds),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.keywords });
+      if (variables.categoryId) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.keywordsByCategory(variables.categoryId),
+        });
+      }
+      toast.success(tInstant("keyword.bulkDeletedSuccessfully"));
+    },
+    onError: (error: any) => {
+      const message =
+        error.response?.data?.detail || tInstant("keyword.bulkDeleteFailed");
       toast.error(message);
     },
   });

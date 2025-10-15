@@ -1,7 +1,6 @@
 "use client";
 
 import { DowngradeWarningModal } from "@/components/downgrade-warning-modal";
-import { KeywordsConfigurationAlert } from "@/components/keywords-configuration-alert";
 import { Logo } from "@/components/logo";
 import { ModeToggle } from "@/components/mode-toggle";
 import RouteLoader from "@/components/route-loader";
@@ -375,8 +374,7 @@ export function DashboardLayout({
         />
       )}
 
-      {/* Keywords Configuration Alert */}
-      <KeywordsConfigurationAlert />
+      {/* Keywords minimum alert removed per request */}
     </SidebarProvider>
   );
 }
